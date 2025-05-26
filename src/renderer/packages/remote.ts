@@ -1,4 +1,5 @@
 import { USE_LOCAL_API } from '@/variables'
+import { LOCAL_API_ORIGIN } from '@/variables'
 import {
   Config,
   CopilotDetail,
@@ -21,7 +22,7 @@ import { ChatboxAIMessage } from './models/chatboxai'
 
 // export let API_ORIGIN = 'https://api.chatboxai.app'
 
-export let API_ORIGIN = 'http://localhost:4567'
+export let API_ORIGIN = LOCAL_API_ORIGIN || 'http://localhost:4567'
 
 /**
  * 按顺序测试 API 的可用性，只要有一个 API 域名可用，就终止测试并切换所有流量到该域名。

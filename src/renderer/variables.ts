@@ -11,3 +11,5 @@ export const CHATBOX_BUILD_PLATFORM = (process.env.CHATBOX_BUILD_PLATFORM || 'un
 export const USE_LOCAL_API = process.env.USE_LOCAL_API || ''
 
 export const NODE_ENV = process.env.NODE_ENV || 'development'
+
+export const LOCAL_API_ORIGIN = process.env.LOCAL_API_ORIGIN || ''

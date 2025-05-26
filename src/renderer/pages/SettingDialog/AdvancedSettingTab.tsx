@@ -303,9 +303,9 @@ export function AnalyticsSetting() {
           )}
         </p>
       </div>
-      <div className="my-2">
+      {/* <div className="my-2">
         <AllowReportingAndTrackingCheckbox />
-      </div>
+      </div> */}
     </Box>
   )
 }

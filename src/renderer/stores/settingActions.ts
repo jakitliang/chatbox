@@ -14,50 +14,10 @@ export function modify(update: Partial<Settings>) {
 export function needEditSetting() {
   const store = getDefaultStore()
   const settings = store.get(atoms.settingsAtom)
-  if (settings.aiProvider === 'chatbox-ai' && !settings.licenseKey) {
-    return true
-  }
-  if (
-    settings.aiProvider === 'openai' &&
-    settings.openaiKey === '' &&
-    settings.apiHost === defaults.settings().apiHost
-  ) {
-    return true
-  }
-  if (
-    settings.aiProvider === 'azure' &&
-    (settings.azureApikey === '' || settings.azureDeploymentName === '' || settings.azureEndpoint === '')
-  ) {
-    return true
-  }
-  if (settings.aiProvider === 'chatglm-6b' && !settings.chatglmApiKey) {
-    return true
-  }
-  if (settings.aiProvider === 'claude' && !settings.claudeApiKey) {
-    return true
-  }
-  if (settings.aiProvider === 'gemini' && !settings.geminiAPIKey) {
-    return true
-  }
   if (settings.aiProvider === 'ollama' && !settings.ollamaModel) {
     return true
   }
-  if (settings.aiProvider === 'groq' && !settings.groqAPIKey) {
-    return true
-  }
-  if (settings.aiProvider === 'deepseek' && !settings.deepseekAPIKey) {
-    return true
-  }
-  if (settings.aiProvider === 'siliconflow' && !settings.siliconCloudKey) {
-    return true
-  }
   if (settings.aiProvider === 'lm-studio' && !settings.lmStudioModel) {
-    return true
-  }
-  if (settings.aiProvider === 'perplexity' && !settings.perplexityApiKey) {
-    return true
-  }
-  if (settings.aiProvider === 'xAI' && !settings.xAIKey) {
     return true
   }
   return false

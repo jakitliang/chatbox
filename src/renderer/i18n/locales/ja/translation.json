@@ -328,7 +328,7 @@
   "The {{model}} API doesn't support document understanding. You can download <LinkToHomePage>Chatbox Desktop App</LinkToHomePage> for local document analysis.": "現在のモデル{{model}} APIはドキュメントの理解をサポートしていません。ドキュメントの分析には、<LinkToHomePage>Chatboxデスクトップアプリ</LinkToHomePage>をダウンロードしてローカルで分析してください。",
   "All major AI models in one subscription": "すべての主要なAIモデルを1つのサブスクリプションで使用",
   "or": "または",
-  "Use My Own API Key / Local Model": "自分のAPIキー/ローカルモデルを使用",
+  "Use My Own API Key / Local Model": "設定開始",
   "Your ChatboxAI subscription already includes access to models from various providers. There's no need to switch providers - you can select different models directly within ChatboxAI. Switching from ChatboxAI to other providers will require their respective API keys. <button>Back to ChatboxAI</button>": "あなたのChatboxAIサブスクリプションには、さまざまなプロバイダーのモデルへのアクセスがすでに含まれています。プロバイダーを切り替える必要はありません。ChatboxAI内で直接異なるモデルを選択できます。ChatboxAIから他のプロバイダーに切り替えると、それぞれのAPIキーが必要になります。<button>ChatboxAIに戻る</button>",
   "Connection to {{aiProvider}} failed. This typically occurs due to incorrect configuration or {{aiProvider}} account issues. Please <buttonOpenSettings>check your settings</buttonOpenSettings> and verify your {{aiProvider}} account status, or purchase a <LinkToLicensePricing>Chatbox AI License</LinkToLicensePricing> to unlock all advanced models instantly without any configuration.": "{{aiProvider}}への接続に失敗しました。これは通常、設定の誤りや{{aiProvider}}アカウントの問題によるものです。設定を確認して{{aiProvider}}アカウントのステータスを確認するか、<LinkToLicensePricing>Chatbox AI License</LinkToLicensePricing>を購入して、すべての高度なモデルを即座に設定なしでロック解除してください。",
   "Get better connectivity and stability with the Chatbox desktop application. <a>Download now</a>.": "Chatboxデスクトップアプリを使用して、より良い接続と安定性を得てください。<a>今すぐダウンロード</a>。",

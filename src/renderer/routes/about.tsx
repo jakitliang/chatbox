@@ -63,7 +63,7 @@ function About() {
           </h3>
           <p className="p-0 m-0">{t('about-slogan')}</p>
           <p className="p-0 m-0 opacity-60 text-xs">{t('about-introduction')}</p>
-          <p className="p-0 m-0 text-center text-xs opacity-70">
+          {/* <p className="p-0 m-0 text-center text-xs opacity-70">
             <LinkTargetBlank
               href="https://chatboxai.app/privacy"
               className="mx-2 no-underline hover:underline"
@@ -78,9 +78,9 @@ function About() {
             >
               User Terms
             </LinkTargetBlank>
-          </p>
+          </p> */}
         </Box>
-        <Box
+        {/* <Box
           sx={{
             display: 'flex',
             justifyContent: 'center',
@@ -127,8 +127,8 @@ function About() {
           >
             {t('Email Us')}
           </Button>
-        </Box>
-        <Box className="flex flex-row gap-4 justify-center items-center mb-6">
+        </Box> */}
+        {/* <Box className="flex flex-row gap-4 justify-center items-center mb-6">
           <a href="https://x.com/ChatboxAI_HQ" target="_blank">
             <LogoX className="w-6 h-6" />
           </a>
@@ -156,7 +156,7 @@ function About() {
           <a href="https://www.xiaohongshu.com/user/profile/67b581b6000000000e01d11f" target="_blank">
             <LogoXHS className="w-6 h-6" />
           </a>
-        </Box>
+        </Box> */}
         {_i18n.language === 'zh-Hans' ? (
           <Alert className="mx-6 px-6 mb-6 justify-center" severity="warning" icon={false}>
             <h3 className="flex flex-row items-center justify-center gap-2 mb-1 mt-2">

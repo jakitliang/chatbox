@@ -74,8 +74,8 @@ const Welcome = NiceModal.create(() => {
                     lineHeight: 1.4,
                   }}
                   onClick={() => {
-                    settingActions.setModelProvider(ModelProvider.ChatboxAI)
-                    modal.resolve(ModelProvider.ChatboxAI)
+                    settingActions.setModelProvider(ModelProvider.Ollama)
+                    modal.resolve(ModelProvider.Ollama)
                     modal.hide()
                   }}
                 >

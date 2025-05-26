@@ -43,7 +43,6 @@ export default function ExtensionSettingTab(props: Props) {
                   })
                 }}
                 options={[
-                  { value: 'build-in', label: 'Chatbox' },
                   { value: 'bing', label: 'Bing' },
                   { value: 'tavily', label: 'Tavily' },
                 ]}

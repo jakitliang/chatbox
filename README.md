@@ -5,6 +5,16 @@
 
 This is the repository for the Chatbox Community Edition, open-sourced under the GPLv3 license. For most users, I recommend using the Chatbox Official Edition (closed-source). It's still completely free, easy to install, and supports more of the latest features. You can get it below:
 
+### Note
+
+This version is modified by `Jakit` for personal usage.
+
+#### Change
+
+1. Disable all the online `Chatbox` service API.
+2. Disable all the `Chatbox` commercial functionalities (UI components).
+2. Optimized for local usage.
+
 ### Download for Desktop
 
 <table style="width: 100%">
@@ -236,6 +246,52 @@ npm run package
 
 ```bash
 npm run package:all
+```
+
+### Web server (for develpment)
+
+```bash
+npm run dev:web
+```
+
+### Web server (for deployment)
+
+1. Build the web application
+
+```bash
+npm run build:web
+```
+
+2. Start web server
+
+```bash
+npm run serve:web
+```
+
+### Ruby server for API fillament
+
+1. Install Ruby
+
+#### For Windows:
+
+Install ruby from RubyInstaller
+
+#### For Linux:
+
+Install ruby from `apt-get` or other utilities
+
+#### For macOS:
+
+Install ruby from `Homebrew`
+
+`brew install ruby`
+
+2. Setup local API server
+
+```bash
+cd server
+bundle install
+ruby app.rb
 ```
 
 ## Buy Me a Coffee

@@ -458,6 +458,7 @@ function CopilotForm(props: CopilotFormProps) {
       <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
         <FormGroup row>
           <FormControlLabel
+            sx={{ display: 'none' }}
             control={<Switch />}
             label={t('Share with Chatbox')}
             checked={copilotEdit.shared}
@@ -486,6 +487,6 @@ export async function getEmptyCopilot(): Promise<CopilotDetail> {
     prompt: '',
     starred: false,
     usedCount: 0,
-    shared: true,
+    shared: false,
   }
 }

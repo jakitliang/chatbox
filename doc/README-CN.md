@@ -5,6 +5,10 @@
 
 这里是 Chatbox 社区版的代码仓库，以 GPLv3 许可证开源。对大多数用户来说，更建议直接使用 Chatbox 官方版（闭源）。它仍然完全免费，安装简单，而且支持更多最新功能。你可以在下面获取：
 
+### 注意事项
+
+此版本由 `Jakit` 修改，个人本地使用.
+
 ### 下载电脑端
 
 <table style="width: 100%">
@@ -216,6 +220,54 @@ npm run package
 
 ```bash
 npm run package:all
+```
+
+### Web 服务 (开发模式)
+
+```bash
+npm run dev:web
+```
+
+### Web 服务 (正式、生产模式)
+
+1. 构建
+
+```bash
+npm run build:web
+```
+
+2. 启动服务
+
+```bash
+npm run serve:web
+```
+
+### Ruby 服务（用于填补线上 API，本地化）
+
+> 由于一些 API 依赖 `chatbox.ai` 官网，所以做了一些本地化的客制化
+
+1. 安装 Ruby
+
+#### For Windows:
+
+自行搜索 RubyInstaller 来安装
+
+#### For Linux:
+
+用 `apt-get` 或其它命令自己装
+
+#### For macOS:
+
+用 `Homebrew` 自己安装
+
+`brew install ruby`
+
+2. 配置并运行本地 API 服务
+
+```bash
+cd server
+bundle install
+ruby app.rb
 ```
 
 ## 请我喝咖啡

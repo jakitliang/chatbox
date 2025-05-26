@@ -45,7 +45,7 @@ function Root() {
         // 是否需要弹出设置窗口
         if (settingActions.needEditSetting()) {
           if (remoteConfig.setting_chatboxai_first) {
-            settingActions.modify({ aiProvider: ModelProvider.ChatboxAI })
+            settingActions.modify({ aiProvider: ModelProvider.Ollama })
           }
 
           const res = await NiceModal.show('welcome')

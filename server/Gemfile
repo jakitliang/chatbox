@@ -1,0 +1,4 @@
+source 'https://gems.ruby-china.com'
+
+gem 'sinatra', '~> 2.0.8.1'
+gem 'rack', '~> 2.0'

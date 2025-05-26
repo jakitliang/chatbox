@@ -19,7 +19,9 @@ import { ChatboxAIMessage } from './models/chatboxai'
 
 // const RELEASE_ORIGIN = 'https://releases.chatboxai.app'
 
-export let API_ORIGIN = 'https://api.chatboxai.app'
+// export let API_ORIGIN = 'https://api.chatboxai.app'
+
+export let API_ORIGIN = 'http://localhost:4567'
 
 /**
  * 按顺序测试 API 的可用性，只要有一个 API 域名可用，就终止测试并切换所有流量到该域名。
@@ -30,10 +32,7 @@ async function testApiOrigins() {
   let pool = await cache.store.getItem<string[] | null>('api_origins').catch(() => null)
   if (!pool) {
     pool = [
-      'https://chatboxai.app',
-      'https://api.chatboxai.app',
-      'https://api.ai-chatbox.com',
-      'https://api.chatboxapp.xyz',
+      API_ORIGIN
     ]
   }
   // 按顺序测试 API 的可用性

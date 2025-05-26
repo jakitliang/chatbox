@@ -328,7 +328,7 @@
   "The {{model}} API doesn't support document understanding. You can download <LinkToHomePage>Chatbox Desktop App</LinkToHomePage> for local document analysis.": "当前模型 {{model}} API 不支持文档理解。您可以使用 <LinkToHomePage>Chatbox 桌面版</LinkToHomePage> 进行本地文档分析。",
   "All major AI models in one subscription": "一个订阅高速访问所有主流 AI 模型",
   "or": "或",
-  "Use My Own API Key / Local Model": "使用自己的 API Key 或本地模型",
+  "Use My Own API Key / Local Model": "开始配置",
   "Your ChatboxAI subscription already includes access to models from various providers. There's no need to switch providers - you can select different models directly within ChatboxAI. Switching from ChatboxAI to other providers will require their respective API keys. <button>Back to ChatboxAI</button>": "您的 ChatboxAI 订阅已包含来自各大供应商的模型访问权限。您可以直接在 ChatboxAI 中选择不同的模型，无需切换供应商。从 ChatboxAI 切换到其他供应商将需要他们各自的 API 密钥。<button>返回 ChatboxAI</button>",
   "Connection to {{aiProvider}} failed. This typically occurs due to incorrect configuration or {{aiProvider}} account issues. Please <buttonOpenSettings>check your settings</buttonOpenSettings> and verify your {{aiProvider}} account status, or purchase a <LinkToLicensePricing>Chatbox AI License</LinkToLicensePricing> to unlock all advanced models instantly without any configuration.": "连接 {{aiProvider}} 失败。这通常是由于配置错误或 {{aiProvider}} 账户问题。请<buttonOpenSettings>检查您的设置</buttonOpenSettings>并验证您的 {{aiProvider}} 账户状态，或购买<LinkToLicensePricing>Chatbox AI License</LinkToLicensePricing>即可立即解锁所有高级模型，无需任何配置。",
   "Get better connectivity and stability with the Chatbox desktop application. <a>Download now</a>.": "使用 Chatbox 桌面版获得更好的连接性和稳定性。<a>立即下载</a>。",

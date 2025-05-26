@@ -148,13 +148,13 @@ function SidebarButtons(props: { sessionListRef: React.RefObject<HTMLDivElement>
           </span>
         </Button>
 
-        <Button variant="outlined" className="w-full gap-2 " size="large" onClick={handleCreateNewPictureSession}>
+        {/* <Button variant="outlined" className="w-full gap-2 " size="large" onClick={handleCreateNewPictureSession}>
           <AddPhotoAlternateIcon fontSize="small" />
           <span className="flex flex-col normal-case">
             <span className="opacity-0 h-0">{t('new chat')}</span>
             <span>{t('New Images')}</span>
           </span>
-        </Button>
+        </Button> */}
       </Box>
 
       {/* <MenuItem onClick={handleCreateNewSession} sx={{ padding: '0.2rem 0.1rem', margin: '0.1rem' }}>

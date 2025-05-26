@@ -512,7 +512,7 @@ export async function submitNewUserMessage(params: {
   insertMessage(currentSessionId, newUserMsg)
 
   const settings = getCurrentSessionMergedSettings()
-  const isChatboxAI = settings.aiProvider === ModelProvider.ChatboxAI
+  const isChatboxAI = false
   const remoteConfig = settingActions.getRemoteConfig()
 
   // 根据需要，插入空白的回复消息
@@ -553,44 +553,28 @@ export async function submitNewUserMessage(params: {
 
     // 如果本次发送消息携带了附件，应该在这次发送中上传文件并构造文件信息(file uuid)
     if (attachments && attachments.length > 0) {
-      if (settings.aiProvider === ModelProvider.ChatboxAI) {
-        // Chatbox AI 方案
-        const licenseKey = settingActions.getLicenseKey()
-        const newFiles: MessageFile[] = []
-        for (const attachment of attachments || []) {
-          const fileUUID = await remote.uploadAndCreateUserFile(licenseKey || '', attachment)
-          newFiles.push({
-            id: fileUUID,
-            name: attachment.name,
-            fileType: attachment.type,
-            chatboxAIFileUUID: fileUUID,
-          })
-        }
-        modifyMessage(currentSessionId, { ...newUserMsg, files: newFiles }, false)
-      } else {
-        // 本地方案
-        const newFiles: MessageFile[] = []
-        const tokenLimitPerFile = Math.ceil((40 * 1000) / attachments.length)
-        for (const attachment of attachments) {
-          await new Promise((resolve) => setTimeout(resolve, 3000)) // 等待一段时间，方便显示提示
-          const result = await platform.parseFileLocally(attachment, { tokenLimit: tokenLimitPerFile })
-          if (!result.isSupported || !result.key) {
-            // 根据当前 IP，判断是否在错误中推荐 Chatbox AI
-            if (remoteConfig.setting_chatboxai_first) {
-              throw ChatboxAIAPIError.fromCodeName('model_not_support_file', 'model_not_support_file')
-            } else {
-              throw ChatboxAIAPIError.fromCodeName('model_not_support_file_2', 'model_not_support_file_2')
-            }
+      // 本地方案
+      const newFiles: MessageFile[] = []
+      const tokenLimitPerFile = Math.ceil((40 * 1000) / attachments.length)
+      for (const attachment of attachments) {
+        await new Promise((resolve) => setTimeout(resolve, 3000)) // 等待一段时间，方便显示提示
+        const result = await platform.parseFileLocally(attachment, { tokenLimit: tokenLimitPerFile })
+        if (!result.isSupported || !result.key) {
+          // 根据当前 IP，判断是否在错误中推荐 Chatbox AI
+          if (remoteConfig.setting_chatboxai_first) {
+            throw ChatboxAIAPIError.fromCodeName('model_not_support_file', 'model_not_support_file')
+          } else {
+            throw ChatboxAIAPIError.fromCodeName('model_not_support_file_2', 'model_not_support_file_2')
           }
-          newFiles.push({
-            id: result.key,
-            name: attachment.name,
-            fileType: attachment.type,
-            storageKey: result.key,
-          })
         }
-        modifyMessage(currentSessionId, { ...newUserMsg, files: newFiles }, false)
+        newFiles.push({
+          id: result.key,
+          name: attachment.name,
+          fileType: attachment.type,
+          storageKey: result.key,
+        })
       }
+      modifyMessage(currentSessionId, { ...newUserMsg, files: newFiles }, false)
     }
     // 如果本次发送消息携带了链接，应该在这次发送中解析链接并构造链接信息(link uuid)
     if (links && links.length > 0) {
@@ -937,11 +921,6 @@ async function genMessageContext(settings: Settings, msgs: Message[]) {
     }
     const size = estimateTokensFromMessages([msg]) + 20 // 20 作为预估的误差补偿
     // 只有 OpenAI 才支持上下文 tokens 数量限制
-    if (settings.aiProvider === 'openai') {
-      // if (size + totalLen > openaiMaxContextTokens) {
-      //     break
-      // }
-    }
     if (
       toBeRemoved_getContextMessageCount(openaiMaxContextMessageCount, maxContextMessageCount) <
         Number.MAX_SAFE_INTEGER &&

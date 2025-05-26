@@ -45,7 +45,7 @@ export default function CustomProviderSetting(props: ModelConfigProps) {
   const switchChatboxAI = () => {
     setSettingsEdit({
       ...settingsEdit,
-      aiProvider: ModelProvider.ChatboxAI,
+      aiProvider: ModelProvider.Ollama,
       selectedCustomProviderId: '',
     })
   }

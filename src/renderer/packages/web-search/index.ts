@@ -21,15 +21,15 @@ function getSearchProviders() {
   const language = getLanguage()
 
   switch (provider) {
-    case 'build-in':
-      if (!licenseKey) {
-        throw ChatboxAIAPIError.fromCodeName(
-          'chatbox_search_license_key_required',
-          'chatbox_search_license_key_required'
-        )
-      }
-      selectedProviders.push(new ChatboxSearch(licenseKey))
-      break
+    // case 'build-in':
+    //   if (!licenseKey) {
+    //     throw ChatboxAIAPIError.fromCodeName(
+    //       'chatbox_search_license_key_required',
+    //       'chatbox_search_license_key_required'
+    //     )
+    //   }
+    //   selectedProviders.push(new ChatboxSearch(licenseKey))
+    //   break
     case 'bing':
       selectedProviders.push(new BingSearch())
       if (language !== 'zh-Hans') {

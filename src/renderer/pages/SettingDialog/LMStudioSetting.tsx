@@ -31,7 +31,7 @@ export default function LMStudioSetting(props: ModelConfigProps) {
         fullWidth
       />
       <Alert icon={false} severity="info">
-        {platform.type === 'web' && (
+        {false && (
           <p>
             <Trans
               i18nKey="Get better connectivity and stability with the Chatbox desktop application. <a>Download now</a>."

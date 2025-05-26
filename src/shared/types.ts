@@ -233,19 +233,19 @@ export function createMessage(role: MessageRole = MessageRoleEnum.User, content:
 }
 
 export enum ModelProvider {
-  ChatboxAI = 'chatbox-ai',
-  OpenAI = 'openai',
-  Azure = 'azure',
-  ChatGLM6B = 'chatglm-6b',
-  Claude = 'claude',
-  Gemini = 'gemini',
+  // ChatboxAI = 'chatbox-ai',
+  // OpenAI = 'openai',
+  // Azure = 'azure',
+  // ChatGLM6B = 'chatglm-6b',
+  // Claude = 'claude',
+  // Gemini = 'gemini',
   Ollama = 'ollama',
-  Groq = 'groq',
-  DeepSeek = 'deepseek',
-  SiliconFlow = 'siliconflow',
+  // Groq = 'groq',
+  // DeepSeek = 'deepseek',
+  // SiliconFlow = 'siliconflow',
   LMStudio = 'lm-studio',
-  Perplexity = 'perplexity',
-  XAI = 'xAI',
+  // Perplexity = 'perplexity',
+  // XAI = 'xAI',
   Custom = 'custom',
 }
 
@@ -359,8 +359,12 @@ export interface CustomProvider {
 }
 
 export interface ExtensionSettings {
+  // webSearch: {
+  //   provider: 'build-in' | 'bing' | 'tavily' // 搜索提供方
+  //   tavilyApiKey?: string // Tavily API 密钥
+  // }
   webSearch: {
-    provider: 'build-in' | 'bing' | 'tavily' // 搜索提供方
+    provider: 'bing' | 'tavily' // 搜索提供方
     tavilyApiKey?: string // Tavily API 密钥
   }
 }

@@ -66,7 +66,7 @@ export function ChatModelSelector(props: {}) {
 
   const isSmallScreen = useIsSmallScreen()
 
-  const labelHash = currentMergedSettings.aiProvider === ModelProvider.ChatboxAI ? chatboxAIModelLabelHash : {}
+  const labelHash = {}
 
   const optionElements = optionGroups
     .map((group, index) => {

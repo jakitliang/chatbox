@@ -6,8 +6,8 @@ import {
   mermaidSessionEN,
   artifactSessionCN,
   artifactSessionEN,
-  imageCreatorSessionForCN,
-  imageCreatorSessionForEN,
+  // imageCreatorSessionForCN,
+  // imageCreatorSessionForEN,
 } from '@/packages/initial_data'
 import platform from '@/platform'
 import WebPlatform from '@/platform/web_platform'
@@ -76,15 +76,9 @@ async function migrate_1_to_2() {
   const sessions = await storage.getItem(StorageKey.ChatSessions, defaults.sessions())
   const lang = await platform.getLocale()
   if (lang.startsWith('zh')) {
-    if (sessions.find((session) => session.id === imageCreatorSessionForCN.id)) {
-      return
-    }
-    getDefaultStore().set(sessionsAtom, (sessions) => [...sessions, imageCreatorSessionForCN])
+    getDefaultStore().set(sessionsAtom, (sessions) => [...sessions])
   } else {
-    if (sessions.find((session) => session.id === imageCreatorSessionForEN.id)) {
-      return
-    }
-    getDefaultStore().set(sessionsAtom, (sessions) => [...sessions, imageCreatorSessionForEN])
+    getDefaultStore().set(sessionsAtom, (sessions) => [...sessions])
   }
 }
 

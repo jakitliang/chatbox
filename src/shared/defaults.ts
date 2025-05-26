@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid'
 
 export function settings(): Settings {
   return {
-    aiProvider: ModelProvider.OpenAI,
+    aiProvider: ModelProvider.Ollama,
     openaiKey: '',
     apiHost: 'https://api.openai.com',
     dalleStyle: 'vivid',
@@ -77,7 +77,7 @@ export function settings(): Settings {
 
     defaultPrompt: getDefaultPrompt(),
 
-    allowReportingAndTracking: true,
+    allowReportingAndTracking: false,
 
     enableMarkdownRendering: true,
     enableLaTeXRendering: true,
@@ -90,7 +90,7 @@ export function settings(): Settings {
     autoGenerateTitle: true,
 
     autoLaunch: false,
-    autoUpdate: true,
+    autoUpdate: false,
     betaUpdate: false,
 
     shortcuts: {
@@ -112,7 +112,7 @@ export function settings(): Settings {
     },
     extension: {
       webSearch: {
-        provider: 'build-in',
+        provider: 'bing',
         tavilyApiKey: '',
       },
     },

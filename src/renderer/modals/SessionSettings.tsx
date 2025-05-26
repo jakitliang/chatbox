@@ -296,62 +296,6 @@ function ChatConfig(props: { dataEdit: Session; setDataEdit: (data: Session) => 
         hideCustomProviderManage
       />
       <Divider sx={{ margin: '16px 0' }} />
-      {mergedSettings.aiProvider === ModelProvider.ChatboxAI && (
-        <>
-          {licenseDetail && (
-            <ChatboxAIModelSelect
-              settingsEdit={mergedSettings}
-              setSettingsEdit={updateSettingsEdit}
-              className={specificSettings.chatboxAIModel === undefined ? 'opacity-50' : ''}
-            />
-          )}
-        </>
-      )}
-      {mergedSettings.aiProvider === ModelProvider.OpenAI && (
-        <>
-          <OpenAIModelSelect
-            settingsEdit={mergedSettings}
-            setSettingsEdit={updateSettingsEdit}
-            className={specificSettings.model === undefined ? 'opacity-50' : ''}
-          />
-        </>
-      )}
-      {mergedSettings.aiProvider === ModelProvider.Azure && (
-        <>
-          <CreatableSelect
-            label={t('Azure Deployment Name')}
-            value={mergedSettings.azureDeploymentName}
-            onChangeValue={(v) => updateSettingsEdit({ azureDeploymentName: v })}
-            // 选项直接读取和修改全局设置，这样用户体验会更好
-            options={globalSettings.azureDeploymentNameOptions}
-            onUpdateOptions={(v) => {
-              setGlobalSettings((globalSettings) => ({
-                ...globalSettings,
-                azureDeploymentNameOptions: v,
-              }))
-            }}
-            className={specificSettings.azureDeploymentName === undefined ? 'opacity-50' : ''}
-          />
-        </>
-      )}
-      {mergedSettings.aiProvider === ModelProvider.ChatGLM6B && (
-        <>
-          <ChatGLMModelSelect
-            settingsEdit={mergedSettings}
-            setSettingsEdit={updateSettingsEdit}
-            className={specificSettings.chatglmModel === undefined ? 'opacity-50' : ''}
-          />
-        </>
-      )}
-      {mergedSettings.aiProvider === ModelProvider.Claude && (
-        <>
-          <ClaudeModelSelect
-            settingsEdit={mergedSettings}
-            setSettingsEdit={updateSettingsEdit}
-            className={specificSettings.claudeModel === undefined ? 'opacity-50' : ''}
-          />
-        </>
-      )}
       {mergedSettings.aiProvider === ModelProvider.Ollama && (
         <>
           <OllamaHostInput
@@ -366,66 +310,12 @@ function ChatConfig(props: { dataEdit: Session; setDataEdit: (data: Session) => 
           />
         </>
       )}
-      {mergedSettings.aiProvider === ModelProvider.Gemini && (
-        <>
-          <GeminiModelSelect
-            settingsEdit={mergedSettings}
-            setSettingsEdit={updateSettingsEdit}
-            className={specificSettings.geminiModel === undefined ? 'opacity-50' : ''}
-          />
-        </>
-      )}
-      {mergedSettings.aiProvider === ModelProvider.Groq && (
-        <>
-          <GropModelSelect
-            settingsEdit={mergedSettings}
-            setSettingsEdit={updateSettingsEdit}
-            className={specificSettings.groqModel === undefined ? 'opacity-50' : ''}
-          />
-        </>
-      )}
-      {mergedSettings.aiProvider === ModelProvider.DeepSeek && (
-        <>
-          <DeepSeekModelSelect
-            settingsEdit={mergedSettings}
-            setSettingsEdit={updateSettingsEdit}
-            className={specificSettings.deepseekModel === undefined ? 'opacity-50' : ''}
-          />
-        </>
-      )}
-      {mergedSettings.aiProvider === ModelProvider.SiliconFlow && (
-        <>
-          <SiliconflowModelSelect
-            settingsEdit={mergedSettings}
-            setSettingsEdit={updateSettingsEdit}
-            className={specificSettings.siliconCloudModel === undefined ? 'opacity-50' : ''}
-          />
-        </>
-      )}
       {mergedSettings.aiProvider === ModelProvider.LMStudio && (
         <>
           <LMStudioModelSelect
             settingsEdit={mergedSettings}
             setSettingsEdit={updateSettingsEdit}
             className={specificSettings.lmStudioModel === undefined ? 'opacity-50' : ''}
-          />
-        </>
-      )}
-      {mergedSettings.aiProvider === ModelProvider.Perplexity && (
-        <>
-          <PerplexityModelSelect
-            settingsEdit={mergedSettings}
-            setSettingsEdit={updateSettingsEdit}
-            className={specificSettings.perplexityModel === undefined ? 'opacity-50' : ''}
-          />
-        </>
-      )}
-      {mergedSettings.aiProvider === ModelProvider.XAI && (
-        <>
-          <XAIModelSelect
-            settingsEdit={mergedSettings}
-            setSettingsEdit={updateSettingsEdit}
-            className={specificSettings.xAIModel === undefined ? 'opacity-50' : ''}
           />
         </>
       )}

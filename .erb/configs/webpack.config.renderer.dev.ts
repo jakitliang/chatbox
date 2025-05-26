@@ -47,7 +47,7 @@ const configuration: webpack.Configuration = {
   target: ['web', 'electron-renderer'],
 
   entry: [
-    `webpack-dev-server/client?http://0.0.0.0:${port}/dist`,
+    `webpack-dev-server/client?http://localhost:${port}/dist`,
     'webpack/hot/only-dev-server',
     path.join(webpackPaths.srcRendererPath, 'index.tsx'),
   ],
@@ -191,7 +191,7 @@ const configuration: webpack.Configuration = {
     static: {
       publicPath: '/',
     },
-    host: '0.0.0.0',
+    allowedHosts: 'all',
     historyApiFallback: {
       verbose: true,
     },

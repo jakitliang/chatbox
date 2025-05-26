@@ -6,13 +6,7 @@ import LogoX from '@/components/icons/LogoX'
 import LogoXHS from '@/components/icons/LogoXHS'
 import IMG_WECHAT_QRCODE from '@/static/wechat_qrcode.png'
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
-import {
-  Alert,
-  Box,
-  Button,
-  Popover,
-  useTheme
-} from '@mui/material'
+import { Alert, Box, Button, Popover, useTheme } from '@mui/material'
 import { createFileRoute } from '@tanstack/react-router'
 import { useAtom, useAtomValue } from 'jotai'
 import { MouseEvent, useState } from 'react'
@@ -98,8 +92,8 @@ function About() {
           <Button
             variant="outlined"
             onClick={() => platform.openLink(`https://chatboxai.app/redirect_app/check_update/${language}`)}
-            >
-              {t('Check Update')}
+          >
+            {t('Check Update')}
           </Button>
           <Button
             variant="outlined"

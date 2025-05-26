@@ -157,7 +157,14 @@ function createTray() {
   ])
   tray.setToolTip('Chatbox')
   tray.setContextMenu(contextMenu)
-  tray.on('double-click', showOrHideWindow)
+
+  // Windows 平台使用单击，其他平台使用双击
+  if (process.platform === 'win32') {
+    tray.on('click', showOrHideWindow)
+  } else {
+    tray.on('double-click', showOrHideWindow)
+  }
+
   return tray
 }
 
@@ -261,9 +268,15 @@ async function createWindow() {
   })
 
   // 窗口关闭时保存窗口大小与位置
-  mainWindow.on('close', () => {
+  mainWindow.on('close', (event) => {
     if (mainWindow) {
       windowState.saveState(mainWindow)
+    }
+
+    // 在 Windows 上，点击关闭按钮时隐藏到托盘而不是退出应用
+    if (process.platform === 'win32') {
+      event.preventDefault()
+      mainWindow?.hide()
     }
   })
 
@@ -308,23 +321,35 @@ async function showOrHideWindow() {
     await createWindow()
     return
   }
+
   if (mainWindow.isMinimized()) {
     mainWindow.restore()
     mainWindow.focus()
     mainWindow.webContents.send('window-show')
-  } else if (mainWindow?.isFocused()) {
-    // 解决MacOS全屏下隐藏将黑屏的问题
+  } else if (mainWindow.isVisible() && mainWindow.isFocused()) {
+    // 窗口可见且聚焦时，隐藏窗口
     if (mainWindow.isFullScreen()) {
       mainWindow.setFullScreen(false)
     }
     mainWindow.hide()
-    // mainWindow.minimize()
   } else {
-    // 解决MacOS下无法聚焦的问题
-    mainWindow.hide()
-    mainWindow.show()
-    mainWindow.focus()
-    // 解决MacOS全屏下无法聚焦的问题
+    // 窗口不可见或未聚焦时，显示并聚焦窗口
+    if (!mainWindow.isVisible()) {
+      mainWindow.show()
+    }
+
+    // Windows 平台需要特殊处理窗口聚焦
+    if (process.platform === 'win32') {
+      mainWindow.setAlwaysOnTop(true)
+      mainWindow.focus()
+      mainWindow.setAlwaysOnTop(false)
+    } else {
+      // 解决MacOS下无法聚焦的问题
+      mainWindow.hide()
+      mainWindow.show()
+      mainWindow.focus()
+    }
+
     mainWindow.webContents.send('window-show')
   }
 }
@@ -546,4 +571,3 @@ ipcMain.handle('setFullscreen', (event, enable: boolean) => {
     mainWindow.hide()
   }
 })
-

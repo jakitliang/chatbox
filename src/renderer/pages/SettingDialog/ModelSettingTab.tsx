@@ -13,7 +13,7 @@ import LMStudioSetting from './LMStudioSetting'
 import OllamaSetting from './OllamaSetting'
 import OpenAISetting from './OpenAISetting'
 import PerplexitySetting from './PerplexitySetting'
-import SiliconflowSetting from './SiliconflowSetting'
+import SiliconFlowSetting from './SiliconFlowSetting'
 import XAISetting from './XAISetting'
 
 interface ModelConfigProps {
@@ -69,7 +69,7 @@ export default function ModelSettingTab(props: ModelConfigProps) {
         <CustomProviderSetting settingsEdit={settingsEdit} setSettingsEdit={setSettingsEdit} />
       )}
       {settingsEdit.aiProvider === ModelProvider.SiliconFlow && (
-        <SiliconflowSetting settingsEdit={settingsEdit} setSettingsEdit={setSettingsEdit} />
+        <SiliconFlowSetting settingsEdit={settingsEdit} setSettingsEdit={setSettingsEdit} />
       )}
       {settingsEdit.aiProvider === ModelProvider.LMStudio && (
         <LMStudioSetting settingsEdit={settingsEdit} setSettingsEdit={setSettingsEdit} />

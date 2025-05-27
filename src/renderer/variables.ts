@@ -12,4 +12,4 @@ export const USE_LOCAL_API = process.env.USE_LOCAL_API || ''
 
 export const NODE_ENV = process.env.NODE_ENV || 'development'
 
-export const LOCAL_API_ORIGIN = process.env.LOCAL_API_ORIGIN || ''
+export const LOCAL_API_ORIGIN = process.env.LOCAL_API_ORIGIN || 'http://localhost:4567'

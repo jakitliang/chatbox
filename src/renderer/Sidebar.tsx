@@ -80,7 +80,7 @@ export default function Sidebar(props: {}) {
           >
             <Box className="flex justify-between items-center p-0 m-0 mx-2 mb-2">
               <Box>
-                <a href={LOCAL_API_ORIGIN} target="_blank">
+                <a href={LOCAL_API_ORIGIN}>
                   <img src={icon} className="w-6 h-6 mr-2 align-middle inline-block" />
                   <span className="text-xl font-semibold align-middle inline-block opacity-75">Chatbox</span>
                 </a>

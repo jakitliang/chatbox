@@ -7,74 +7,13 @@ This is the repository for the Chatbox Community Edition, open-sourced under the
 
 ### Note
 
-This version is modified by `Jakit` for personal usage.
+**This version is modified by `Jakit` for personal usage.**
 
 #### Change
 
 1. Disable all the online `Chatbox` service API.
 2. Disable all the `Chatbox` commercial functionalities (UI components).
 2. Optimized for local usage.
-
-### Download for Desktop
-
-<table style="width: 100%">
-  <tr>
-    <td width="25%" align="center">
-      <b>Windows</b>
-    </td>
-    <td width="25%" align="center" colspan="2">
-      <b>MacOS</b>
-    </td>
-    <td width="25%" align="center">
-      <b>Linux</b>
-    </td>
-  </tr>
-  <tr style="text-align: center">
-    <td align="center" valign="middle">
-      <a href='https://chatboxai.app/?c=download-windows'>
-        <img src='./doc/statics/windows.png' style="height:24px; width: 24px" />
-        <br />
-        <b>Setup.exe</b>
-      </a>
-    </td>
-    <td align="center" valign="middle">
-      <a href='https://chatboxai.app/?c=download-mac-intel'>
-        <img src='./doc/statics/mac.png' style="height:24px; width: 24px" />
-        <br />
-        <b>Intel</b>
-      </a>
-    </td>
-    <td align="center" valign="middle">
-      <a href='https://chatboxai.app/?c=download-mac-aarch'>
-        <img src='./doc/statics/mac.png' style="height:24px; width: 24px" />
-        <br />
-        <b style="white-space: nowrap;">Apple Silicon</b>
-      </a>
-    </td>
-    <td align="center" valign="middle">
-      <a href='https://chatboxai.app/?c=download-linux'>
-        <img src='./doc/statics/linux.png' style="height:24px; width: 24px" />
-        <br />
-        <b>AppImage</b>
-      </a>
-    </td>
-  </tr>
-</table>
-
-### Download for iOS/Android
-
-<a href='https://apps.apple.com/app/chatbox-ai/id6471368056' style='margin-right: 4px'>
-<img src='./doc/statics/app_store.webp' style="height:38px;" />
-</a>
-<a href='https://play.google.com/store/apps/details?id=xyz.chatboxapp.chatbox' style='margin-right: 4px'>
-<img src='./doc/statics/google_play.png' style="height:38px;" />
-</a>
-<a href='https://chatboxai.app/install?download=android_apk' style='margin-right: 4px; display: inline-flex; justify-content: center'>
-<img src='./doc/statics/android.png' style="height:28px; display: inline-block" />
-.APK
-</a>
-
-For more information: [chatboxai.app](https://chatboxai.app/)
 
 ---
 
@@ -89,43 +28,12 @@ For more information: [chatboxai.app](https://chatboxai.app/)
     <em>Your Ultimate AI Copilot on the Desktop. <br />Chatbox is a desktop client for ChatGPT, Claude and other LLMs, available on Windows, Mac, Linux</em>
 </p>
 
-<p align="center">
-<a href="https://github.com/Bin-Huang/chatbox/releases" target="_blank">
-<img alt="macOS" src="https://img.shields.io/badge/-macOS-black?style=flat-square&logo=apple&logoColor=white" />
-</a>
-<a href="https://github.com/Bin-Huang/chatbox/releases" target="_blank">
-<img alt="Windows" src="https://img.shields.io/badge/-Windows-blue?style=flat-square&logo=windows&logoColor=white" />
-</a>
-<a href="https://github.com/Bin-Huang/chatbox/releases" target="_blank">
-<img alt="Linux" src="https://img.shields.io/badge/-Linux-yellow?style=flat-square&logo=linux&logoColor=white" />
-</a>
-<a href="https://github.com/Bin-Huang/chatbox/releases" target="_blank">
-<img alt="Downloads" src="https://img.shields.io/github/downloads/Bin-Huang/chatbox/total.svg?style=flat" />
-</a>
-<a href="https://twitter.com/benn_huang" target="_blank">
-<img alt="Twitter" src="https://img.shields.io/badge/follow-benn_huang-blue?style=flat&logo=Twitter" />
-</a>
-</p>
-
-<a href="https://www.producthunt.com/posts/chatbox?utm_source=badge-featured&utm_medium=badge&utm_souce=badge-chatbox" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=429547&theme=light" alt="Chatbox - Better&#0032;UI&#0032;&#0038;&#0032;Desktop&#0032;App&#0032;for&#0032;ChatGPT&#0044;&#0032;Claude&#0032;and&#0032;other&#0032;LLMs&#0046; | Product Hunt" style="width: 150px; height: 30px;" width="100" height="40" /></a>
-
 <a href="./doc/statics/snapshot_light.png">
 <img src="./doc/statics/snapshot_light.png" width="400"/>
 </a>
 <a href="./doc/statics/snapshot_dark.png">
 <img src="./doc/statics/snapshot_dark.png" width="400"/>
 </a>
-
-<!-- <table>
-<tr>
-<td>
-<img src="./dec/../doc/demo_mobile_1.png" alt="App Screenshot" style="box-shadow: 2px 2px 10px rgba(0,0,0,0.1); border: 1px solid #ddd; border-radius: 8px; height: 300px" />
-</td>
-<td>
-<img src="./dec/../doc/demo_mobile_2.png" alt="App Screenshot" style="box-shadow: 2px 2px 10px rgba(0,0,0,0.1); border: 1px solid #ddd; border-radius: 8px; height: 300px" />
-</td>
-</tr>
-</table> -->
 
 ## Features
 
@@ -218,10 +126,101 @@ Any form of contribution is welcome, including but not limited to:
 
 ## Build Instructions
 
+### Ruby Environment
+
+> Since API depends on `chatbox.ai` API, so I make a mock server to fill APIs
+
+1. Install Ruby
+
+#### For Windows:
+
+1. Install ruby-2.3 from [RubyInstaller](https://github.com/oneclick/rubyinstaller/releases/download/ruby-2.3.3/ruby-2.3.3-x64-mingw32.7z)
+2. Setup [devkit](https://github.com/oneclick/rubyinstaller/releases/download/devkit-4.7.2/DevKit-mingw64-64-4.7.2-20130224-1432-sfx.exe) for ruby-2.3
+
+#### For Linux:
+
+Install ruby from `apt-get` or other utilities
+
+1. Install rbenv
+
+```
+sudo apt install git build-essential zlib1g-dev libffi-dev libyaml-dev libreadline-dev
+git clone https://github.com/rbenv/rbenv.git ~/.rbenv
+echo 'eval "$(~/.rbenv/bin/rbenv init - bash)"' >> ~/.bashrc
+eval "$(~/.rbenv/bin/rbenv init - bash)"
+git clone https://github.com/rbenv/ruby-build.git "$(rbenv root)"/plugins/ruby-build
+```
+
+2. Install ruby
+
+```
+rbenv install 2.3.8
+# wait ...
+rbenv global 2.3.8
+```
+
+#### For macOS:
+
+1. Install Xcode
+
+2. Install ruby dependencies
+
+```
+brew install zlib libffi libyaml readline openssl@1.1
+```
+
+3. Install rbenv
+
+```
+git clone https://github.com/rbenv/rbenv.git ~/.rbenv
+echo 'eval "$(~/.rbenv/bin/rbenv init - bash)"' >> ~/.bashrc
+eval "$(~/.rbenv/bin/rbenv init - bash)"
+git clone https://github.com/rbenv/ruby-build.git "$(rbenv root)"/plugins/ruby-build
+```
+
+4. Install ruby
+
+```
+rbenv install 2.3.8
+# wait ...
+rbenv global 2.3.8
+```
+
+### Ruby API server setup
+
+1. Install bundler
+
+```bash
+gem install bundler -v 1.17.3
+```
+
+2. Setup local API server
+
+```bash
+cd server
+bundle install
+ruby app.rb
+```
+
+Then you see server will run on port `http://localhost:4567`
+
+You'd better install `nginx` to bind to a `url`
+
+```
+server {
+  ...
+  location /api/ {
+    proxy_pass http://localhost:4567/api/
+  }
+}
+```
+
+### Build the App and run
+
 1. Clone the repository from Github
 
 ```bash
-git clone https://github.com/Bin-Huang/chatbox.git
+git clone https://github.com/jakitliang/chatbox
 ```
 
 2. Install the required dependencies
@@ -232,26 +231,28 @@ npm install
 
 3. Start the application (in development mode)
 
+> Note: `LOCAL_API_ORIGIN=https://localhost:4567` is important for API address
+
 ```bash
-npm run dev
+LOCAL_API_ORIGIN=https://localhost:4567 npm run dev
 ```
 
 4. Build the application, package the installer for current platform
 
 ```bash
-npm run package
+LOCAL_API_ORIGIN=https://localhost:4567 npm run package
 ```
 
 5. Build the application, package the installer for all platforms
 
 ```bash
-npm run package:all
+LOCAL_API_ORIGIN=https://localhost:4567 npm run package:all
 ```
 
 ### Web server (for develpment)
 
 ```bash
-npm run dev:web
+LOCAL_API_ORIGIN=https://localhost:4567 npm run dev:web
 ```
 
 ### Web server (for deployment)
@@ -259,7 +260,7 @@ npm run dev:web
 1. Build the web application
 
 ```bash
-npm run build:web
+LOCAL_API_ORIGIN=https://localhost:4567 npm run build:web
 ```
 
 2. Start web server
@@ -267,45 +268,6 @@ npm run build:web
 ```bash
 npm run serve:web
 ```
-
-### Ruby server for API fillament
-
-1. Install Ruby
-
-#### For Windows:
-
-Install ruby from RubyInstaller
-
-#### For Linux:
-
-Install ruby from `apt-get` or other utilities
-
-#### For macOS:
-
-Install ruby from `Homebrew`
-
-`brew install ruby`
-
-2. Setup local API server
-
-```bash
-cd server
-bundle install
-ruby app.rb
-```
-
-## Buy Me a Coffee
-
-[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoffee.com/benn)
-
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=Bin-Huang/chatbox&type=Date)](https://star-history.com/#Bin-Huang/chatbox&Date)
-
-## Contact
-
-[Twitter](https://twitter.com/benn_huang) | [Email](mailto:tohuangbin@gmail.com) | [Blog](https://bennhuang.com)
 
 ## License
 

@@ -177,7 +177,7 @@ export function settings2SessionSettings(settings: ModelSettings) {
   return pick(settings, [
     'aiProvider',
 
-    'chatboxAIModel',
+    // 'chatboxAIModel',
     'openaiMaxContextMessageCount',
     'maxContextMessageCount',
     'temperature',
@@ -234,18 +234,18 @@ export function createMessage(role: MessageRole = MessageRoleEnum.User, content:
 
 export enum ModelProvider {
   // ChatboxAI = 'chatbox-ai',
-  // OpenAI = 'openai',
-  // Azure = 'azure',
-  // ChatGLM6B = 'chatglm-6b',
-  // Claude = 'claude',
-  // Gemini = 'gemini',
+  OpenAI = 'openai',
+  Azure = 'azure',
+  ChatGLM6B = 'chatglm-6b',
+  Claude = 'claude',
+  Gemini = 'gemini',
   Ollama = 'ollama',
-  // Groq = 'groq',
-  // DeepSeek = 'deepseek',
-  // SiliconFlow = 'siliconflow',
+  Groq = 'groq',
+  DeepSeek = 'deepseek',
+  SiliconFlow = 'siliconflow',
   LMStudio = 'lm-studio',
-  // Perplexity = 'perplexity',
-  // XAI = 'xAI',
+  Perplexity = 'perplexity',
+  XAI = 'xAI',
   Custom = 'custom',
 }
 

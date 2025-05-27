@@ -11,6 +11,8 @@ options "*" do
   200
 end
 
+set :public_folder, File.dirname(__FILE__) + '/static'
+
 get '/' do
   @message = "Welcome chat server"
   erb :index

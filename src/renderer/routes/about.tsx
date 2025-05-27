@@ -157,21 +157,6 @@ function About() {
             <LogoXHS className="w-6 h-6" />
           </a>
         </Box> */}
-        {_i18n.language === 'zh-Hans' ? (
-          <Alert className="mx-6 px-6 mb-6 justify-center" severity="warning" icon={false}>
-            <h3 className="flex flex-row items-center justify-center gap-2 mb-1 mt-2">
-              <WarningAmberIcon color="warning" />
-              正版提示
-            </h3>
-            <p className="leading-6">
-              近期出现了附带 Chatbox 的所谓一键本地部署 DeepSeek 的付费捆绑软件安装包。
-              <br />
-              Chatbox客户端本身是开源免费软件，只在官网(chatboxai.app)销售托管AI服务。
-              <br />
-              如果发现上当受骗，请尽快在对应支付平台如微信、支付宝申请退款。
-            </p>
-          </Alert>
-        ) : null}
         <Box>
           <h4 className="text-center mb-1 mt-2">{t('Changelog')}</h4>
           <Box className="px-6">

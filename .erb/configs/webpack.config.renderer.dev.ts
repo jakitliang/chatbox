@@ -194,8 +194,6 @@ const configuration: webpack.Configuration = {
     allowedHosts: 'all',
     historyApiFallback: {
       verbose: true,
-      disableDotRule: true,
-      index: '/',
     },
     setupMiddlewares(middlewares) {
       console.log('Starting preload.js builder...')

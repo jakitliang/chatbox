@@ -5,7 +5,7 @@
 !macro ChatboxRemoveOwnedProtocol ROOT
   StrCpy $R4 0
   ReadRegStr $R0 ${ROOT} "Software\Classes\chatbox\shell\open\command" ""
-  StrCpy $R1 '$"$INSTDIR\${APP_EXECUTABLE_FILENAME}$"'
+  StrCpy $R1 '"$INSTDIR\${APP_EXECUTABLE_FILENAME}"'
   StrLen $R2 $R1
   StrCpy $R3 $R0 $R2
   ${If} $R3 == $R1
@@ -22,7 +22,7 @@
 
 !macro ChatboxRemoveOwnedStartup ROOT
   ReadRegStr $R0 ${ROOT} "Software\Microsoft\Windows\CurrentVersion\Run" "Chatbox"
-  StrCpy $R1 '$"$INSTDIR\${APP_EXECUTABLE_FILENAME}$"'
+  StrCpy $R1 '"$INSTDIR\${APP_EXECUTABLE_FILENAME}"'
   StrLen $R2 $R1
   StrCpy $R3 $R0 $R2
   ${If} $R3 == $R1

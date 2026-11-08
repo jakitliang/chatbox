@@ -5,7 +5,10 @@ win:
       arch:
         - x64
   artifactName: ${productName}-${version}-User-Setup-${arch}.${ext}
-  signAndEditExecutable: false
+  icon: assets/icon.ico
+  signAndEditExecutable: true
+  signtoolOptions:
+    sign: null
 nsis:
   oneClick: true
   perMachine: false

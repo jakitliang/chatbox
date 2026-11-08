@@ -152,6 +152,7 @@ Var /GLOBAL pid
   ${EndIf}
 !macroend
 
+!ifndef CHATBOX_USER_INSTALL
 !macro customInit
   ; Check for x64 VC++ Redistributable (skip ARM64 check for now)
   ReadRegDWORD $0 HKLM "SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64" "Installed"
@@ -207,3 +208,4 @@ Var /GLOBAL pid
   
   Done:
 !macroend
+!endif

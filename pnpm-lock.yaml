@@ -949,6 +949,15 @@ importers:
         specifier: ^5.0.6
         version: 5.0.11(@types/react@18.3.31)(immer@10.2.0)(react@18.3.1)(use-sync-external-store@1.6.0(react@18.3.1))
 
+  release/app:
+    dependencies:
+      '@anthropic-ai/sandbox-runtime':
+        specifier: ^0.0.54
+        version: 0.0.54
+      '@libsql/client':
+        specifier: ^0.15.6
+        version: 0.15.15
+
 packages:
 
   7zip-bin@5.2.0:

@@ -55,6 +55,7 @@ export default defineConfig({
     'process.env.USE_BETA_CHATBOX': JSON.stringify(process.env.USE_BETA_CHATBOX || ''),
     'process.env.CHATBOX_SKIP_GUIDE': JSON.stringify(process.env.CHATBOX_SKIP_GUIDE || ''),
     'process.env.CHATBOX_START_PAGE': JSON.stringify(process.env.CHATBOX_START_PAGE || ''),
+    'import.meta.env.VITE_INTEGRATED_DEPLOYMENT': JSON.stringify(process.env.CHATBOX_INTEGRATED_BUILD === '1'),
   },
   css: {
     modules: {

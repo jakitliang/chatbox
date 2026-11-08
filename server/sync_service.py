@@ -76,6 +76,14 @@ def create_app(data_dir=None, *, trusted_proxy_peers=None, allowed_hosts=None, a
     hosts = set(allowed_hosts) if allowed_hosts is not None else configured_values("CHATBOX_SYNC_HOSTS")
     origins = set(allowed_origins) if allowed_origins is not None else (configured_values("CHATBOX_SYNC_ORIGINS") or DEFAULT_ORIGINS)
     dev_cors = setting("CHATBOX_SYNC_DEV_CORS") == "1" and not hosts and not peers
+    integrated_origin = setting("CHATBOX_INTEGRATED_ORIGIN")
+    if integrated_origin:
+        parsed = urlsplit(integrated_origin)
+        if integrated_origin != f"{parsed.scheme}://{parsed.netloc}" or not authority(parsed.netloc) or not (parsed.scheme == "https" or (parsed.scheme == "http" and (parsed.hostname == "localhost" or loopback(parsed.hostname)))):
+            raise ValueError("Integrated origin must be exact HTTPS or loopback HTTP origin")
+        if hosts or peers:
+            raise ValueError("Integrated origin cannot be combined with standalone proxy settings")
+        origins = origins | {integrated_origin}
 
     def permitted_origin(origin):
         if origin in origins:
@@ -101,9 +109,9 @@ def create_app(data_dir=None, *, trusted_proxy_peers=None, allowed_hosts=None, a
     app.config.update(SECRET_KEY=store.secret(), MAX_CONTENT_LENGTH=CHUNK + 65536,
                       SESSION_COOKIE_NAME="chatbox_sync_admin", SESSION_COOKIE_HTTPONLY=True,
                       SESSION_COOKIE_SAMESITE="Strict", SESSION_COOKIE_PATH="/admin",
-                      SESSION_COOKIE_SECURE=bool(hosts or peers))
+                      SESSION_COOKIE_SECURE=bool(hosts or peers or integrated_origin.startswith("https://")))
     store.cleanup()
-    registration_enabled = setting("CHATBOX_SYNC_REGISTRATION", "1" if not hosts and not peers else "0") == "1"
+    registration_enabled = setting("CHATBOX_SYNC_REGISTRATION", "0" if hosts or peers or integrated_origin.startswith("https://") else "1") == "1"
     app.jinja_env.globals["registration_enabled"] = registration_enabled
 
     def csrf():
@@ -116,7 +124,12 @@ def create_app(data_dir=None, *, trusted_proxy_peers=None, allowed_hosts=None, a
     def protect():
         hostname = authority(request.host)
         secure = request.is_secure
-        if request.remote_addr in peers:
+        if integrated_origin:
+            parsed = urlsplit(integrated_origin)
+            if not loopback(request.remote_addr) or request.host != parsed.netloc or request.headers.get("X-Forwarded-Proto") != parsed.scheme:
+                abort(403, "Integrated backend requires its local same-origin proxy")
+            secure = parsed.scheme == "https"
+        elif request.remote_addr in peers:
             # Proxy must overwrite this header and preserve the externally allowlisted Host.
             if request.headers.get("X-Forwarded-Proto") != "https" or request.host not in hosts:
                 abort(403, "Trusted proxy must report HTTPS and an allowlisted Host")

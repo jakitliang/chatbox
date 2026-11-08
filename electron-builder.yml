@@ -114,7 +114,10 @@ directories:
   output: release/build
 
 extraResources:
-  - ./assets/**
+  - from: assets
+    to: assets
+    filter:
+      - "**/*"
 
 publish:
   - provider: s3

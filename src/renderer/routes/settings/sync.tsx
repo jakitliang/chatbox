@@ -14,7 +14,10 @@ export function RouteComponent() {
   const t = (key: string): string => String(translate(key))
   const address = useSettingsStore((s) => s.appApiServer)
   const setSettings = useSettingsStore((s) => s.setSettings)
-  const [draft, setDraft] = useState(address)
+  // Suggest the same-origin backend only for integrated Web builds; saving is
+  // still explicit and no request is made on mount or when saving the address.
+  const suggestedAddress = import.meta.env.VITE_INTEGRATED_DEPLOYMENT ? window.location.origin : ''
+  const [draft, setDraft] = useState(address || suggestedAddress)
   const [username, setUsername] = useState('')
   const password = useRef<HTMLInputElement>(null)
   const running = useRef(false)

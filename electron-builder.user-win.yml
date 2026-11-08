@@ -1,0 +1,21 @@
+extends: ./electron-builder.yml
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  artifactName: ${productName}-${version}-User-Setup-${arch}.${ext}
+  signAndEditExecutable: false
+nsis:
+  oneClick: true
+  perMachine: false
+  allowElevation: false
+  allowToChangeInstallationDirectory: false
+  packElevateHelper: false
+  include: assets/installer-user.nsh
+publish: null
+extraResources:
+  - from: assets
+    to: assets
+    filter:
+      - "**/*"

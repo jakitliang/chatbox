@@ -207,4 +207,5 @@ tmp_*.*
 
 # Local headless evaluation artifacts
 /jobs/
+/data/
 /scripts/terminal_bench/__pycache__/

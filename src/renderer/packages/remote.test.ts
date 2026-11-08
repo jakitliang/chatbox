@@ -1,197 +1,194 @@
+import type { Config, CopilotDetail, Settings } from '@shared/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { buildChatboxAIGroupViews } from '@/components/ModelSelectorV2/chatboxCatalog'
-import {
-  checkLoginStatus,
-  getChatboxAIModelList,
-  getModelManifest,
-  getUserProfile,
-  getWebAuthToken,
-  listLicensesByUser,
-  loginOrSignupWithEmailCode,
-  refreshAccessToken,
-  requestLoginTicketId,
-  sendEmailLoginCode,
-  uploadAndCreateUserFile,
-  uploadAndParseUserFile,
-} from './remote'
+import * as licensing from './lemonsqueezy'
+import * as remote from './remote'
 
-const { afetch, upload, setBlob } = vi.hoisted(() => ({ afetch: vi.fn(), upload: vi.fn(), setBlob: vi.fn() }))
-
-vi.mock('@shared/request/request', () => ({
-  createAfetch: () => afetch,
-  createAuthenticatedAfetch: () => afetch,
-  uploadFile: upload,
+const { request, backend } = vi.hoisted(() => ({
+  request: vi.fn(),
+  backend: { origin: 'http://127.0.0.1:4567' },
 }))
-vi.mock('@shared/request/chatboxai_pool', () => ({ getChatboxAPIOrigin: () => 'https://example.test' }))
-vi.mock('@/lib/utils', () => ({ getLogger: () => ({ error: vi.fn() }) }))
-vi.mock('@/platform', () => ({
-  default: {
-    type: 'web',
-    getPlatform: async () => 'web',
-    getVersion: async () => 'test',
-    getDeviceName: async () => 'test',
-    setStoreBlob: setBlob,
-  },
-}))
-vi.mock('@/stores/authInfoStore', () => ({ authInfoStore: {} }))
-vi.mock('@/variables', () => ({ CHATBOX_BUILD_CHANNEL: 'test', USE_BETA_CHATBOX: false, USE_LOCAL_CHATBOX: false }))
-vi.mock('./navigator', () => ({ getOS: () => 'Unknown' }))
+vi.mock('ofetch', () => ({ ofetch: request }))
+vi.mock('@shared/request/chatboxai_pool', () => ({ getChatboxAPIOrigin: () => backend.origin }))
+// Importing the remote module must never initialize the old authenticated/platform clients.
+vi.mock('@shared/request/request', () => { throw new Error('Legacy transport imported') })
+vi.mock('@/platform', () => { throw new Error('Platform metadata imported') })
+vi.mock('@/stores/authInfoStore', () => { throw new Error('Account tokens imported') })
 
-const supportedModels = [
-  { modelId: 'chat', modelName: 'Chat', apiStyle: 'openai' },
-  { modelId: 'responses', modelName: 'Responses', apiStyle: 'openai-responses' },
-  { modelId: 'legacy', modelName: 'Legacy' },
-]
-const incompatibleModels = [
-  { modelId: 'future', modelName: 'Future', apiStyle: 'future-api' },
-  { modelId: 'future-capability', modelName: 'Future capability', capabilities: ['future-capability'] },
-  { modelId: 'malformed' },
-  null,
-]
-const image = {
-  modelId: 'image',
-  modelName: 'Image',
-  type: 'image',
-  apiStyle: 'openai',
-  description: 'Create detailed images from text and reference images.',
-}
+beforeEach(() => {
+  request.mockReset()
+  backend.origin = 'http://127.0.0.1:4567'
+  remote.invalidateSessionRagConfigCache()
+})
 
-function respond(data: unknown) {
-  afetch.mockResolvedValue({ json: async () => ({ success: true, data }) })
-}
-
-describe('remote model catalog compatibility', () => {
-  beforeEach(() => afetch.mockReset())
-
-  it('keeps supported manifest models and images when other entries are incompatible', async () => {
-    respond({
-      groupName: 'Chatbox AI',
-      models: [...supportedModels, ...incompatibleModels],
-      imageModels: [...incompatibleModels, image],
-    })
-
-    const result = await getModelManifest({ aiProvider: 'chatbox-ai' })
-
-    expect(result.models).toEqual(supportedModels)
-    expect(result.imageModels).toEqual([image])
+describe('self-host backend reads', () => {
+  it('resolves API and website helpers dynamically', () => {
+    expect(remote.getAPIOrigin()).toBe(backend.origin)
+    expect(remote.getChatboxOrigin()).toBe(backend.origin)
+    expect(remote.buildChatboxUrl('/help?lang=en')).toBe(`${backend.origin}/help?lang=en`)
+    backend.origin = 'https://selfhost.example'
+    expect(remote.getAPIOrigin()).toBe(backend.origin)
+    expect(remote.getChatboxOrigin()).toBe(backend.origin)
+    expect(remote.buildChatboxUrl('help')).toBe(`${backend.origin}/help`)
   })
 
-  it('keeps model-list metadata and skips filtered IDs in the rendered groups', async () => {
-    const models = Object.fromEntries(supportedModels.map((model) => [model.modelId, model]))
-    const rejected = Object.fromEntries(incompatibleModels.map((model, index) => [`invalid-${index}`, model]))
-    respond({
-      provider: { id: 'chatbox-ai', name: 'Chatbox AI' },
-      groups: [{ id: 'basic', modelIds: [...Object.keys(rejected), ...Object.keys(models)] }],
-      models: {
-        ...rejected,
-        ...models,
-        priced: { ...supportedModels[0], modelId: 'priced', access: { available: false }, costLevel: 'high' },
-        'bad-price': { ...supportedModels[0], modelId: 'bad-price', pricing: { tieredPricing: 'invalid' } },
-      },
-      imageModels: [...incompatibleModels, image],
-    })
-
-    const result = await getChatboxAIModelList({})
-
-    expect(Object.keys(result.models)).toEqual(['chat', 'responses', 'legacy', 'priced'])
-    expect(result.models.responses.apiStyle).toBe('openai-responses')
-    expect(result.models.priced).toMatchObject({ access: { available: false }, costLevel: 'high' })
-    expect(result.imageModels).toEqual([image])
-    expect(
-      buildChatboxAIGroupViews({ catalog: result, search: '', expandedAdvanced: false, collapsedGroupIds: new Set() })
-    ).toEqual([expect.objectContaining({ modelIds: ['chat', 'responses', 'legacy'], total: 3 })])
+  it('reads remote config without device headers', async () => {
+    request.mockResolvedValue({ data: { product_ids: [] } })
+    expect(await remote.getRemoteConfig('product_ids')).toEqual({ product_ids: [] })
+    expect(request).toHaveBeenCalledWith(`${backend.origin}/api/remote_config/product_ids`, { retry: 3 })
   })
 
-  it('returns empty collections when every model is incompatible', async () => {
-    respond({ groupName: 'Chatbox AI', models: incompatibleModels })
-    expect(await getModelManifest({ aiProvider: 'chatbox-ai' })).toMatchObject({ models: [], imageModels: [] })
-
-    respond({
-      provider: { id: 'chatbox-ai', name: 'Chatbox AI' },
-      groups: [],
-      models: { future: incompatibleModels[0] },
+  it('reads tags and the cursor list, preserving absolute backend assets', async () => {
+    request.mockResolvedValueOnce({ data: ['Writing'] })
+    expect(await remote.listCopilotTags('en/US')).toEqual(['Writing'])
+    expect(request).toHaveBeenLastCalledWith(`${backend.origin}/api/system_copilots/tags/en%2FUS`, {
+      method: 'GET', retry: 3,
     })
-    expect(await getChatboxAIModelList({})).toMatchObject({ models: {}, imageModels: [] })
+    const data = [{ id: 'local', picUrl: `${backend.origin}/avatars/a.png`, avatar: { type: 'url', url: `${backend.origin}/avatars/a.png` } }]
+    request.mockResolvedValueOnce({ data, next_cursor: 'next' })
+    expect(await remote.listCopilotsByCursor('en', { limit: 2, cursor: 'cursor', tag: 'Writing', search: 'local' }))
+      .toEqual({ data, next_cursor: 'next' })
+    expect(request).toHaveBeenLastCalledWith(`${backend.origin}/api/system_copilots/list`, {
+      method: 'POST', retry: 3,
+      body: { lang: 'en', limit: 2, cursor: 'cursor', tag: 'Writing', search: 'local' },
+    })
   })
 
-  it('rejects malformed response envelopes and collection shapes', async () => {
-    respond({ groupName: 'Chatbox AI', models: {} })
-    await expect(getModelManifest({ aiProvider: 'chatbox-ai' })).rejects.toThrow()
+  it('uses the models envelope, filters incompatible entries and never sends a license', async () => {
+    const model = { modelId: 'local-chat', modelName: 'Local Chat', apiStyle: 'openai-responses' }
+    const image = { modelId: 'local-image', modelName: 'Local Image', type: 'image' }
+    request.mockResolvedValue({ data: {
+      groupName: 'Local models', models: [model, null, { modelId: 'invalid' }, { ...model, apiStyle: 'future' }],
+      imageModels: [image, { ...image, capabilities: ['future'] }],
+    } })
+    expect(await remote.getModelManifest({ aiProvider: 'openai', licenseKey: 'old-license', language: 'en' }))
+      .toEqual({ groupName: 'Local models', models: [model], imageModels: [image] })
+    expect(request).toHaveBeenCalledWith(`${backend.origin}/api/model_manifest`, {
+      method: 'POST', retry: 2, body: { aiProvider: 'openai' },
+    })
+    backend.origin = 'http://localhost:9876'
+    await remote.getModelManifest({ aiProvider: 'gemini' })
+    expect(request.mock.lastCall?.[0]).toBe(`${backend.origin}/api/model_manifest`)
+  })
 
-    respond({ provider: { id: 'chatbox-ai', name: 'Chatbox AI' }, groups: [], models: [] })
-    await expect(getChatboxAIModelList({})).rejects.toThrow()
-
-    respond({ models: {} })
-    await expect(getChatboxAIModelList({})).rejects.toThrow()
+  it('supports empty catalogs and rejects malformed collection envelopes', async () => {
+    request.mockResolvedValue({ data: { groupName: 'Local models', models: [] } })
+    expect(await remote.getModelManifest({ aiProvider: 'openai' })).toEqual({ groupName: 'Local models', models: [], imageModels: [] })
+    request.mockResolvedValue({ data: { groupName: 'Local models', models: {} } })
+    await expect(remote.getModelManifest({ aiProvider: 'openai' })).rejects.toThrow()
+    request.mockResolvedValue({ models: [] })
+    await expect(remote.getModelManifest({ aiProvider: 'openai' })).rejects.toThrow()
   })
 })
 
-describe('account API origin', () => {
-  beforeEach(() => {
-    afetch.mockReset().mockResolvedValue({ json: async () => ({ data: {} }), headers: { get: () => 'token' } })
+describe('origin-scoped session RAG cache', () => {
+  it('shares concurrent reads and ignores old license keys', async () => {
+    const data = { models: [], capabilities: {} }
+    request.mockResolvedValue({ data })
+    expect(await Promise.all([
+      remote.getSessionRagConfig({ licenseKey: 'secret-one' }),
+      remote.getSessionRagConfig({ licenseKey: 'secret-two' }),
+    ])).toEqual([data, data])
+    expect(request).toHaveBeenCalledTimes(1)
+    expect(request).toHaveBeenCalledWith(`${backend.origin}/api/session_rag/config`, { retry: 3 })
   })
 
-  it.each([
-    ['/api/auth/request_login_ticket', () => requestLoginTicketId()],
-    ['/api/auth/send_email_login_code', () => sendEmailLoginCode({ email: 'user@example.test' })],
-    [
-      '/api/auth/login_or_signup_with_email_code',
-      () => loginOrSignupWithEmailCode({ email: 'user@example.test', code: '1' }),
-    ],
-    ['/api/auth/web_auth_token/generate', () => getWebAuthToken()],
-    ['/api/auth/login_status', () => checkLoginStatus('ticket')],
-    ['/api/auth/token_refresh', () => refreshAccessToken({ refreshToken: 'refresh' })],
-    ['/api/user/profile', () => getUserProfile()],
-    ['/api/license/list_by_user', () => listLicensesByUser()],
-  ])('sends %s to the selected Chatbox API origin', async (path, call) => {
-    await call()
+  it('separates origins while preserving the prior backend cache', async () => {
+    request.mockResolvedValueOnce({ data: { models: ['first'] } })
+    expect(await remote.getSessionRagConfig()).toEqual({ models: ['first'] })
+    backend.origin = 'http://localhost:9876'
+    request.mockResolvedValueOnce({ data: { models: ['second'] } })
+    expect(await remote.getSessionRagConfig()).toEqual({ models: ['second'] })
+    backend.origin = 'http://127.0.0.1:4567'
+    expect(await remote.getSessionRagConfig()).toEqual({ models: ['first'] })
+    expect(request).toHaveBeenCalledTimes(2)
+  })
 
-    expect(afetch.mock.calls[0][0]).toBe(`https://example.test${path}`)
+  it('captures the origin for pending requests across settings changes', async () => {
+    let finish: ((value: unknown) => void) | undefined
+    request.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve }))
+    const first = remote.getSessionRagConfig()
+    backend.origin = 'http://localhost:9876'
+    request.mockResolvedValueOnce({ data: { models: ['second'] } })
+    expect(await remote.getSessionRagConfig()).toEqual({ models: ['second'] })
+    finish?.({ data: { models: ['first'] } })
+    expect(await first).toEqual({ models: ['first'] })
+    expect(await remote.getSessionRagConfig()).toEqual({ models: ['second'] })
+    expect(request).toHaveBeenCalledTimes(2)
+  })
+
+  it('evicts failures, expires after ten minutes and supports legacy invalidation', async () => {
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(0)
+    try {
+      request.mockRejectedValueOnce(new Error('offline'))
+      await expect(remote.getSessionRagConfig()).rejects.toThrow('offline')
+      request.mockResolvedValue({ data: { models: [] } })
+      await remote.getSessionRagConfig()
+      await remote.getSessionRagConfig()
+      expect(request).toHaveBeenCalledTimes(2)
+      clock.mockReturnValue(10 * 60 * 1000)
+      await remote.getSessionRagConfig()
+      expect(request).toHaveBeenCalledTimes(3)
+      remote.invalidateSessionRagConfigCache('ignored-license')
+      await remote.getSessionRagConfig()
+      expect(request).toHaveBeenCalledTimes(4)
+    } finally { clock.mockRestore() }
   })
 })
 
-describe('cloud file parsing transport', () => {
-  beforeEach(() => {
-    afetch.mockReset()
-    upload.mockReset().mockResolvedValue({})
-    setBlob.mockReset().mockResolvedValue(undefined)
-    afetch
-      .mockResolvedValueOnce({
-        json: async () => ({ data: { url: 'https://upload.test/file', filename: 'report.doc' } }),
-      })
-      .mockResolvedValueOnce({ json: async () => ({ data: { uuid: 'fixture', content: 'Parsed text' } }) })
-  })
-
-  it('passes cancellation through URL, raw upload, and parsing without persisting content', async () => {
-    const file = new File(['fixture'], 'report.doc', { type: 'application/msword' })
-    const signal = new AbortController().signal
-    expect(await uploadAndParseUserFile('test-license', file, signal)).toBe('Parsed text')
-    expect(afetch).toHaveBeenCalledTimes(2)
-    expect(afetch.mock.calls.every((call) => call[1].signal === signal)).toBe(true)
-    expect(upload).toHaveBeenCalledWith(file, 'https://upload.test/file', signal)
-    expect(JSON.parse(afetch.mock.calls[1][1].body)).toMatchObject({
-      returnContent: true,
-      filetype: 'application/msword',
+describe('inert business compatibility', () => {
+  it('returns empty reads without requesting official catalogs, licenses or updates', async () => {
+    expect(await remote.getChatboxAIModelList({ licenseKey: 'secret' })).toMatchObject({
+      groups: [], models: {}, imageModels: [], license: { plan: 'unknown' },
     })
-    expect(setBlob).not.toHaveBeenCalled()
+    expect(await remote.getLicenseDetail({ licenseKey: 'secret' })).toBeNull()
+    expect(await remote.getLicenseDetailRealtime({ licenseKey: 'secret' })).toEqual({ data: null })
+    expect(await remote.getLicenseDetailForInspection({ licenseKey: 'secret' })).toEqual({ data: null })
+    expect(await remote.listLicensesByUser()).toEqual([])
+    expect(await remote.getProviderModelsInfo({ modelIds: ['local'] })).toEqual({})
+    expect(await remote.checkNeedUpdate('1', 'linux', {} as Config, {} as Settings)).toBe(false)
+    expect(await remote.getDialogConfig({ uuid: 'secret', language: 'en', version: '1' })).toBeNull()
+    expect(request).not.toHaveBeenCalled()
   })
 
-  it('does not start parsing when canceled during the upload', async () => {
-    const controller = new AbortController()
-    upload.mockImplementationOnce(async () => controller.abort())
-    await expect(
-      uploadAndParseUserFile('test-license', new File(['fixture'], 'report.doc'), controller.signal)
-    ).rejects.toThrow()
-    expect(afetch).toHaveBeenCalledTimes(1)
-    expect(setBlob).not.toHaveBeenCalled()
+  const operations: Array<[string, () => Promise<unknown>]> = [
+    ['activate', () => remote.activateLicense({ licenseKey: 'secret', instanceName: 'device' })],
+    ['deactivate', () => remote.deactivateLicense({ licenseKey: 'secret', instanceId: 'device' })],
+    ['validate', () => remote.validateLicense({ licenseKey: 'secret', instanceId: 'device' })],
+    ['upload URL', () => remote.generateUploadUrl({ licenseKey: 'secret', filename: 'private.txt' })],
+    ['create file', () => remote.createUserFile({ licenseKey: 'secret', filename: 'private.txt', filetype: 'text/plain', returnContent: true })],
+    ['parse file', () => remote.uploadAndParseUserFile('secret', {} as File, new AbortController().signal)],
+    ['upload file', () => remote.uploadAndCreateUserFile('secret', {} as File)],
+    ['parse link', () => remote.parseUserLinkPro({ licenseKey: 'secret', url: 'https://private.example' })],
+    ['proxy', () => remote.parseUserLinkFree({ url: 'https://private.example' })],
+    ['search', () => remote.getChatboxWebSearchRequestOptions()],
+    ['login ticket', () => remote.requestLoginTicketId()],
+    ['email code', () => remote.sendEmailLoginCode({ email: 'private@example.test' })],
+    ['signup', () => remote.loginOrSignupWithEmailCode({ email: 'private@example.test', code: 'secret' })],
+    ['web auth', () => remote.getWebAuthToken()],
+    ['login status', () => remote.checkLoginStatus('secret')],
+    ['refresh token', () => remote.refreshAccessToken({ refreshToken: 'secret' })],
+    ['profile', () => remote.getUserProfile()],
+    ['publishing', () => remote.issueVibedropKey()],
+    ['reward', () => remote.claimFreeAgentModeReward('secret')],
+    ['pricing', () => remote.getPremiumPrice()],
+    ['usage', () => remote.recordCopilotUsage({ id: 'private', action: 'use_copilot' })],
+    ['share', () => remote.recordCopilotShare({} as CopilotDetail)],
+    ['report', () => remote.reportContent({ id: 'private', type: 'message', details: 'private content' })],
+    ['submit image', () => remote.submitImageGeneration({} as remote.ImageCompletionRequest, 'secret')],
+    ['poll image', () => remote.pollImageTask('private', 'secret')],
+    ['wait image', () => remote.pollTaskUntilComplete('private', 'secret')],
+    ['vendor activate', () => licensing.activateLicense('secret', 'device')],
+    ['vendor deactivate', () => licensing.deactivateLicense('secret', 'device')],
+    ['vendor validate', () => licensing.validateLicense('secret', 'device')],
+  ]
+  it.each(operations)('%s fails explicitly without network or payload serialization', async (_name, run) => {
+    await expect(run()).rejects.toMatchObject({ name: 'LocalUnavailableError', code: 'local_unavailable' })
+    expect(request).not.toHaveBeenCalled()
   })
 
-  it('preserves the ordinary attachment storage path', async () => {
-    const key = await uploadAndCreateUserFile(
-      'test-license',
-      new File(['fixture'], 'report.doc', { type: 'application/msword' })
-    )
-    expect(key).toBe('parseFile-report.doc_fixture.msword.txt')
-    expect(setBlob).toHaveBeenCalledWith(key, 'Parsed text')
+  it('does not inspect or serialize private business arguments', async () => {
+    const privatePayload = new Proxy({} as CopilotDetail, { get() { throw new Error('Private payload inspected') } })
+    await expect(remote.recordCopilotShare(privatePayload)).rejects.toBeInstanceOf(remote.LocalUnavailableError)
+    expect(request).not.toHaveBeenCalled()
   })
 })

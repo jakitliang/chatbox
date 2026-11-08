@@ -1,4 +1,5 @@
 import { getDefaultDocumentParser } from '@chatbox/core/domain/settings'
+import { configureAppApiServer } from '@shared/request/chatbox-api-origin'
 import {
   type SettingsStoreState,
   selectLanguage,
@@ -15,6 +16,7 @@ import { mergeProviderSettings, type ProviderSettingsUpdate } from './providerSe
 const log = getLogger('settings-store')
 
 export { settingsService, settingsStore }
+configureAppApiServer(() => settingsStore.getState().appApiServer)
 
 /**
  * Returns the same host-specific parser default used by Settings migrations.
@@ -30,7 +32,11 @@ export function initSettingsStore() {
     initSettingsStorePromise = settingsStore
       .getState()
       .hydrate()
-      .then(() => {
+      .then(async () => {
+        if (!settingsStore.getState().languageInited) {
+          const language = await platform.getLocale().catch(() => 'en' as const)
+          settingsStore.getState().setSettings({ language, languageInited: true })
+        }
         const state = settingsStore.getState()
         const providers = state.providers
         const providersCount =

@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block content %}
+<p><a href="{{ url_for('admin') }}">← 返回管理页</a></p>
+<h2>{{ '编辑' if editing else '新增' }}助手</h2>
+{% if error %}<p class="error" role="alert">{{ error }}（未保存）</p>{% endif %}
+<form method="post" enctype="multipart/form-data">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <fieldset><legend>基本信息</legend>
+    <label>唯一 ID<input name="id" value="{{ assistant.id }}" maxlength="200" required></label>
+    <label>名称<input name="name" value="{{ assistant.name }}" maxlength="200" required></label>
+    <label>说明<textarea name="description" maxlength="4000">{{ assistant.description }}</textarea></label>
+    <label>系统提示词<textarea name="prompt" maxlength="100000" rows="12">{{ assistant.prompt }}</textarea></label>
+    <label>标签（英文逗号分隔）<input name="tags" value="{{ assistant.tags|join(', ') }}"></label>
+    <label>语言代码<input name="lang" value="{{ assistant.lang }}" maxlength="40" required></label>
+    <p class="muted">客户端按代码精确筛选，例如 zh-Hans、zh-Hant、en。</p>
+    <label><input type="checkbox" name="enabled" {% if assistant.enabled %}checked{% endif %}> 启用</label>
+  </fieldset>
+  <fieldset><legend>本地头像</legend>
+    {% if assistant.avatar_filename %}
+      <img class="avatar" src="{{ url_for('avatar', filename=assistant.avatar_filename) }}" alt="当前头像预览">
+      <label><input type="checkbox" name="remove_avatar"> 移除当前头像</label>
+    {% endif %}
+    <label>上传替换头像（最多 2 MiB）<input type="file" name="avatar" accept="image/png,image/jpeg,image/gif,image/webp"></label>
+    <p class="muted">服务端同时校验大小和文件头；不接受 SVG。保存后显示新头像预览，无 JavaScript。</p>
+  </fieldset>
+  <button class="primary" type="submit">保存助手</button> <a class="button" href="{{ url_for('admin') }}">取消</a>
+</form>
+{% if editing %}<details><summary>删除助手</summary><form class="danger-zone" action="{{ url_for('delete_assistant', assistant_id=original_id) }}" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label><input type="checkbox" required>确认删除此助手及其本地头像</label><button class="danger" type="submit">删除助手</button></form></details>{% endif %}
+{% endblock %}

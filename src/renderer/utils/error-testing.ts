@@ -1,4 +1,3 @@
-import * as Sentry from '@sentry/react'
 import { getLogger } from '../lib/utils'
 
 const log = getLogger('ErrorTesting')
@@ -32,11 +31,9 @@ export const errorTestingUtils = {
     }
   },
 
-  // Test Sentry directly
+  // Legacy name retained for developer-console compatibility; local log only.
   testSentryCapture: () => {
-    Sentry.captureMessage('Test Sentry message capture - this is intentional for testing', 'info')
-    Sentry.captureException(new Error('Test Sentry exception capture - this is intentional for testing'))
-    log.info('Sentry test messages sent')
+    log.info('Remote error reporting is disabled; local error testing remains available')
   },
 
   // Test console error interception

@@ -156,13 +156,6 @@ export async function formatChatAsMarkdown(
     }
     content += '\n\n'
   }
-  content += '--------------------\n\n'
-  content += `
-<a href="https://chatboxai.app" style="display: flex; align-items: center;">
-<img src='https://chatboxai.app/icon.png' style='width: 40px; height: 40px; padding-right: 6px'>
-<b style='font-size:30px'>Chatbox AI</b>
-</a>
-`
   return content
 }
 
@@ -231,6 +224,5 @@ export async function formatChatAsTxt(
     content += '\n\n\n\n'
   }
   content += `========================================================================\n\n`
-  content += `Chatbox AI (https://chatboxai.app)`
   return content
 }

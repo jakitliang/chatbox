@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { getSettingsState } = vi.hoisted(() => ({
   getSettingsState: vi.fn(),
@@ -17,6 +17,7 @@ describe('trackEvent', () => {
 
   beforeEach(() => {
     plausible.mockReset()
+    getSettingsState.mockReset()
     getSettingsState.mockReturnValue({ allowReportingAndTracking: true })
     vi.stubGlobal('window', {
       location: { href: 'https://app.chatboxai.app/#/session/private-session-id' },
@@ -24,13 +25,12 @@ describe('trackEvent', () => {
     })
   })
 
-  it('does not include a session ID in the event URL', () => {
-    trackEvent('generate', { provider: 'openai' })
+  afterEach(() => vi.unstubAllGlobals())
 
-    expect(plausible).toHaveBeenCalledWith('generate', {
-      props: { provider: 'openai' },
-      u: 'https://app.chatboxai.app/#/session/:sessionId',
-    })
+  it('does not dispatch even when legacy reporting consent is enabled', () => {
+    trackEvent('generate', { provider: 'openai' })
+    expect(plausible).not.toHaveBeenCalled()
+    expect(getSettingsState).not.toHaveBeenCalled()
   })
 
   it('does not track when reporting is disabled', () => {
@@ -39,5 +39,11 @@ describe('trackEvent', () => {
     trackEvent('generate')
 
     expect(plausible).not.toHaveBeenCalled()
+  })
+
+  it('does not read globals, identifiers, or props', () => {
+    vi.stubGlobal('window', new Proxy({}, { get() { throw new Error('must not read globals') } }))
+    const props = new Proxy({}, { get() { throw new Error('must not read properties') } })
+    expect(() => trackEvent('generate', props)).not.toThrow()
   })
 })

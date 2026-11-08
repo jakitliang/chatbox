@@ -16,7 +16,6 @@ import {
   IconPalette,
   type IconProps,
   IconRobotFace,
-  IconSparkles,
   IconStack2,
   IconTool,
   IconWand,
@@ -45,6 +44,7 @@ export type SettingsPageKey =
   | 'appearance'
   | 'hotkeys'
   | 'data'
+  | 'sync'
   | 'advanced'
   | 'about'
 
@@ -84,7 +84,6 @@ export function getSettingsNavGroups(): SettingsNavGroup[] {
   ]
 
   return [
-    { title: 'Account', items: [{ key: 'chatbox-ai', label: 'Chatbox AI', noTranslate: true, icon: IconSparkles }] },
     {
       title: 'Models',
       items: [
@@ -113,8 +112,9 @@ export function getSettingsNavGroups(): SettingsNavGroup[] {
           ? []
           : [{ key: 'hotkeys' as const, label: 'Keyboard Shortcuts', icon: IconKeyboard }]),
         { key: 'data', label: 'Data & Backup', icon: IconDatabase, testId: TestId.settings.navData },
+        { key: 'sync', label: 'Manual Sync', icon: IconDatabase },
         { key: 'advanced', label: 'Advanced', icon: IconTool, testId: TestId.settings.navAdvanced },
-        { key: 'about', label: 'About & Updates', icon: IconInfoCircle, testId: TestId.settings.navAbout },
+        { key: 'about', label: 'About Chatbox', icon: IconInfoCircle, testId: TestId.settings.navAbout },
       ],
     },
   ]
@@ -193,13 +193,12 @@ export const SETTINGS_SEARCH_ENTRIES: SettingsSearchEntry[] = [
   { page: 'data', id: 'import-data', label: 'Import Backup' },
   { page: 'data', id: 'archived-chats', label: 'Archived Chats' },
   { page: 'advanced', id: 'proxy', label: 'Network Proxy' },
+  { page: 'sync', label: 'Manual Sync' },
   { page: 'advanced', id: 'diagnostic-logs', label: 'Diagnostic Logs' },
   { page: 'advanced', id: 'error-reporting', label: 'Error Reporting' },
   ...(platform.type === 'desktop'
     ? ([
         { page: 'about', id: 'auto-launch', label: 'Launch at system startup' },
-        { page: 'about', id: 'auto-update', label: 'Automatic updates' },
-        { page: 'about', id: 'beta-update', label: 'Beta updates' },
       ] satisfies SettingsSearchEntry[])
     : []),
 ]

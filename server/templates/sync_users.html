@@ -1,0 +1,11 @@
+{% extends "sync_base.html" %}
+{% block breadcrumb %}用户管理{% endblock %}
+{% block content %}
+<div class="page-heading"><div><h1>用户管理</h1><p class="muted">仅管理普通账号，不提供用户存档查看或编辑功能。</p></div><span class="badge">{{ users|length }} 位用户</span></div>
+{% if request.args.get('deleted') == '1' %}<p class="notice" role="status">用户已删除，账号、快照、登录会话及上传暂存已清理。</p>{% endif %}
+<p class="info"><strong>删除无法撤销</strong> · 删除会立即撤销该账号登录，并移除服务端快照和上传暂存；不会删除客户端本地数据。</p>
+<section class="card"><div class="card-head"><h2>平台用户</h2></div>
+{% if users %}<div class="table-wrap"><table><thead><tr><th>用户名</th><th>存档状态</th><th>快照大小</th><th>删除账号</th></tr></thead><tbody>
+{% for user in users %}<tr><td><strong>{{ user.username }}</strong></td><td><span class="badge {{ 'green' if user.size else '' }}">{{ '已备份' if user.size else '尚未备份' }}</span></td><td>{{ user.size or '—' }}</td><td><form method="post" action="{{ url_for('user_delete',username=user.username) }}" class="toolbar"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label style="margin:0">确认用户名<input name="confirmation" required autocomplete="off" placeholder="输入用户名确认删除" aria-label="确认删除 {{ user.username }}"></label><button class="danger">删除</button></form></td></tr>{% endfor %}
+</tbody></table></div>{% else %}<div class="empty"><div class="empty-icon" aria-hidden="true">♙</div><h2>暂无普通用户</h2><p>普通用户注册后会显示在这里，管理员自身不会列入列表。</p></div>{% endif %}</section>
+{% endblock %}

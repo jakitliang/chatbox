@@ -31,11 +31,9 @@ Object.defineProperty(globalThis, 'ResizeObserver', {
   },
 })
 
-const { mockNavigateToSettings, mockOpenLink, mockPlatform, mockSettingsState } = vi.hoisted(() => ({
+const { mockNavigateToSettings, mockPlatform } = vi.hoisted(() => ({
   mockNavigateToSettings: vi.fn(),
-  mockOpenLink: vi.fn(),
   mockPlatform: { type: 'desktop', isDesktopLike: true },
-  mockSettingsState: { licenseDetail: undefined as { plan: string } | undefined },
 }))
 
 vi.mock('react-i18next', () => ({
@@ -84,26 +82,10 @@ vi.mock('@/modals/settings-navigation', () => ({
   navigateToSettings: mockNavigateToSettings,
 }))
 
-vi.mock('@/packages/event', () => ({
-  trackingEvent: vi.fn(),
-}))
-
-vi.mock('@/packages/remote', () => ({
-  buildChatboxUrl: (path: string) => path,
-}))
-
 vi.mock('@/platform', () => ({
   default: Object.assign(mockPlatform, {
-    openLink: mockOpenLink,
+    openLink: vi.fn(),
   }),
-}))
-
-vi.mock('@/stores/settingActions', () => ({
-  getLanguage: () => 'en',
-}))
-
-vi.mock('@/stores/settingsStore', () => ({
-  useSettingsStore: <T,>(selector: (state: typeof mockSettingsState) => T) => selector(mockSettingsState),
 }))
 
 import FileParseError from './FileParseError'
@@ -125,68 +107,35 @@ function showFileParseError(errorCode: string, fileName?: string) {
 describe('FileParseError', () => {
   beforeEach(() => {
     mockNavigateToSettings.mockReset()
-    mockOpenLink.mockReset()
     mockPlatform.type = 'desktop'
     mockPlatform.isDesktopLike = true
-    mockSettingsState.licenseDetail = undefined
   })
 
-  test.each([
-    ['pro', 'Upgrade plan'],
-    ['pro_plus', 'Buy expansion pack'],
-  ])('offers the %s plan its purchase option when cloud parsing runs out of points', async (plan, actionLabel) => {
-    mockSettingsState.licenseDetail = { plan }
-    showFileParseError('token_quota_exhausted', 'lecture.pdf')
-
-    expect(await screen.findByText('Your points are used up')).toBeTruthy()
-    fireEvent.click(screen.getByText(actionLabel))
-
-    expect(mockOpenLink).toHaveBeenCalledWith(expect.stringContaining('/redirect_app/view_more_plans/en'))
-  })
-
-  test('offers free users an upgrade when the daily free points run out', async () => {
-    mockSettingsState.licenseDetail = { plan: 'pro_plus' }
-    showFileParseError('free_token_quota_exhausted', 'lecture.pdf')
-
-    expect(await screen.findByText('Upgrade plan')).toBeTruthy()
-    expect(screen.queryByText('Buy expansion pack')).toBeNull()
-  })
-
-  test('explains an expired plan and links to the plans page', async () => {
-    showFileParseError('expired_license', 'lecture.pdf')
-
-    expect(
-      await screen.findByText('Your license has expired. Please check your subscription or purchase a new one.')
-    ).toBeTruthy()
-    fireEvent.click(screen.getByText('View More Plans'))
-
-    expect(mockOpenLink).toHaveBeenCalledWith(expect.stringContaining('/redirect_app/view_more_plans/en'))
-  })
-
-  test('lets desktop users switch parsers when Chatbox AI parsing has no account license', async () => {
+  test('lets desktop users configure a parser instead of signing in to an official account', async () => {
     showFileParseError('chatbox_ai_parser_license_key_required', 'lecture.pdf')
 
     expect(await screen.findByText('File: lecture.pdf')).toBeTruthy()
-    const openSettings = screen.getByText('Sign in to Chatbox AI')
-    const documentParser = screen.getByText('document parser')
-    expect(openSettings.tagName).toBe('BUTTON')
+    const documentParser = screen.getByText('document parser settings')
+    expect(screen.queryByText('Sign in to Chatbox AI')).toBeNull()
     expect(documentParser.tagName).toBe('BUTTON')
 
-    fireEvent.click(openSettings)
+    fireEvent.click(documentParser)
 
-    expect(mockNavigateToSettings).toHaveBeenCalledWith('/chatbox-ai')
+    expect(mockNavigateToSettings).toHaveBeenCalledWith('/document-parser')
   })
 
   test.each(['web', 'mobile'])(
-    'only prompts %s users to sign in because no alternative parser is available',
+    'directs %s users to configured parser settings without an official upsell',
     async (type) => {
       mockPlatform.type = type
       mockPlatform.isDesktopLike = false
       showFileParseError('chatbox_ai_parser_license_key_required', 'lecture.pdf')
 
       expect(await screen.findByText('File: lecture.pdf')).toBeTruthy()
-      expect(screen.getByText('Sign in to Chatbox AI').tagName).toBe('BUTTON')
-      expect(screen.queryByText('document parser')).toBeNull()
+      expect(screen.queryByText('Sign in to Chatbox AI')).toBeNull()
+      fireEvent.click(screen.getByText('document parser settings'))
+      expect(mockNavigateToSettings).toHaveBeenCalledWith('/document-parser')
+      expect(document.querySelector('a[href]')).toBeNull()
     }
   )
 })

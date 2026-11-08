@@ -2,7 +2,7 @@ import { App } from '@capacitor/app'
 import { Browser } from '@capacitor/browser'
 import { Device } from '@capacitor/device'
 import type { SessionRowStorePort } from '@chatbox/core/ports'
-import { type AnalyticsEventParams, GOOGLE_ANALYTICS_MEASUREMENT_ID } from '@shared/analytics'
+import type { AnalyticsEventParams } from '@shared/analytics'
 import * as defaults from '@shared/defaults'
 import type { Config, Settings, ShortcutSetting } from '@shared/types'
 import localforage from 'localforage'
@@ -243,21 +243,8 @@ export default class MobilePlatform extends MobileSQLiteStorage implements Platf
     return localforage.keys()
   }
 
-  public async initTracking() {
-    const conf = await this.getConfig()
-    window.gtag('config', GOOGLE_ANALYTICS_MEASUREMENT_ID, {
-      app_name: 'chatbox',
-      user_id: conf.uuid,
-      client_id: conf.uuid,
-      app_version: await this.getVersion(),
-      chatbox_platform_type: 'mobile',
-      chatbox_platform: await this.getPlatform(),
-      app_platform: await this.getPlatform(),
-    })
-  }
-  public trackingEvent(name: string, params: AnalyticsEventParams) {
-    window.gtag('event', name, params)
-  }
+  public async initTracking(): Promise<void> {}
+  public trackingEvent(_name: string, _params: AnalyticsEventParams): void {}
 
   public async shouldShowAboutDialogWhenStartUp(): Promise<boolean> {
     return false

@@ -2,33 +2,45 @@ import { Link } from '@mui/material'
 import { ChatboxAIAPIError } from '@shared/models/errors'
 import type { CSSProperties, FC } from 'react'
 import { Trans } from 'react-i18next'
-import LinkTargetBlank from '@/components/common/Link'
 import { navigateToSettings } from '@/modals/settings-navigation'
-import { trackingEvent } from '@/packages/event'
-import { buildChatboxUrl } from '@/packages/remote'
-import platform from '@/platform'
-import * as settingActions from '@/stores/settingActions'
 
 interface ChatboxAIErrorMessageProps {
   errorCode: number
   /** Optional model name for `{{model}}` interpolation in i18n keys. */
   model?: string
-  /** Tracking source label appended to upgrade-link analytics events. */
+  /** Legacy compatibility prop; no tracking or commercial actions. */
   trackingSource?: string
   linkStyle?: CSSProperties
 }
 
 const SUPPORTED_WEB_BROWSING_MODELS = 'gemini-2.0-flash(API), perplexity API'
 
+/** Keep useful provider errors, but never render legacy sales or account instructions. */
+export function getLocalErrorI18nKey(detail: { name: string; i18nKey: string }): string {
+  if (
+    !/Chatbox AI|Chatbox Desktop|OpenMorePlanButton|LinkToHomePage|LinkToAdvanced|license|subscription|chatboxai|upgrad/i.test(
+      detail.i18nKey
+    )
+  ) {
+    return detail.i18nKey
+  }
+  if (/parser|file|parsing/.test(detail.name)) {
+    return 'File processing failed. Try a smaller supported file or check your <OpenDocumentParserSettingButton>document parser settings</OpenDocumentParserSettingButton> and self-host server configuration.'
+  }
+  if (/search|web_browsing/.test(detail.name)) {
+    return 'Web search is unavailable. Check your <OpenExtensionSettingButton>search provider settings</OpenExtensionSettingButton> or select a compatible model.'
+  }
+  return 'The configured provider could not complete the request. Check your <OpenSettingButton>provider settings</OpenSettingButton>, select a compatible model, or contact your self-host administrator.'
+}
+
 /**
- * Renders a localized message for a known ChatboxAIAPIError code, with action
- * links (open settings, switch search provider, upgrade plan). Returns `null`
+ * Renders a localized message for a known legacy error code with local settings
+ * actions only. Returns `null`
  * for unknown codes so callers can fall back to a generic message.
  */
 export const ChatboxAIErrorMessage: FC<ChatboxAIErrorMessageProps> = ({
   errorCode,
   model,
-  trackingSource = 'msg_upgrade_required',
   linkStyle,
 }) => {
   const detail = ChatboxAIAPIError.getDetail(errorCode)
@@ -36,7 +48,7 @@ export const ChatboxAIErrorMessage: FC<ChatboxAIErrorMessageProps> = ({
 
   return (
     <Trans
-      i18nKey={detail.i18nKey}
+      i18nKey={getLocalErrorI18nKey(detail)}
       values={{
         model,
         supported_web_browsing_models: SUPPORTED_WEB_BROWSING_MODELS,
@@ -49,7 +61,7 @@ export const ChatboxAIErrorMessage: FC<ChatboxAIErrorMessageProps> = ({
             className={linkStyle ? 'cursor-pointer' : 'cursor-pointer italic'}
             style={linkStyle}
             onClick={() => {
-              navigateToSettings()
+              navigateToSettings('/provider')
             }}
           />
         ),
@@ -62,41 +74,6 @@ export const ChatboxAIErrorMessage: FC<ChatboxAIErrorMessageProps> = ({
             onClick={() => {
               navigateToSettings('/web-search')
             }}
-          />
-        ),
-        OpenMorePlanButton: (
-          <Link
-            component="button"
-            type="button"
-            className={linkStyle ? 'cursor-pointer' : 'cursor-pointer italic'}
-            style={linkStyle}
-            onClick={() => {
-              platform.openLink(
-                buildChatboxUrl(
-                  `/redirect_app/view_more_plans/${settingActions.getLanguage()}?utm_source=app&utm_content=${trackingSource}`
-                )
-              )
-              trackingEvent('click_view_more_plans_button_from_upgrade_error_tips', {
-                event_category: 'user',
-              })
-            }}
-          />
-        ),
-        LinkToHomePage: <LinkTargetBlank style={linkStyle} href="https://chatboxai.app" />,
-        LinkToAdvancedFileProcessing: (
-          <LinkTargetBlank
-            style={linkStyle}
-            href={buildChatboxUrl(
-              `/redirect_app/advanced_file_processing/${settingActions.getLanguage()}?utm_source=app&utm_content=${trackingSource}`
-            )}
-          />
-        ),
-        LinkToAdvancedUrlProcessing: (
-          <LinkTargetBlank
-            style={linkStyle}
-            href={buildChatboxUrl(
-              `/redirect_app/advanced_url_processing/${settingActions.getLanguage()}?utm_source=app&utm_content=${trackingSource}`
-            )}
           />
         ),
         OpenDocumentParserSettingButton: (

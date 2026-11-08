@@ -8,12 +8,7 @@ import i18n from '@/i18n'
 import { getLogger } from '@/lib/utils'
 import { sessionStartupRecovery } from '@/packages/session-startup-recovery'
 import platform from '@/platform'
-import { router } from '@/router'
 import { initSessionPresentationBindings } from '@/session-bootstrap'
-import { initGoogleAnalyticsTracking } from '@/setup/ga_init'
-import { initJkTracking } from '@/setup/jk_analytics_init'
-import { initPlausibleTracking } from '@/setup/plausible_init'
-import { initSentry } from '@/setup/sentry_init'
 import { initSessionAttachmentRagMaintenance } from '@/setup/session_attachment_rag_maintenance'
 import { type SessionMigrationTrickleHandle, startSessionMigrationTrickle } from '@/setup/session-migration-trickle'
 import { currentSessionIdAtom } from '@/stores/atoms/sessionAtoms'
@@ -21,11 +16,9 @@ import { initLastUsedModelStore } from '@/stores/lastUsedModelStore'
 import * as migration from '@/stores/migration'
 import { getMigrationErrorContext } from '@/stores/migration-error'
 import { initOnboardingStore } from '@/stores/onboardingStore'
-import { initLoginLicenseStateReconciliation } from '@/stores/premiumActions'
 import { initRecentDirectoriesStore } from '@/stores/recentDirectoriesStore'
 import { isSessionGenerating } from '@/stores/sessionActivityStore'
 import { initSettingsStore } from '@/stores/settingsStore'
-import { initUpdateListeners } from '@/stores/updateStore'
 import { reportError } from '@/utils/sentry'
 import type { RendererApplication } from './createRendererApplication'
 import { sessionRepository } from './renderer-application'
@@ -43,7 +36,7 @@ function isSessionWorkInFlight(): boolean {
   )
 }
 
-/** Runs the pre-render migration and telemetry phase in its historical order. */
+/** Runs pre-render migration and preserves local recovery. */
 export async function initializeRenderer(): Promise<void> {
   log.info('initializeApp')
   const apiOriginStore = localforage.createInstance({ name: 'chatboxcache' })
@@ -65,14 +58,6 @@ export async function initializeRenderer(): Promise<void> {
     log.error('migrate error', error)
     migrationError = error
   }
-
-  // Migrate persisted consent before any settings-backed telemetry initializes.
-  await initSentry()
-  void initGoogleAnalyticsTracking()
-  void initPlausibleTracking((onResolved) => {
-    router.subscribe('onResolved', ({ hrefChanged }) => onResolved(hrefChanged))
-  })
-  void initJkTracking()
 
   if (migrationError !== undefined) {
     const migrationErrorContext = getMigrationErrorContext(migrationError)
@@ -100,7 +85,6 @@ export async function bootstrapRenderer(application: RendererApplication): Promi
   ])
 
   void i18n.changeLanguage(settings.language)
-  initLoginLicenseStateReconciliation()
 
   const startMigration = () =>
     startSessionMigrationTrickle({
@@ -129,7 +113,6 @@ export async function bootstrapRenderer(application: RendererApplication): Promi
   scheduleStorageCleanup(sessionMigrationTrickle)
 
   if (platform.type === 'desktop') {
-    initUpdateListeners()
     initSessionAttachmentRagMaintenance({ sessionMigrationDone: sessionMigrationTrickle.done })
   }
   initSessionPresentationBindings()

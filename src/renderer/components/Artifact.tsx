@@ -2,7 +2,6 @@ import NiceModal from '@ebay/nice-modal-react'
 import ReplayOutlinedIcon from '@mui/icons-material/ReplayOutlined'
 import StopCircleOutlinedIcon from '@mui/icons-material/StopCircleOutlined'
 import { ButtonGroup, IconButton } from '@mui/material'
-import { debounce } from 'lodash'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
@@ -259,47 +258,18 @@ export function ArtifactWithButtons(props: {
 
 export function Artifact(props: { htmlCode: string; previewUrl?: string; reloadSign?: number; className?: string }) {
   const { htmlCode, previewUrl, reloadSign, className } = props
-  const ref = useRef<HTMLIFrameElement>(null)
-  const iframeOrigin = 'https://artifact-preview.chatboxai.app/preview'
 
-  const sendIframeMsg = useCallback((type: 'html', code: string) => {
-    if (!ref.current) {
-      return
-    }
-    ref.current.contentWindow?.postMessage({ type, code }, '*')
-  }, [])
-  // 当 reloadSign 改变时，重新加载 iframe 内容
-  useEffect(() => {
-    if (previewUrl) return
-    void (async () => {
-      void reloadSign
-      sendIframeMsg('html', '')
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-      sendIframeMsg('html', htmlCode)
-    })()
-  }, [htmlCode, previewUrl, reloadSign, sendIframeMsg])
-
-  // 当 htmlCode 改变时，防抖地刷新 iframe 内容
-  const updateIframe = useMemo(
-    () =>
-      debounce(() => {
-        sendIframeMsg('html', htmlCode)
-      }, 300),
-    [htmlCode, sendIframeMsg]
-  )
-  useEffect(() => {
-    if (previewUrl) return
-    updateIframe()
-    return () => updateIframe.cancel()
-  }, [previewUrl, updateIframe])
-
+  // Inline HTML runs locally in an opaque-origin sandbox. Dependencies explicitly
+  // referenced by user content may still access the network; none are injected here.
+  // Keep explicit preview URLs for user-selected workspace artifacts.
   return (
     <iframe
-      key={`${previewUrl || iframeOrigin}:${reloadSign ?? 0}`}
+      key={`${previewUrl || 'local-artifact'}:${reloadSign ?? 0}`}
+      title="Artifact preview"
       className={cn('w-full', 'border-none', 'h-[400px]', className)}
       sandbox={previewUrl ? 'allow-scripts allow-forms allow-same-origin' : 'allow-scripts allow-forms'}
-      src={previewUrl || iframeOrigin}
-      ref={ref}
+      src={previewUrl}
+      srcDoc={previewUrl ? undefined : htmlCode}
     />
   )
 }

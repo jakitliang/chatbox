@@ -2,6 +2,10 @@ import type { Language } from '../../shared/types'
 
 // 将 electron getLocale、浏览器的 navigator.language 返回的语言信息，转换为应用的 locale
 export function parseLocale(locale: string): Language {
+  locale = locale.replace(/_/g, '-').toLowerCase()
+  if (locale === 'zh' || locale.startsWith('zh-')) {
+    return /^zh-(?:hant|tw|hk|mo)(?:-|$)/.test(locale) ? 'zh-Hant' : 'zh-Hans'
+  }
   if (
     locale === 'zh' ||
     locale.startsWith('zh_CN') ||

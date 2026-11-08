@@ -1,10 +1,12 @@
 import type { BrowserWindow, ContextMenuParams, Event } from 'electron'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { configureAppApiServer, DEFAULT_APP_API_SERVER } from '../shared/request/chatbox-api-origin'
 
 const mocks = vi.hoisted(() => ({
   buildFromTemplate: vi.fn(),
   popup: vi.fn(),
   setApplicationMenu: vi.fn(),
+  openExternal: vi.fn(),
 }))
 
 vi.mock('electron', () => ({
@@ -18,7 +20,7 @@ vi.mock('electron', () => ({
   },
   MenuItem: class {},
   shell: {
-    openExternal: vi.fn(),
+    openExternal: mocks.openExternal,
   },
 }))
 
@@ -126,4 +128,30 @@ describe('desktop context menu', () => {
     expect(mocks.buildFromTemplate).toHaveBeenCalledOnce()
     expect(mocks.popup).not.toHaveBeenCalled()
   })
+})
+
+describe('self-host help menu', () => {
+  afterEach(() => {
+    configureAppApiServer(() => DEFAULT_APP_API_SERVER)
+    mocks.openExternal.mockClear()
+  })
+
+  it.each(['buildDarwinTemplate', 'buildDefaultTemplate'] as const)(
+    '%s resolves the selected origin on click and retains only upstream attribution',
+    (method) => {
+      let origin = 'http://localhost:4567'
+      configureAppApiServer(() => origin)
+      const builder = new MenuBuilder({} as BrowserWindow)
+      const help = builder[method]().find((item) => item.label === 'Help')
+      const items = help?.submenu as Array<{ label: string; click: () => void }>
+      expect(items.map((item) => item.label)).toEqual(['Learn More', 'Github Repo'])
+      items[0].click()
+      expect(mocks.openExternal).toHaveBeenLastCalledWith(origin)
+      origin = 'https://selfhost.example'
+      items[0].click()
+      expect(mocks.openExternal).toHaveBeenLastCalledWith(origin)
+      items[1].click()
+      expect(mocks.openExternal).toHaveBeenLastCalledWith('https://github.com/chatboxai/chatbox')
+    }
+  )
 })

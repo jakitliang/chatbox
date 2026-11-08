@@ -1,8 +1,6 @@
 import type { CopilotDetail } from '@shared/types'
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo } from 'react'
-import * as remote from '@/packages/remote'
 import {
   addOrUpdateMyCopilot,
   type CopilotMemoryOwner,
@@ -10,13 +8,15 @@ import {
   disableCopilotMemory,
   enableCopilotMemory,
   myCopilotsAtom,
+  myCopilotsStatusAtom,
   readCopilotMemoryEnabled,
+  reloadCopilotDefinitions,
   removeMyCopilot,
 } from '@/stores/copilotStore'
-import { useLanguage } from '@/stores/settingsStore'
 
 export function useMyCopilots() {
   const copilots = useAtomValue(myCopilotsAtom)
+  const status = useAtomValue(myCopilotsStatusAtom)
 
   // Sort my copilots: starred first
   const sortedCopilots = useMemo(() => {
@@ -35,6 +35,8 @@ export function useMyCopilots() {
     copilots: sortedCopilots,
     addOrUpdate,
     remove,
+    ...status,
+    reload: reloadCopilotDefinitions,
   }
 }
 
@@ -53,15 +55,8 @@ export function useCopilotMemory() {
 }
 
 export function useRemoteCopilotTags() {
-  const language = useLanguage()
-  const { data: tags, ...others } = useQuery({
-    queryKey: ['remote-copilot-tags', language],
-    queryFn: () => remote.listCopilotTags(language),
-    initialData: [],
-    initialDataUpdatedAt: 0,
-    staleTime: 3600 * 1000,
-  })
-  return { tags, ...others }
+  // Compatibility for older hosts: there is no longer a remote/curated catalog.
+  return { tags: [] as string[], isLoading: false, error: null }
 }
 
 type RemoteCopilotsByCursorFilters = {
@@ -71,25 +66,13 @@ type RemoteCopilotsByCursorFilters = {
 }
 
 export function useRemoteCopilotsByCursor(filters?: RemoteCopilotsByCursorFilters) {
-  const language = useLanguage()
-  const { limit = 12, tag, search } = filters ?? {}
-
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, ...others } = useInfiniteQuery({
-    queryKey: ['remote-copilots-cursor', language, limit, tag, search],
-    queryFn: ({ pageParam }) => remote.listCopilotsByCursor(language, { limit, cursor: pageParam, tag, search }),
-    getNextPageParam: (lastPage) => lastPage.next_cursor,
-    initialPageParam: undefined as string | undefined,
-    staleTime: 60 * 1000,
-    gcTime: 60 * 1000,
-  })
-
-  const copilots = useMemo(() => data?.pages.flatMap((page) => page.data) ?? [], [data])
-
+  void filters
   return {
-    copilots,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    ...others,
+    copilots: [] as CopilotDetail[],
+    fetchNextPage: async () => undefined,
+    hasNextPage: false,
+    isFetchingNextPage: false,
+    isLoading: false,
+    error: null,
   }
 }

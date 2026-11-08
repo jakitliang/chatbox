@@ -7,7 +7,6 @@ import { ShortcutConfig } from '@/components/Shortcut'
 import { BackupRestoreSections } from '@/components/settings/DataSections'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import platform from '@/platform'
-import { settingsStore, useSettingsStore } from '@/stores/settingsStore'
 
 interface Props {
   settingsEdit: Settings
@@ -68,15 +67,6 @@ export default function AdvancedSettingTab(props: Props) {
           <BackupRestoreSections />
         </AccordionDetails>
       </Accordion>
-      <Accordion>
-        <AccordionSummary aria-controls="panel1a-content">
-          <Typography>{t('Error Reporting')}</Typography>
-        </AccordionSummary>
-        <AccordionDetails>
-          <AnalyticsSetting />
-        </AccordionDetails>
-      </Accordion>
-
       {platform.type === 'desktop' && (
         <Box className="mt-2">
           <FormGroup>
@@ -128,39 +118,11 @@ export default function AdvancedSettingTab(props: Props) {
   )
 }
 
+/** Legacy UI exports retained without exposing reporting controls. */
 export function AnalyticsSetting() {
-  const { t } = useTranslation()
-  return (
-    <Box>
-      <div>
-        <p className="opacity-70">
-          {t(
-            'Chatbox respects your privacy and only uploads anonymous error data and events when necessary. You can change your preferences at any time in the settings.'
-          )}
-        </p>
-      </div>
-      <div className="my-2">
-        <AllowReportingAndTrackingCheckbox />
-      </div>
-    </Box>
-  )
+  return null
 }
 
-export function AllowReportingAndTrackingCheckbox(props: { className?: string }) {
-  const { t } = useTranslation()
-  const allowReportingAndTracking = useSettingsStore((state) => state.allowReportingAndTracking)
-  return (
-    <span className={props.className}>
-      <input
-        type="checkbox"
-        checked={allowReportingAndTracking}
-        onChange={(e) =>
-          settingsStore.setState({
-            allowReportingAndTracking: e.target.checked,
-          })
-        }
-      />
-      {t('Enable optional anonymous reporting of crash and event data')}
-    </span>
-  )
+export function AllowReportingAndTrackingCheckbox(_props: { className?: string }) {
+  return null
 }

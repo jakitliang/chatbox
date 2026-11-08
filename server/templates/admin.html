@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="stats">
+  <div class="stat"><span class="muted">助手总数</span><strong>{{ total }}</strong></div>
+  <div class="stat"><span class="muted">已启用助手</span><strong>{{ enabled }}</strong></div>
+  <div class="stat"><span class="muted">模型条目</span><strong>{{ model_count }}</strong></div>
+</div>
+{% if tab == 'assistants' %}
+<section>
+  <div class="section-head"><div><h2>助手管理</h2><span class="muted">维护提示词、分类和本地头像</span></div><a class="button primary" href="{{ url_for('edit_assistant') }}">＋ 新增助手</a></div>
+  <form class="filter" method="get">
+    <input type="hidden" name="tab" value="assistants">
+    <label>搜索助手<input name="q" value="{{ query }}" placeholder="名称、描述或标签" maxlength="200"></label>
+    <label>语言<select name="lang"><option value="">全部语言</option>{% for lang in languages %}<option value="{{ lang }}" {% if language == lang %}selected{% endif %}>{{ {'zh-Hans':'简体中文', 'zh-Hant':'繁体中文', 'en':'English'}.get(lang, lang) }}</option>{% endfor %}</select></label>
+    <button type="submit">筛选</button><a class="button" href="{{ url_for('admin') }}">重置</a>
+  </form>
+  <div class="table-wrap"><table>
+    <thead><tr><th>助手</th><th>语言 / 标签</th><th>状态</th><th>操作</th></tr></thead>
+    <tbody>{% for assistant in assistants %}
+      <tr>
+        <td><div class="identity">{% if assistant.avatar_filename %}<img class="avatar" loading="lazy" alt="{{ assistant.name }} 的头像" src="{{ url_for('avatar', filename=assistant.avatar_filename) }}">{% else %}<span class="avatar avatar-placeholder" aria-label="无头像">{{ assistant.name[:1] }}</span>{% endif %}<div><strong>{{ assistant.name }}</strong><span class="description">{{ assistant.description }}</span></div></div></td>
+        <td><span class="badge">{{ assistant.lang }}</span><br>{% for tag in assistant.tags %}<span class="badge">{{ tag }}</span>{% endfor %}</td>
+        <td><span class="badge {{ 'enabled' if assistant.enabled else '' }}">{{ '启用' if assistant.enabled else '禁用' }}</span></td>
+        <td class="actions"><a href="{{ url_for('edit_assistant', assistant_id=assistant.id) }}">编辑</a></td>
+      </tr>
+    {% else %}<tr><td colspan="4" class="empty">没有匹配的助手。请调整筛选条件或新增助手。</td></tr>{% endfor %}</tbody>
+  </table></div>
+  <div class="pagination"><span class="muted">共 {{ filtered_count }} 条 · 第 {{ page }} / {{ pages }} 页</span><div>{% if page > 1 %}<a class="button" href="{{ url_for('admin', q=query, lang=language, page=page-1) }}">上一页</a>{% endif %} {% if page < pages %}<a class="button" href="{{ url_for('admin', q=query, lang=language, page=page+1) }}">下一页</a>{% endif %}</div></div>
+</section>
+{% elif tab == 'models' %}
+<div class="section-head" style="margin-top:24px"><div><h2>模型管理</h2><span class="muted">目录条目不包含 API 密钥，也不会代理模型请求。</span></div><a class="button primary" href="{{ url_for('edit_provider') }}">＋ 新增提供商</a></div>
+{% for provider, group in configs.models.items() %}
+<section>
+  <div class="section-head"><h2>{{ group.groupName }} <span class="badge">{{ provider }}</span></h2><a href="{{ url_for('edit_provider', provider=provider) }}">编辑提供商</a></div>
+  {% for collection, title in [('models','对话 / 嵌入 / 重排模型'), ('imageModels','图像生成模型')] %}
+  <div class="toolbar" style="margin-top:20px"><h3>{{ title }}</h3><a href="{{ url_for('edit_model', provider=provider, collection=collection) }}">＋ 添加模型</a></div>
+  {% if group[collection] %}<div class="table-wrap"><table>
+    <thead><tr><th>模型名称</th><th>模型 ID</th><th>类型 / 能力</th><th>操作</th></tr></thead>
+    <tbody>{% for model in group[collection] %}<tr><td><strong>{{ model.modelName }}</strong><div class="description">{{ model.get('description','') }}</div></td><td>{{ model.modelId }}</td><td><span class="badge">{{ {'chat':'对话', 'embedding':'嵌入', 'rerank':'重排', 'image':'图像'}.get(model.get('type'), '图像' if collection == 'imageModels' else '对话') }}</span>{% for capability in model.get('capabilities',[]) %}<span class="badge">{{ {'vision':'视觉','tool_use':'工具调用','reasoning':'推理'}.get(capability,capability) }}</span>{% endfor %}</td><td class="actions"><a href="{{ url_for('edit_model', provider=provider, collection=collection, index=loop.index0) }}">编辑</a></td></tr>{% endfor %}</tbody>
+  </table></div>{% else %}<p class="muted">暂无模型，可手动添加提供商支持的模型 ID。</p>{% endif %}
+  {% endfor %}
+</section>
+{% else %}<section class="empty">尚无提供商，请先新增提供商。</section>{% endfor %}
+{% elif tab == 'remote' %}
+<section class="form-card">
+  <h2>应用设置</h2><p class="muted">本地应用的基础配置。商业模型、许可证与自动升级保持关闭。</p>
+  <form method="post" action="{{ url_for('edit_config',kind='remote') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>本地版本标识<input name="current_version" value="{{ configs.remote.current_version }}" maxlength="80" placeholder="可选，例如 self-host-1.0"></label>
+    <h3 style="margin-top:24px">知识库默认模型</h3><p class="muted">填写你自己配置的模型 ID，不会自动启用官方能力。</p>
+    {% set kb = configs.remote.get('knowledge_base_models',{}) %}
+    {% for key, title in [('embedding','嵌入模型'),('vision','视觉模型'),('rerank','重排模型')] %}<label>{{ title }}<input name="kb_{{ key }}" value="{{ kb.get(key,'') }}" maxlength="200" placeholder="未设置"></label>{% endfor %}
+    <button class="primary" type="submit">保存应用设置</button>
+  </form>
+</section>
+{% elif tab == 'rag' %}
+<section class="form-card">
+  <h2>知识与检索</h2><p class="muted">管理会话附件的嵌入和重排配置。本服务只提供配置，不执行模型推理。</p>
+  <form method="post" action="{{ url_for('edit_config',kind='rag') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>嵌入模型 ID<input name="embedding" value="{{ configs.rag.models.embedding }}" maxlength="200" placeholder="例如你自己的嵌入模型"></label>
+    <div class="switch-row"><label><input type="checkbox" name="session_attachment_embedding" {% if configs.rag.capabilities.session_attachment_embedding %}checked{% endif %}>启用附件嵌入</label><span class="muted">启用前请填写可用的嵌入模型，并在客户端配置提供商。</span></div>
+    <label>重排模型 ID<input name="rerank" value="{{ configs.rag.models.rerank }}" maxlength="200" placeholder="例如你自己的重排模型"></label>
+    <div class="switch-row"><label><input type="checkbox" name="session_attachment_rerank" {% if configs.rag.capabilities.session_attachment_rerank %}checked{% endif %}>启用附件重排</label><span class="muted">启用前请填写可用的重排模型。</span></div>
+    <button class="primary" type="submit" style="margin-top:20px">保存检索设置</button>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

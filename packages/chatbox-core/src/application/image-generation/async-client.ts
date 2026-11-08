@@ -1,3 +1,4 @@
+import { getChatboxAPIOrigin } from '@shared/request/chatbox-api-origin'
 import { z } from 'zod'
 import type { RequestAdapter } from '../../types/adapters'
 import type { ImageGenerationAsyncClient } from './types'
@@ -43,7 +44,7 @@ export interface ImageGenerationAsyncClientOptions {
 
 /** Shared ChatboxAI protocol; the service owns polling and local cancellation. */
 export function createImageGenerationAsyncClient(options: ImageGenerationAsyncClientOptions) {
-  const origin = (options.apiOrigin ?? 'https://api.chatboxai.app').replace(/\/+$/, '')
+  const origin = (options.apiOrigin?.trim() || getChatboxAPIOrigin()).replace(/\/+$/, '')
   const headers = async () => ({
     ...(await options.getHeaders?.()),
     Authorization: `Bearer ${await options.getLicenseKey()}`,

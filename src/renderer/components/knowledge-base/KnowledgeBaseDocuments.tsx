@@ -850,51 +850,6 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
               </Box>
             )}
 
-            {/* Failed files banner - show Chatbox AI suggestion only for local parser failures */}
-            {shouldShowChatboxAISuggestion && (
-              <Alert variant="light" color="yellow" p="sm">
-                <Flex gap="xs" align="center" justify="space-between">
-                  <Flex gap="xs" align="center" style={{ flex: 1 }}>
-                    <Text size="sm">{t('{{count}} file(s) failed to parse', { count: failedFiles.length })}</Text>
-                  </Flex>
-                  <Stack gap={4} align="flex-end" className="flex-shrink-0">
-                    <Button size="xs" variant="light" onClick={() => setShowRemoteRetryModal(true)}>
-                      {t('Use server parsing')}
-                    </Button>
-                    <Tooltip
-                      label={t(
-                        'If you have never had a license before, you can claim it after logging in on the official website.'
-                      )}
-                      withArrow
-                      multiline
-                      maw={240}
-                      position="bottom-end"
-                      styles={{
-                        tooltip: {
-                          backgroundColor: 'rgba(0, 0, 0, 0.75)',
-                          backdropFilter: 'blur(4px)',
-                        },
-                      }}
-                    >
-                      <Text
-                        size="xs"
-                        c="dimmed"
-                        className="cursor-pointer hover:text-blue-500 transition-colors"
-                        onClick={() => {
-                          trackJkClickEvent(JK_EVENTS.FREE_LICENSE_CLAIM_CLICK, {
-                            pageName: JK_PAGE_NAMES.SETTING_PAGE,
-                            content: 'kb_error',
-                          })
-                          platform.openLink('https://chatboxai.app/login')
-                        }}
-                      >
-                        {t('Free trial available')} →
-                      </Text>
-                    </Tooltip>
-                  </Stack>
-                </Flex>
-              </Alert>
-            )}
 
             {/* Scrollable Document List with Scroll Indicator */}
             {allFiles.length > 0 && (

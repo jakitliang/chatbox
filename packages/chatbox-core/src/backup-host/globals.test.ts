@@ -65,6 +65,20 @@ function appendCopilot(globals: ImportedGlobals) {
   globals.append({ type: 'global', category: 'copilot-memory', id: 'tutor', value: [] })
 }
 describe('backup global restore policies', () => {
+  it('restores user-editable optional Copilot categories without stripping them', async () => {
+    const storage = new InMemoryKeyValueStorage()
+    const globals = new ImportedGlobals(manifest({ copilots: true }), storage)
+    for (const value of [
+      { id: 'new', name: 'New', prompt: 'Help', category: 'Custom category' },
+      { id: 'old', name: 'Old', prompt: 'Help' },
+    ]) globals.append({ type: 'global', category: 'copilot', id: value.id, value })
+    const prepared = await globals.prepare()
+    expect(prepared.get(GLOBAL_KEYS.copilots)).toEqual([
+      { id: 'new', name: 'New', prompt: 'Help', category: 'Custom category' },
+      { id: 'old', name: 'Old', prompt: 'Help' },
+    ])
+  })
+
   it('clears included empty Copilot collections and leaves omitted global settings untouched', async () => {
     const storage = new InMemoryKeyValueStorage()
     await storage.set(GLOBAL_KEYS.copilots, [{ id: 'old' }])

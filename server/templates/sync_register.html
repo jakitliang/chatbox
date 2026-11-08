@@ -1,0 +1,11 @@
+{% extends "sync_base.html" %}{% block content %}
+<div class="auth-wrap"><section class="card auth-card"><div class="auth-lock" aria-hidden="true">＋</div><h1>创建你的工作空间</h1>
+<p class="auth-intro">注册独立账号，拥有自己的私有快照与管理空间。admin 为保留账号，不能注册。</p>
+{% if error %}<p class="error" role="alert" style="margin-top:20px">{{ error }}</p>{% endif %}
+<form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<label>用户名 / Username<input name="username" required maxlength="64" pattern="[A-Za-z0-9_\-]{1,64}" autocomplete="username" placeholder="例如 alex"><span class="hint">1–64 位英文字母、数字、下划线或短横线。</span></label>
+<label>密码 / Password<input type="password" name="password" required minlength="12" maxlength="1024" autocomplete="new-password" placeholder="至少 12 位密码"></label>
+<label>确认密码 / Confirm password<input type="password" name="confirmation" required minlength="12" maxlength="1024" autocomplete="new-password" placeholder="再次输入密码"></label>
+<button class="primary">创建账号 / Create account</button></form>
+<div class="auth-links">已有账号？ <a href="{{ url_for('admin_login') }}">返回登录</a></div></section><p class="muted" style="text-align:center">注册后从客户端手动上传首次快照，即可开始管理。</p></div>
+{% endblock %}

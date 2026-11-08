@@ -100,6 +100,8 @@ export interface CopilotDetail {
   avatar?: ImageSource
   backgroundImage?: ImageSource
   description?: string
+  /** User-editable local category; absent in older saved definitions/backups. */
+  category?: string
   tags?: string[]
   screenshots?: ImageSource[]
   createdAt?: number

@@ -5,6 +5,7 @@ import path from 'path'
 import sanitizeFilename from 'sanitize-filename'
 import * as defaults from '../shared/defaults'
 import type { Config, Settings } from '../shared/types'
+import { configureAppApiServer } from '../shared/request/chatbox-api-origin'
 import { getLogger } from './util'
 
 const logger = getLogger('store-node')
@@ -77,6 +78,8 @@ export function getSettings(): Settings {
   }
   return settings
 }
+
+configureAppApiServer(() => getSettings().appApiServer)
 
 export function getConfig(): Config {
   let configs = store.get<'configs'>('configs')

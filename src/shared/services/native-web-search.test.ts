@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
-import { formatNativeWebSearchContext, hasNativeWebSearchConfiguration, searchNativeWeb } from './native-web-search'
+import {
+  formatNativeWebSearchContext,
+  hasNativeWebSearchConfiguration,
+  normalizeNativeWebSearchSettings,
+  searchNativeWeb,
+} from './native-web-search'
 
 function mockFetchResponse(body: unknown, ok = true, status = 200) {
   return vi.fn(async () => ({
@@ -16,43 +21,51 @@ describe('native web search', () => {
     expect(hasNativeWebSearchConfiguration({ provider: 'tavily', apiKey: 'tvly-key' })).toBe(true)
     expect(hasNativeWebSearchConfiguration({ provider: 'bing', apiKey: '' })).toBe(true)
     expect(hasNativeWebSearchConfiguration({ provider: 'build-in', apiKey: '' })).toBe(false)
-    expect(hasNativeWebSearchConfiguration({ provider: 'build-in', apiKey: '' }, 'license-1')).toBe(true)
+    expect(hasNativeWebSearchConfiguration({ provider: 'build-in', apiKey: '' }, 'license-1')).toBe(false)
     expect(hasNativeWebSearchConfiguration({ provider: 'searxng', apiKey: '', apiHost: '' })).toBe(false)
     expect(hasNativeWebSearchConfiguration({ provider: 'searxng', apiKey: '', apiHost: 'https://search.test' })).toBe(
       true
     )
   })
 
-  it('searches through the chatbox build-in endpoint with the license key and injected headers', async () => {
-    const fetchFn = vi.fn(async () => ({
-      ok: true,
-      status: 200,
-      json: async () => ({ data: { links: [{ title: 'Doc', url: 'https://doc.test', content: 'snippet' }] } }),
-    })) as unknown as typeof fetch
-    const items = await searchNativeWeb('chatbox', {
+  it('disables built-in search even with an injected origin and credentials', async () => {
+    const fetchFn = vi.fn<typeof fetch>()
+    await expect(searchNativeWeb('private query', {
+      provider: 'build-in', licenseKey: 'secret', chatboxApiOrigin: 'http://127.0.0.1:4567', fetchFn,
+    })).rejects.toThrow('built-in web search is disabled')
+    await expect(searchNativeWeb('private query', {
       provider: 'build-in',
-      licenseKey: 'license-1',
-      chatboxApiOrigin: 'http://10.0.2.2:8095',
-      headers: { 'CHATBOX-PLATFORM': 'web', 'CHATBOX-VERSION': '1.2.3' },
-      fetchFn,
-    })
-    expect(items).toEqual([{ title: 'Doc', link: 'https://doc.test', snippet: 'snippet' }])
-    const call = (fetchFn as unknown as ReturnType<typeof vi.fn>).mock.calls[0]
-    expect(call[0]).toBe('http://10.0.2.2:8095/api/tool/web-search')
-    expect(call[1].headers.Authorization).toBe('license-1')
-    // Injected Chatbox platform headers ride along (renderer afetch/headers parity).
-    expect(call[1].headers).toMatchObject({ 'CHATBOX-PLATFORM': 'web', 'CHATBOX-VERSION': '1.2.3' })
+      get licenseKey(): string { throw new Error('Read credentials') },
+      get chatboxApiOrigin(): string { throw new Error('Read origin') },
+      get headers(): Record<string, string> { throw new Error('Read headers') },
+      get fetchFn(): typeof fetch { throw new Error('Read fetch') },
+    })).rejects.toThrow('built-in web search is disabled')
+    expect(fetchFn).not.toHaveBeenCalled()
   })
 
-  it('surfaces the chatbox error body when the build-in endpoint fails', async () => {
-    const fetchFn = vi.fn(async () => ({
-      ok: false,
-      status: 403,
-      json: async () => ({ error: 'License expired' }),
-    })) as unknown as typeof fetch
-    await expect(searchNativeWeb('chatbox', { provider: 'build-in', licenseKey: 'bad', fetchFn })).rejects.toThrow(
-      'License expired'
-    )
+  it('disables persisted built-in settings without disabling BYOK settings', () => {
+    expect(normalizeNativeWebSearchSettings(undefined)).toMatchObject({ provider: 'build-in', enabled: false })
+    expect(normalizeNativeWebSearchSettings({ provider: 'build-in', enabled: true })).toMatchObject({ enabled: false })
+    expect(normalizeNativeWebSearchSettings({ provider: 'tavily', enabled: true, apiKey: 'key' })).toMatchObject({
+      provider: 'tavily', enabled: true, apiKey: 'key',
+    })
+  })
+
+  it('preserves BoCha and Querit JSON providers', async () => {
+    const bochaFetch = mockFetchResponse({ code: 200, data: { webPages: { value: [{ name: 'Doc', url: 'https://doc.test', summary: 'bocha' }] } } })
+    await expect(searchNativeWeb('query', { provider: 'bocha', apiKey: 'byok', fetchFn: bochaFetch })).resolves.toEqual([
+      { title: 'Doc', link: 'https://doc.test', snippet: 'bocha' },
+    ])
+    expect(bochaFetch).toHaveBeenCalledWith('https://api.bocha.cn/v1/web-search', expect.objectContaining({
+      headers: expect.objectContaining({ Authorization: 'Bearer byok' }),
+    }))
+    const queritFetch = mockFetchResponse({ error_code: 200, results: { result: [{ title: 'Doc', url: 'https://doc.test', snippet: 'querit' }] } })
+    await expect(searchNativeWeb('query', { provider: 'querit', apiKey: 'byok', fetchFn: queritFetch })).resolves.toEqual([
+      { title: 'Doc', link: 'https://doc.test', snippet: 'querit' },
+    ])
+    expect(queritFetch).toHaveBeenCalledWith('https://api.querit.ai/v1/search', expect.objectContaining({
+      headers: expect.objectContaining({ Authorization: 'Bearer byok' }),
+    }))
   })
 
   it('extracts bing results without DOMParser', async () => {

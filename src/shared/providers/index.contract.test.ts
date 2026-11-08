@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import { getModelsDevProviderId } from '../model-registry/provider-mapping'
 import { MODELS_DEV_SNAPSHOT } from '../model-registry/snapshot.generated'
-import { getAllProviders } from './index'
+import { getAllProviders, getModel } from './index'
+
+describe('self-host provider removal', () => {
+  it('does not register or instantiate the historical commercial provider', () => {
+    expect(getAllProviders().some((provider) => provider.id === 'chatbox-ai')).toBe(false)
+  })
+})
 
 describe('provider control-plane contracts', () => {
   it('preserves the built-in registration and display order', () => {
     expect(getAllProviders().map((provider) => provider.id)).toEqual([
-      'chatbox-ai',
       'openai',
       'openai-responses',
       'gemini',

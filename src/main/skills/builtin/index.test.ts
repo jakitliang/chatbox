@@ -16,8 +16,11 @@ describe('builtinSkills', () => {
 
     expect(skill).toBeDefined()
     expect(skill?.metadata.description).toContain('pricing')
-    expect(skill?.body).toContain('https://chatboxai.app/llms.txt')
-    expect(skill?.body).toContain('https://chatboxai.app/pricing.md')
+    expect(skill?.body).toContain('Local self-host manual')
+    expect(skill?.body).toContain('Settings > Provider')
+    expect(skill?.body).toContain('Guide the user to change settings manually')
+    expect(skill?.body).toContain('do not run network requests for documentation lookup')
+    expect(skill?.body).not.toContain('https://chatboxai.app')
     expect(skill?.body).toContain('["settings", "get", "<key>"]')
     expect(skill?.body).not.toContain('["settings", "set"')
     expect(skill?.body).toContain('guide the user to change it manually')

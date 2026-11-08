@@ -1,0 +1,53 @@
+{% extends "sync_base.html" %}
+{% set titles = {'overview':'数据概览','assistants':'助手管理','categories':'分类管理','settings':'应用配置'} %}
+{% block breadcrumb %}{{ titles[tab] }}{% endblock %}
+{% macro hidden() %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="revision" value="{{ revision }}">{% endmacro %}
+{% block content %}
+<div class="page-heading"><div><h1>{{ titles[tab] }}</h1><p class="muted">管理 {{ username }} 的私有存档，后台与客户端保持独立。</p></div><span class="badge {{ 'green' if values is not none else '' }}">{{ '快照已就绪' if values is not none else '等待首次备份' }}</span></div>
+<div class="stats">
+	<div class="stat"><span class="stat-label">助手总数</span><strong>{{ items|length }}</strong><span class="muted">个人助手 · 私有存档</span></div>
+	<div class="stat"><span class="stat-label">分类数量</span><strong>{{ categories|length }}</strong><span class="muted">不含未分类助手</span></div>
+	<div class="stat"><span class="stat-label">会话数量</span><strong>{{ snapshot_info.sessions if snapshot_info else '—' }}</strong><span class="muted">保留于快照，不在此编辑</span></div>
+	<div class="stat"><span class="stat-label">快照大小</span><strong>{{ snapshot_info.size if snapshot_info else '—' }}</strong><span class="muted">SQLite · V3 备份格式</span></div>
+</div>
+{% if values is none %}
+<section class="card empty"><div class="empty-icon" aria-hidden="true">◫</div><h2>你的存档空间已准备好</h2><p>目前还没有快照。前往客户端「设置 → 手动同步」，填写此后端地址及账号，手动上传首次备份后即可管理助手和应用配置。</p><span class="badge">不会自动读取客户端数据</span></section>
+{% else %}
+{% if tab == 'overview' %}
+<div class="details-grid">
+	<section class="card"><div class="card-head"><h2>存档信息</h2><span class="badge green">已保存</span></div><div class="card-body"><div class="detail-row"><span>所属账号</span><strong>{{ username }}</strong></div><div class="detail-row"><span>最近保存</span><strong>{{ snapshot_info.updated }}</strong></div><div class="detail-row"><span>归档条目</span><strong>{{ snapshot_info.entries }}</strong></div><div class="detail-row"><span>存储方式</span><strong>用户独立 SQLite 快照</strong></div><p class="revision">版本校验 · SHA-256<br>{{ revision }}</p></div></section>
+	<section class="card"><div class="card-head"><h2>手动同步工作流</h2></div><div class="card-body steps"><div class="step"><span class="step-number">1</span><div><strong>客户端备份</strong><p>主动上传本地数据，替换服务端现有快照。</p></div></div><div class="step"><span class="step-number">2</span><div><strong>后台管理</strong><p>编辑此账号的助手、分类和应用配置。</p></div></div><div class="step"><span class="step-number">3</span><div><strong>客户端恢复</strong><p>主动下载并恢复快照，才会应用后台更改。</p></div></div></div></section>
+</div>
+<p class="info"><strong>数据边界</strong> · 编辑仅影响当前账号快照，保留会话、资源和未修改字段。后端不提供 AI 推理，也不主动访问客户端。</p>
+{% elif tab == 'assistants' %}
+{% if 'copilots.json' in values %}
+<section class="card"><div class="card-head"><div><h2>个人助手</h2><p class="muted">共 {{ items|length }} 位助手，按名称、描述或分类查找。</p></div><a class="button primary" href="{{ url_for('user_admin',username=username,tab='assistants',new='1') }}#assistant-editor">＋ 新建助手</a></div>
+	<div class="card-body"><form method="get" class="toolbar"><input type="hidden" name="tab" value="assistants"><label class="search">搜索助手<input name="q" value="{{ query }}" placeholder="搜索名称、描述或分类…"></label><label>分类<select name="category"><option value="">全部分类</option>{% for value in categories %}<option value="{{ value }}" {% if category == value %}selected{% endif %}>{{ value }}</option>{% endfor %}<option value="__uncategorized__" {% if category == '__uncategorized__' %}selected{% endif %}>未分类</option></select></label><button class="primary">筛选</button><a class="button" href="{{ url_for('user_admin',username=username,tab='assistants') }}">重置</a></form></div>
+	{% if assistants %}<div class="table-wrap"><table><thead><tr><th>助手名称</th><th>分类</th><th>状态</th><th>操作</th></tr></thead><tbody>{% for item in assistants %}<tr><td><div class="identity">{% if item.id in avatar_ids %}<img class="avatar avatar-image" src="{{ url_for('user_assistant_avatar',username=username,id=item.id) }}" alt="" width="40" height="40" loading="lazy">{% else %}<span class="avatar" aria-hidden="true">{{ item.name[:1]|upper }}</span>{% endif %}<div><strong>{{ item.name }}</strong><div class="description">{{ item.get('description','') or '暂无描述' }}</div></div></div></td><td><span class="badge">{{ item.get('category','') or '未分类' }}</span></td><td>{% if item.get('starred') %}<span class="badge green">★ 置顶</span>{% else %}<span class="muted">普通助手</span>{% endif %}</td><td><a href="{{ url_for('user_admin',username=username,tab='assistants',edit=item.id) }}#assistant-editor">编辑 →</a></td></tr>{% endfor %}</tbody></table></div>{% else %}<div class="empty"><div class="empty-icon" aria-hidden="true">✦</div><h2>这里还没有助手</h2><p>{{ '没有符合筛选条件的结果，试试其他关键词或分类。' if query or category else '创建第一位助手，整理你的专属提示词。' }}</p></div>{% endif %}
+	<div class="pagination"><span class="muted">{{ filtered_count }} 条结果 · 每页 20 条</span><div class="pagination-links">{% if page > 1 %}<a class="button" href="{{ url_for('user_admin',username=username,tab='assistants',q=query,category=category,page=page-1) }}">上一页</a>{% endif %}<span class="muted">{{ page }} / {{ pages }}</span>{% if page < pages %}<a class="button" href="{{ url_for('user_admin',username=username,tab='assistants',q=query,category=category,page=page+1) }}">下一页</a>{% endif %}</div></div>
+</section>
+<section class="card" id="assistant-editor"><div class="card-head"><div><h2>{{ '编辑助手' if selected else '新建助手' }}</h2><p class="muted">修改常用字段，其他原有信息会保留。</p></div>{% if selected %}<a class="button" href="{{ url_for('user_admin',username=username,tab='assistants') }}#assistant-editor">取消编辑</a>{% endif %}</div><div class="card-body">
+{% set item = selected or {} %}<form method="post" action="{{ url_for('assistant_save',username=username) }}">{{ hidden() }}<input type="hidden" name="original_id" value="{{ item.get('id','') }}"><div class="form-grid"><label>助手名称<input name="name" value="{{ item.get('name','') }}" required placeholder="给助手起个名字"></label><label>分类<input name="category" value="{{ item.get('category','') }}" list="category-options" placeholder="例如：写作、开发、学习"><datalist id="category-options">{% for value in categories %}<option value="{{ value }}">{% endfor %}</datalist></label><label class="full">助手 ID<input name="id" value="{{ item.get('id','') }}" required maxlength="4096" placeholder="唯一标识，例如 writing-helper"><span class="hint">用于识别助手；修改已有 ID 前请确认关联影响。</span></label><label class="full">描述<textarea name="description" rows="3" placeholder="描述助手的用途…">{{ item.get('description','') }}</textarea></label><label class="full">系统提示词<textarea name="prompt" rows="8" placeholder="设定助手的角色、能力与回答方式…">{{ item.get('prompt','') }}</textarea></label></div><div class="form-actions"><button class="primary">{{ '保存更改' if selected else '创建助手' }}</button><span class="muted">仅保存到服务端快照</span></div></form>
+{% if selected %}<details><summary class="muted">危险操作</summary><p class="muted">删除后需通过重新备份或其他副本找回，请确认不再需要此助手。</p><form method="post" action="{{ url_for('assistant_delete',username=username) }}" style="margin-top:12px">{{ hidden() }}<input type="hidden" name="id" value="{{ selected.id }}"><button class="danger">删除此助手</button></form></details>{% endif %}
+</div></section>
+{% else %}<section class="card empty"><h2>此快照未包含助手</h2><p>请从客户端重新上传包含助手的完整备份。</p></section>{% endif %}
+{% elif tab == 'categories' %}
+<div class="details-grid"><section class="card"><div class="card-head"><h2>分类目录</h2><span class="badge">{{ categories|length }} 个分类</span></div><div class="table-wrap"><table><thead><tr><th>分类名称</th><th>助手数</th></tr></thead><tbody>{% for value in categories %}<tr><td><a href="{{ url_for('user_admin',username=username,tab='assistants',category=value) }}">{{ value }}</a></td><td>{{ category_counts[value] }}</td></tr>{% endfor %}<tr><td>未分类</td><td>{{ category_counts[''] }}</td></tr></tbody></table></div></section>
+<section class="card"><div class="card-head"><h2>批量调整分类</h2></div><div class="card-body"><p class="muted" style="margin-bottom:20px">分类保存在助手字段中。重命名会更新所有匹配助手，不影响其他内容。</p>{% if 'copilots.json' in values %}<form method="post" action="{{ url_for('category_rename',username=username) }}">{{ hidden() }}<label>当前分类<select name="category"><option value="">未分类</option>{% for value in categories %}<option value="{{ value }}">{{ value }}</option>{% endfor %}</select></label><label>新分类名称<input name="replacement" placeholder="输入新名称"><span class="hint">留空将移除所选分类。</span></label><button class="primary">更新分类</button></form>{% endif %}</div></section></div>
+{% elif tab == 'settings' %}
+<p class="info"><strong>安心调整客户端偏好</strong> · 模型提供商、密钥和其他未展示配置会原样保留。保存后，请在客户端手动恢复快照以应用更改。</p>
+{% if 'settings.json' in values %}
+<form method="post" action="{{ url_for('settings_save',username=username) }}">{{ hidden() }}<input type="hidden" name="settings_form" value="preferences-v1">
+{% for group in settings_groups %}<section class="card"><div class="card-head"><div><h2>{{ group.title }}</h2><p class="muted">{{ group.description }}</p></div></div><div class="card-body form-grid">
+{% for field in group.fields %}{% set current = preferences.get(field.key) %}
+<label class="{{ 'full' if field.kind == 'text' else '' }}">{{ field.label }}
+{% if field.kind == 'choice' %}<select name="{{ field.key }}"><option value="__keep__">保留当前 / 客户端默认</option>{% for option, label in field.options %}<option value="{{ option|string|lower if option is boolean else option }}" {% if current is sameas option or (current is not boolean and option is not boolean and current == option) %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+{% elif field.kind == 'number' %}<input type="number" name="{{ field.key }}" min="{{ field.minimum }}" max="{{ field.maximum }}" step="{{ field.step }}" value="{{ current if current is number else '' }}" placeholder="保留当前 / 客户端默认">
+{% else %}<textarea name="{{ field.key }}" rows="4" maxlength="20000" placeholder="使用客户端默认设置">{{ current if current is string else '' }}</textarea>{% endif %}
+{% if field.hint %}<span class="hint">{{ field.hint }}</span>{% endif %}</label>
+{% endfor %}</div></section>{% endfor %}
+<div class="card card-body form-actions"><button class="primary">保存应用设置</button><span class="muted">仅更新上述偏好，不会自动推送到客户端。</span></div></form>
+{% else %}<section class="card empty"><h2>此快照未包含应用设置</h2></section>{% endif %}
+{% endif %}
+{% endif %}
+{% endblock %}

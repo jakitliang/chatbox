@@ -18,7 +18,7 @@ function settings(overrides: Partial<Settings> = {}): Settings {
   return {
     extension: {
       webSearch: {
-        provider: 'build-in',
+        provider: 'bing',
       },
     },
     ...overrides,
@@ -81,7 +81,7 @@ describe('model rig slot settings', () => {
   })
 
   test('parser and search presets follow the Chatbox-built-in values', () => {
-    expect(isSlotPresetOn('parser', settings())).toBe(false)
+    expect(isSlotPresetOn('parser', settings())).toBe(true)
     expect(isSlotPresetOn('parser', settings(), undefined, 'chatbox-ai')).toBe(true)
     expect(
       isSlotPresetOn(
@@ -96,15 +96,15 @@ describe('model rig slot settings', () => {
         undefined,
         'chatbox-ai'
       )
-    ).toBe(false)
+    ).toBe(true)
     expect(isSlotPresetOn('search', settings())).toBe(true)
     expect(isSlotPresetOn('search', settings({ extension: { webSearch: { provider: 'tavily' } } }))).toBe(false)
   })
 
   test('unset parser type follows the platform default', () => {
-    expect(effectiveParserType(settings(), 'chatbox-ai')).toBe('chatbox-ai')
+    expect(effectiveParserType(settings(), 'chatbox-ai')).toBe('local')
     expect(effectiveParserType(settings(), 'local')).toBe('local')
-    expect(customParserTypes({ isDesktopLike: false, isMobile: false })).toEqual([])
+    expect(customParserTypes({ isDesktopLike: false, isMobile: false })).toEqual(['local'])
     expect(customParserTypes({ isDesktopLike: true, isMobile: false })).toEqual(['local', 'mineru'])
   })
 
@@ -130,8 +130,8 @@ describe('model rig slot settings', () => {
       defaultEmbeddingModel: undefined,
       defaultRerankModel: undefined,
     })
-    expect(applyAllPresetsExtension(current).webSearch.provider).toBe('build-in')
-    expect(applyAllPresetsExtension(current).documentParser?.type).toBe('chatbox-ai')
+    expect(applyAllPresetsExtension(current).webSearch.provider).toBe('bing')
+    expect(applyAllPresetsExtension(current).documentParser?.type).toBe('local')
     expect(applyAllPresetsExtension(current).webSearch.tavilyApiKey).toBe('secret')
   })
 
@@ -205,7 +205,7 @@ describe('model rig slot tests', () => {
     expect(pinged).toEqual(['openai/gpt-4.1'])
   })
 
-  test('web search built-in requires a license before it searches', async () => {
+  test('Bing connection test does not require a license', async () => {
     const result = await runSlotTest('search', {
       settings: settings(),
       configuredProviderIds: new Set(['openai']),
@@ -215,14 +215,13 @@ describe('model rig slot tests', () => {
       testMineru: async () => true,
       searchWeb: async () => undefined,
     })
-    expect(result.status).toBe('fail')
-    expect(result.error).toMatch(/not activated/i)
+    expect(result.status).toBe('ok')
   })
 
   test('local document parser passes without a network call', async () => {
     const result = await runSlotTest('parser', {
       settings: settings({
-        extension: { webSearch: { provider: 'build-in' }, documentParser: { type: 'local' } },
+        extension: { webSearch: { provider: 'bing' }, documentParser: { type: 'local' } },
       }),
       configuredProviderIds: new Set(),
       hasLicense: false,

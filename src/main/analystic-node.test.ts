@@ -20,12 +20,6 @@ vi.mock('./store-node', () => ({
 
 import { event } from './analystic-node'
 
-const osByPlatform: Record<string, string> = {
-  win32: 'Windows',
-  darwin: 'Macintosh',
-  linux: 'Linux',
-}
-
 describe('main-process analytics', () => {
   beforeEach(() => {
     getConfigMock.mockReset()
@@ -36,63 +30,17 @@ describe('main-process analytics', () => {
     ofetchMock.mockResolvedValue(undefined)
   })
 
-  it('uses the desktop operating system as the default analytics platform', async () => {
-    await event('app_open', { session_id: 123 })
-
-    expect(ofetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('https://www.google-analytics.com/mp/collect'),
-      expect.objectContaining({
-        body: expect.objectContaining({
-          device: {
-            category: 'desktop',
-            operating_system: osByPlatform[process.platform],
-          },
-          events: [
-            {
-              name: 'app_open',
-              params: expect.objectContaining({
-                chatbox_platform_type: 'desktop',
-                chatbox_platform: process.platform,
-                app_platform: process.platform,
-              }),
-            },
-          ],
-        }),
-      })
-    )
+  it('does not read installation identifiers or send events', async () => {
+    expect(await event('app_open', { session_id: 123 })).toBeNull()
+    expect(await event('app_open')).toBeNull()
+    expect(getConfigMock).not.toHaveBeenCalled()
+    expect(getVersionMock).not.toHaveBeenCalled()
+    expect(ofetchMock).not.toHaveBeenCalled()
   })
 
-  it('allows Harmony builds to override the operating-system dimension', async () => {
-    await event('app_open', {
-      session_id: 123,
-      chatbox_platform_type: 'desktop',
-      chatbox_platform: 'harmony',
-    })
-
-    const request = ofetchMock.mock.calls[0][1]
-    expect(request.body.events[0].params).toEqual(
-      expect.objectContaining({
-        chatbox_platform_type: 'desktop',
-        chatbox_platform: 'harmony',
-        app_platform: process.platform,
-      })
-    )
-    expect(request.body.device).toEqual({
-      category: 'desktop',
-      operating_system: 'HarmonyOS',
-    })
+  it('does not inspect event properties', async () => {
+    const params = new Proxy({}, { get() { throw new Error('must not read event data') } })
+    expect(await event('app_open', params)).toBeNull()
+    expect(ofetchMock).not.toHaveBeenCalled()
   })
-
-  it.each(Object.entries(osByPlatform))(
-    'maps %s to the GA operating-system dimension',
-    async (platform, operatingSystem) => {
-      await event('app_open', { chatbox_platform: platform })
-
-      const request = ofetchMock.mock.calls[0][1]
-      expect(request.body.device).toEqual({
-        category: 'desktop',
-        operating_system: operatingSystem,
-      })
-    }
-  )
 })

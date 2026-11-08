@@ -234,10 +234,6 @@ describe('OpenAI-compatible image models', () => {
     expect(instance.exposeImageModel()).toBe(openRouterMocks.imageModel)
     expect(openRouterMocks.createOpenRouter).toHaveBeenCalledWith({
       apiKey: 'or-key',
-      headers: {
-        'HTTP-Referer': 'https://chatboxai.app',
-        'X-Title': 'Chatbox AI',
-      },
       fetch: expect.any(Function),
     })
     expect(openRouterMocks.imageModelFactory).toHaveBeenCalledWith('google/gemini-3-pro-image')

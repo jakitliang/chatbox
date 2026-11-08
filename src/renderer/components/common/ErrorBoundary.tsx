@@ -1,5 +1,5 @@
-import * as Sentry from '@sentry/react'
 import React from 'react'
+import { LocalErrorBoundary } from '../../observability/local-diagnostics'
 import { getLogger } from '../../lib/utils'
 import { router } from '../../router'
 
@@ -12,15 +12,7 @@ interface ErrorBoundaryProps {
   onError?: (error: Error) => void
 }
 
-/**
- * ErrorBoundary component using Sentry's built-in ErrorBoundary
- * Automatically reports errors to Sentry with proper context
- *
- * Implementation:
- * - ErrorBoundary errors are tagged with 'errorBoundary'
- * - These errors are 100% reported to Sentry (see sentry_init.ts)
- * - Other errors are subject to 10% sampling
- */
+/** Local error logging and retry recovery, without remote reporting. */
 export function ErrorBoundary({
   children,
   fallback: CustomFallback,
@@ -28,13 +20,10 @@ export function ErrorBoundary({
   onError,
 }: ErrorBoundaryProps) {
   return (
-    <Sentry.ErrorBoundary
+    <LocalErrorBoundary
       fallback={(fallbackProps) => {
         const { error, resetError } = fallbackProps
         const errorObj = error instanceof Error ? error : new Error(String(error))
-
-        // Log error locally
-        log.error(`${name} caught an error:`, errorObj)
 
         // Use custom fallback if provided, otherwise use default
         if (CustomFallback) {
@@ -43,34 +32,13 @@ export function ErrorBoundary({
 
         return <DefaultErrorFallback error={errorObj} retry={resetError} />
       }}
-      beforeCapture={(scope, error, componentStack) => {
-        onError?.(error instanceof Error ? error : new Error(String(error)))
-
-        // Add custom context to Sentry
-        scope.setTag('errorBoundary', name)
-        scope.setTag('component', 'ui')
-        scope.setTag('operation', name)
-        scope.setTag('error_domain', 'ui')
-        scope.setTag('error_operation', name)
-        scope.setTag('error_priority', 'critical')
-        scope.setTag('error_handled', 'true')
-        scope.setLevel('error')
-
-        // Add component stack information if available
-        if (typeof componentStack === 'string' && componentStack) {
-          scope.setContext('react', {
-            componentStack,
-            errorBoundary: name,
-          })
-        }
-
-        // Log error details locally
+      onError={(error, componentStack) => {
         log.error(`${name} caught an error:`, error, componentStack)
+        onError?.(error)
       }}
-      showDialog={false}
     >
       {children}
-    </Sentry.ErrorBoundary>
+    </LocalErrorBoundary>
   )
 }
 
@@ -88,7 +56,7 @@ function DefaultErrorFallback({ error, retry }: DefaultErrorFallbackProps) {
         <div className="text-red-500 text-6xl mb-4">⚠️</div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Something went wrong!</h1>
         <p className="text-gray-600 dark:text-gray-400 mb-6">
-          The application encountered an unexpected error. This error has been automatically reported.
+          The application encountered an unexpected error. Details are kept in local logs and are not uploaded.
         </p>
 
         <div className="space-y-3">
@@ -142,22 +110,5 @@ function DefaultErrorFallback({ error, retry }: DefaultErrorFallbackProps) {
   )
 }
 
-// Sentry Error Boundary (alternative approach using Sentry's built-in ErrorBoundary)
-export const SentryErrorBoundary = Sentry.withErrorBoundary(
-  ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  {
-    fallback: ({ error, resetError }) => (
-      <DefaultErrorFallback error={error instanceof Error ? error : new Error(String(error))} retry={resetError} />
-    ),
-    beforeCapture: (scope) => {
-      scope.setTag('errorBoundary', 'sentry')
-      scope.setTag('component', 'ui')
-      scope.setTag('operation', 'sentry')
-      scope.setTag('error_domain', 'ui')
-      scope.setTag('error_operation', 'sentry')
-      scope.setTag('error_priority', 'critical')
-      scope.setTag('error_handled', 'true')
-      scope.setLevel('error')
-    },
-  }
-)
+// Legacy export name retained; uses the same local-only recovery boundary.
+export const SentryErrorBoundary = ErrorBoundary

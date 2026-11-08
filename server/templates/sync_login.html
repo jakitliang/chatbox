@@ -1,0 +1,9 @@
+{% extends "sync_base.html" %}{% block content %}
+<div class="auth-wrap"><section class="card auth-card"><div class="auth-lock" aria-hidden="true">◫</div><h1>欢迎回到控制台</h1><p class="auth-intro">登录你的私有工作空间，管理助手、分类与备份配置。</p>
+{% if request.args.get('registered') == '1' %}<p class="notice" role="status" style="margin-top:20px">Account created. 账号已创建，请使用新账号登录。</p>{% endif %}
+{% if error %}<p class="error" role="alert" style="margin-top:20px">{{ error }}</p>{% endif %}
+<form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<label>用户名 / Username<input name="username" required maxlength="64" pattern="[A-Za-z0-9_\-]{1,64}" autocomplete="username" placeholder="输入用户名"></label>
+<label>密码 / Password<input type="password" name="password" required maxlength="1024" autocomplete="current-password" placeholder="输入密码"></label><button class="primary">登录 / Sign in</button></form>
+<div class="auth-links">{% if registration_enabled %}还没有账号？ <a href="{{ url_for('admin_register') }}">创建账号</a>{% else %}没有默认账号，请联系服务管理员创建。{% endif %}</div></section><p class="muted" style="text-align:center">客户端数据不会自动上传，所有同步由你手动发起。</p></div>
+{% endblock %}

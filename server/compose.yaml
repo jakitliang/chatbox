@@ -1,0 +1,40 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: chatbox-backend:bookworm
+    restart: unless-stopped
+    # Linux deployment: no bridge peer rewriting and no publicly published HTTP.
+    network_mode: host
+    volumes:
+      - type: bind
+        source: ./.env
+        target: /app/.env
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./data
+        target: /var/lib/chatbox
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      # Read the host user's chmod-600 .env before dropping root permanently.
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETUID
+      - SETGID
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 40s
+    healthcheck:
+      test: ["CMD", "/opt/venv/bin/python", "-c", "import os, socket; from dotenv import dotenv_values; port = os.environ.get('CHATBOX_SERVER_PORT') or dotenv_values('/app/.env', interpolate=False).get('CHATBOX_SERVER_PORT') or '4567'; socket.create_connection(('127.0.0.1', int(port)), timeout=5).close()"]
+      interval: 30s
+      timeout: 6s
+      start_period: 20s
+      retries: 3

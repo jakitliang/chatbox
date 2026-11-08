@@ -8,8 +8,8 @@ export interface SettingsHostDefaults {
   isDesktopLike: boolean
 }
 
-export function getDefaultDocumentParser(host: SettingsHostDefaults): DocumentParserConfig {
-  return host.isDesktopLike ? { type: 'local' } : { type: 'chatbox-ai' }
+export function getDefaultDocumentParser(_host: SettingsHostDefaults): DocumentParserConfig {
+  return { type: 'local' }
 }
 
 /**
@@ -18,6 +18,8 @@ export function getDefaultDocumentParser(host: SettingsHostDefaults): DocumentPa
  */
 export function createDefaultSettings(): Settings {
   return {
+    appApiServer: '',
+    webBrowsing: false,
     showWordCount: false,
     showTokenCount: false,
     showTokenUsed: true,
@@ -39,7 +41,7 @@ export function createDefaultSettings(): Settings {
     fontSize: 14,
     spellCheck: true,
     defaultPrompt: DEFAULT_SYSTEM_PROMPT,
-    allowReportingAndTracking: true,
+    allowReportingAndTracking: false,
     hasExpiredLicense: false,
     chatboxAIDesktopPromptDismissed: false,
     enableMarkdownRendering: true,
@@ -54,7 +56,7 @@ export function createDefaultSettings(): Settings {
     compactionThreshold: 0.75,
     pauseOnToolCallLimit: true,
     autoLaunch: false,
-    autoUpdate: true,
+    autoUpdate: false,
     betaUpdate: false,
     defaultEmbeddingModel: undefined,
     defaultRerankModel: undefined,
@@ -77,7 +79,7 @@ export function createDefaultSettings(): Settings {
     },
     extension: {
       webSearch: {
-        provider: 'build-in',
+        provider: 'bing',
         tavilyApiKey: '',
         bochaApiKey: '',
         queritApiKey: '',

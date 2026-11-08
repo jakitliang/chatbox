@@ -1,6 +1,6 @@
 import { createDefaultSettings, DEFAULT_SYSTEM_PROMPT } from '@chatbox/core/domain/settings'
 import { v4 as uuidv4 } from 'uuid'
-import { type Config, ModelProviderEnum, type SessionSettings, type Settings } from './types'
+import { type Config, type SessionSettings, type Settings } from './types'
 
 /**
  * Compatibility export. Global Settings defaults are owned by the Settings
@@ -20,16 +20,12 @@ export function getDefaultPrompt() {
 
 export function chatSessionSettings(): SessionSettings {
   return {
-    provider: ModelProviderEnum.ChatboxAI,
-    modelId: 'chatboxai-4',
     maxContextMessageCount: Number.MAX_SAFE_INTEGER,
   }
 }
 
 export function pictureSessionSettings(): SessionSettings {
   return {
-    provider: ModelProviderEnum.ChatboxAI,
-    modelId: 'DALL-E-3',
     imageGenerateNum: 1,
     dalleStyle: 'vivid',
   }

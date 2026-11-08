@@ -1,5 +1,5 @@
 import type { SessionRowStorePort } from '@chatbox/core/ports'
-import { type AnalyticsEventParams, GOOGLE_ANALYTICS_MEASUREMENT_ID } from '@shared/analytics'
+import type { AnalyticsEventParams } from '@shared/analytics'
 import * as defaults from '@shared/defaults'
 import type { Config, Settings, ShortcutSetting } from '@shared/types'
 import localforage from 'localforage'
@@ -127,21 +127,8 @@ export default class WebPlatform extends IndexedDBStorage implements Platform {
     return localforage.keys()
   }
 
-  public async initTracking() {
-    const conf = await this.getConfig()
-    window.gtag('config', GOOGLE_ANALYTICS_MEASUREMENT_ID, {
-      app_name: 'chatbox',
-      user_id: conf.uuid,
-      client_id: conf.uuid,
-      app_version: await this.getVersion(),
-      chatbox_platform_type: 'web',
-      chatbox_platform: await this.getPlatform(),
-      app_platform: await this.getPlatform(),
-    })
-  }
-  public trackingEvent(name: string, params: AnalyticsEventParams) {
-    window.gtag('event', name, params)
-  }
+  public async initTracking(): Promise<void> {}
+  public trackingEvent(_name: string, _params: AnalyticsEventParams): void {}
 
   public async shouldShowAboutDialogWhenStartUp(): Promise<boolean> {
     return false

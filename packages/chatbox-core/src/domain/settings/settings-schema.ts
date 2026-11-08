@@ -21,7 +21,8 @@ export { ModelProviderType } from '../../types/provider'
 export type DocumentParserType = 'none' | 'local' | 'chatbox-ai' | 'mineru'
 
 export const DocumentParserConfigSchema = z.object({
-  type: z.enum(['none', 'local', 'chatbox-ai', 'mineru']),
+  // Accept the historical value on import, but never execute cloud fallback.
+  type: z.preprocess((type) => type === 'chatbox-ai' ? 'local' : type, z.enum(['none', 'local', 'chatbox-ai', 'mineru'])),
   mineru: z
     .object({
       apiToken: z.string(),
@@ -199,7 +200,7 @@ export const GlobalSessionSettingsSchema = z.object({
   maxTokens: z.number().finite().int().min(1).optional().catch(undefined),
   stream: z.boolean().optional().catch(true),
   // Explicit Web Search preference. Undefined follows the active provider default.
-  webBrowsing: z.boolean().optional().catch(undefined),
+  webBrowsing: z.boolean().optional().catch(false),
 })
 
 export const SessionSettingsSchema = GlobalSessionSettingsSchema.extend({
@@ -342,7 +343,11 @@ const ShortcutSettingSchema = z.preprocess(
 
 const ExtensionSettingsSchema = z.object({
   webSearch: z.object({
-    provider: z.enum(['build-in', 'bing', 'tavily', 'bocha', 'querit', 'searxng']).catch('build-in'),
+    // Old paid search selections migrate to Bing. Search still requires explicit enablement.
+    provider: z.preprocess(
+      (provider) => provider === 'build-in' ? 'bing' : provider,
+      z.enum(['build-in', 'bing', 'tavily', 'bocha', 'querit', 'searxng']).catch('bing')
+    ),
     tavilyApiKey: z.string().optional(),
     bochaApiKey: z.string().optional(),
     queritApiKey: z.string().optional(),
@@ -463,10 +468,12 @@ const DefaultModelSelectionSchema = z
     provider: z.string(),
     model: z.string(),
   })
+  .refine((selection) => selection.provider !== ModelProviderEnum.ChatboxAI)
   .optional()
   .catch(undefined)
 
 export const SettingsSchema = GlobalSessionSettingsSchema.extend({
+  appApiServer: z.string().default(''),
   providers: z.record(z.string(), ProviderSettingsSchema).optional().catch(undefined),
   customProviders: z.array(CustomProviderBaseInfoSchema).optional().catch(undefined),
   favoritedModels: z
@@ -480,38 +487,14 @@ export const SettingsSchema = GlobalSessionSettingsSchema.extend({
     .catch(undefined),
 
   // default models
-  defaultChatModel: z
-    .object({
-      provider: z.string(),
-      model: z.string(),
-    })
-    .optional()
-    .catch(undefined),
-  threadNamingModel: z
-    .object({
-      provider: z.string(),
-      model: z.string(),
-    })
-    .optional()
-    .catch(undefined),
-  searchTermConstructionModel: z
-    .object({
-      provider: z.string(),
-      model: z.string(),
-    })
-    .optional()
-    .catch(undefined),
-  ocrModel: z
-    .object({
-      provider: z.string(),
-      model: z.string(),
-    })
-    .optional()
-    .catch(undefined),
+  defaultChatModel: DefaultModelSelectionSchema,
+  threadNamingModel: DefaultModelSelectionSchema,
+  searchTermConstructionModel: DefaultModelSelectionSchema,
+  ocrModel: DefaultModelSelectionSchema,
   defaultEmbeddingModel: DefaultModelSelectionSchema,
   defaultRerankModel: DefaultModelSelectionSchema,
 
-  // chatboxai
+  // Historical account fields retained for importing old settings, not for provider execution.
   licenseKey: z.string().optional(),
   licenseInstances: z.record(z.string(), z.string()).optional().catch(undefined),
   licenseDetail: ChatboxAILicenseDetailSchema.optional().catch(undefined),
@@ -610,7 +593,7 @@ export const SettingsSchema = GlobalSessionSettingsSchema.extend({
   pauseOnToolCallLimit: z.boolean().default(true),
 
   autoLaunch: z.boolean().default(false),
-  autoUpdate: z.boolean().default(true), // 是否自动检查更新
+  autoUpdate: z.boolean().default(false), // 是否自动检查更新
   betaUpdate: z.boolean().default(false), // 是否自动检查 beta 更新
 
   shortcuts: ShortcutSettingSchema,

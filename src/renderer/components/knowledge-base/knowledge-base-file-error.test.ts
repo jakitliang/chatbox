@@ -8,11 +8,11 @@ import {
 } from './knowledge-base-file-error'
 
 describe('knowledge base file error policy', () => {
-  test('keeps server retry available when the previous attempt stopped before license validation', () => {
+  test('does not offer the removed official parser even after a legacy license error', () => {
     const error = 'chatbox_ai_parser_license_key_required'
 
     expect(isChatboxAIParserLicenseRequired(error)).toBe(true)
-    expect(canRetryKnowledgeBaseFileWithServer({ error, parsed_remotely: 1 })).toBe(true)
+    expect(canRetryKnowledgeBaseFileWithServer({ error, parsed_remotely: 1 })).toBe(false)
   })
 
   test('does not offer another server retry after a real remote parse failure', () => {

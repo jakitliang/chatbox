@@ -1,4 +1,5 @@
 export type { CopilotDetail, ImageSource } from '@shared/types'
+export * from './LocalCopilotSeed'
 export {
   COPILOT_PREFERENCES_STORAGE_KEY,
   CopilotPreferences,

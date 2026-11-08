@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Chatbox 本地管理{% endblock %}</title>
+  <style>
+    :root { color-scheme: light; font-family: ui-sans-serif, system-ui, sans-serif; color: #243349; background: #f4f6fa; }
+    * { box-sizing: border-box; } body { margin: 0; line-height: 1.6; font-size: 14px; }
+    a { color: #4263df; text-decoration: none; } a:hover { text-decoration: underline; }
+    .shell { display: grid; grid-template-columns: 230px minmax(0,1fr); min-height: 100vh; }
+    .sidebar { background: #172339; color: #d1daec; padding: 30px 20px; position: sticky; top: 0; height: 100vh; }
+    .brand { font-size: 22px; font-weight: 750; color: white; letter-spacing: -.5px; } .brand-mark { background: #748bff; border-radius: 9px; padding: 5px 10px; margin-right: 8px; }
+    .sidebar p { color: #93a3bc; font-size: 12px; } .sidebar nav { margin-top: 36px; display: grid; gap: 8px; }
+    .sidebar nav a { display: block; padding: 12px 16px; color: #bac7dc; border-radius: 8px; font-weight: 550; }
+    .sidebar nav a:hover, .sidebar nav a.active { background: #2b3a56; color: white; text-decoration: none; }
+    .local-status { margin-top: 40px; border-top: 1px solid #34415a; padding-top: 18px; font-size: 12px; } .local-status span { color: #62dcb0; }
+    main { padding: 32px 40px 60px; min-width: 0; max-width: 1600px; width: 100%; margin: 0 auto; }
+    header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; } header h1 { font-size: 23px; letter-spacing: -.7px; margin: 0; } header p { margin: 4px 0 0; }
+    h2 { font-size: 18px; margin: 0; } h3 { font-size: 15px; margin: 0 0 8px; } .muted { color: #7c889b; font-size: 13px; }
+    section, fieldset { background: white; border: 1px solid #e2e7f0; border-radius: 12px; padding: 24px; margin: 20px 0; }
+    fieldset legend { padding: 0 8px; font-weight: 650; } .section-head, .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 18px; } .stat { padding: 20px 24px; background: white; border: 1px solid #e2e7f0; border-radius: 12px; } .stat strong { font-size: 29px; display: block; margin-top: 4px; }
+    label { display: block; margin: 14px 0; font-weight: 550; } input:not([type=checkbox]):not([type=file]), textarea, select { display: block; width: 100%; padding: 10px 12px; border: 1px solid #d8dfeb; border-radius: 7px; font: inherit; color: inherit; background: white; margin-top: 6px; }
+    input:focus, textarea:focus, select:focus { outline: 2px solid #a8b8ff; outline-offset: 1px; } textarea { min-height: 100px; resize: vertical; }
+    input[type=checkbox] { accent-color: #526de8; width: 16px; height: 16px; vertical-align: middle; margin-right: 8px; }
+    button, .button { display: inline-block; padding: 9px 16px; border-radius: 7px; border: 1px solid #d8dfeb; cursor: pointer; font: inherit; font-weight: 550; background: white; color: #46556e; }
+    button:hover, .button:hover { background: #edf1fa; text-decoration: none; } .primary { background: #526de8; color: white; border-color: #526de8; } .primary:hover { background: #405bd0; }
+    .error, .danger { color: #c64e59; } .error, .notice { padding: 12px 18px; border-radius: 8px; background: #fff0f1; } .notice { background: #eaf8f1; color: #268161; }
+    .avatar { width: 48px; height: 48px; object-fit: cover; border-radius: 10px; flex-shrink: 0; } .avatar-placeholder { display: grid; place-items: center; background: #eef0fb; color: #7180b9; font-size: 21px; }
+    .identity { display: flex; align-items: center; gap: 14px; } .identity strong { display: block; } .description { max-width: 450px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 12px; color: #8490a3; margin-top: 3px; }
+    .table-wrap { overflow-x: auto; margin-top: 20px; } table { border-collapse: collapse; width: 100%; } td, th { padding: 16px 12px; border-bottom: 1px solid #edf0f5; text-align: left; overflow-wrap: anywhere; }
+    th { font-size: 12px; color: #7c889b; background: #f8f9fc; font-weight: 600; } .inline { display: inline; } .actions { white-space: nowrap; } .actions a { margin-right: 12px; }
+    .badge { display: inline-block; padding: 3px 9px; border-radius: 5px; background: #eef1f8; color: #65738b; font-size: 11px; margin: 2px; } .badge.enabled { color: #298367; background: #e8f7ef; }
+    .filter { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; margin-top: 18px; } .filter label { margin: 0; flex: 1; min-width: 170px; } .pagination { display: flex; justify-content: space-between; align-items: center; margin-top: 18px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; } .full { grid-column: 1 / -1; } .form-card { max-width: 860px; } .switch-row { padding: 14px 0; border-bottom: 1px solid #edf0f5; } .switch-row label { margin: 0 0 4px; }
+    .empty { text-align: center; padding: 32px; color: #8490a3; } details { margin-top: 15px; } summary { cursor: pointer; color: #7c889b; } .danger-zone { border: 1px solid #f0d2d6; padding: 16px; border-radius: 8px; margin-top: 10px; }
+    @media (max-width: 850px) { .shell { grid-template-columns: 1fr; } .sidebar { position: static; height: auto; padding: 18px; } .sidebar nav { margin-top: 15px; display: flex; flex-wrap: wrap; gap: 4px; } .sidebar nav a { padding: 8px 12px; } .sidebar p, .local-status { display: none; } main { padding: 22px 16px; } .stats { gap: 8px; } .stat { padding: 14px; } .form-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark">C</span>Chatbox</div><p>SELF-HOSTED · 管理控制台</p>
+      <nav aria-label="后台导航">
+        {% for key, title in [('assistants','助手管理'), ('models','模型管理'), ('remote','应用设置'), ('rag','知识与检索')] %}
+        <a class="{{ 'active' if tab|default('assistants') == key else '' }}" href="{{ url_for('admin', tab=key) }}" {% if tab|default('assistants') == key %}aria-current="page"{% endif %}>{{ title }}</a>
+        {% endfor %}
+      </nav>
+      <div class="local-status"><span>● 本地服务在线</span><p>SQLite 持久化<br>无云端请求 · 无数据采集</p></div>
+    </aside>
+    <main>
+      <header><div><h1>Chatbox 本地管理</h1><p class="muted">管理助手、模型与应用配置，所有更改仅保存在本机。</p></div><span class="badge enabled">SELF HOST</span></header>
+      {% if request.args.get('saved') == '1' %}<p class="notice" role="status">更改已保存。</p>{% endif %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</body>
+</html>

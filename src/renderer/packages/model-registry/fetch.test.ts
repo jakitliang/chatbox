@@ -99,7 +99,7 @@ describe('model-registry fetch', () => {
 
     const { forceRefreshRegistry, getRegistry, getRegistrySync } = await import('./fetch')
 
-    await expect(getRegistry()).resolves.toMatchObject(freshRegistry)
+    await expect(forceRefreshRegistry()).resolves.toMatchObject(freshRegistry)
     await expect(forceRefreshRegistry()).resolves.toMatchObject(freshRegistry)
     expect(getRegistrySync()).toMatchObject(freshRegistry)
     expect(mockSetStoreBlob).toHaveBeenCalledTimes(1)
@@ -119,7 +119,7 @@ describe('model-registry fetch', () => {
     expect(fetch).not.toHaveBeenCalled()
   })
 
-  it('fetches models.dev for an unknown model even when the 7-day blob cache is still valid', async () => {
+  it('keeps unknown model lookups offline even with configured network responses', async () => {
     const validCache = {
       openai: {
         'cached-model': cachedModel('cached-model', 222_000),
@@ -145,9 +145,8 @@ describe('model-registry fetch', () => {
 
     await requestUnknownModelRegistryRefresh()
 
-    expect(fetch).toHaveBeenCalledTimes(1)
-    expect(vi.mocked(fetch).mock.calls[0]?.[0]).toBe('https://models.dev/api.json')
-    expect(getRegistrySync()).toMatchObject(liveRegistry)
+    expect(fetch).not.toHaveBeenCalled()
+    expect(getRegistrySync()).toMatchObject(validCache)
   })
 
   it('does not refetch unknown models during the short cooldown after a recent attempt', async () => {
@@ -161,16 +160,16 @@ describe('model-registry fetch', () => {
 
     const { requestUnknownModelRegistryRefresh, UNKNOWN_MODEL_REFRESH_COOLDOWN_MS } = await import('./fetch')
     await requestUnknownModelRegistryRefresh()
-    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(fetch).not.toHaveBeenCalled()
 
     await requestUnknownModelRegistryRefresh()
-    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(fetch).not.toHaveBeenCalled()
 
     const now = Date.now()
     const dateNow = vi.spyOn(Date, 'now').mockReturnValue(now + UNKNOWN_MODEL_REFRESH_COOLDOWN_MS + 1)
     try {
       await requestUnknownModelRegistryRefresh()
-      expect(fetch).toHaveBeenCalledTimes(2)
+      expect(fetch).not.toHaveBeenCalled()
     } finally {
       dateNow.mockRestore()
     }

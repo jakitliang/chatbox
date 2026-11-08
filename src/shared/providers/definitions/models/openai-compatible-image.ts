@@ -12,12 +12,6 @@ export function getOpenAIImageGenerationOptions(
 }
 
 export function compatibleImageApiHeaders(apiHost: string): Record<string, string> | undefined {
-  if (apiHost.includes('openrouter.ai')) {
-    return {
-      'HTTP-Referer': 'https://chatboxai.app',
-      'X-Title': 'Chatbox AI',
-    }
-  }
   if (apiHost.includes('aihubmix.com')) {
     return {
       'APP-Code': 'VAFU9221',

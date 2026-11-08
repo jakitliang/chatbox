@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block content %}
+<p><a href="{{ url_for('admin',tab='models') }}">← 返回模型管理</a></p>
+<section class="form-card">
+  <h2>{{ '编辑' if editing else '新增' }}模型 <span class="badge">{{ provider }}</span></h2>
+  {% if error %}<p class="error" role="alert">{{ error }}（未保存）</p>{% endif %}
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-grid">
+      <label>模型 ID<input name="modelId" value="{{ value.get('modelId','') }}" maxlength="200" required placeholder="提供商要求的准确模型标识"></label>
+      <label>显示名称<input name="modelName" value="{{ value.get('modelName','') }}" maxlength="200" required></label>
+      <label>模型类型<select name="type">{% for key,title in ([('image','图像生成')] if collection == 'imageModels' else [('chat','对话'),('embedding','嵌入'),('rerank','重排')]) %}<option value="{{ key }}" {% if value.get('type') == key %}selected{% endif %}>{{ title }}</option>{% endfor %}</select></label>
+      <label>接口格式<select name="apiStyle">{% for key,title in [('', '使用提供商默认值'),('openai','OpenAI'),('openai-responses','OpenAI Responses'),('anthropic','Anthropic'),('google','Google')] %}<option value="{{ key }}" {% if value.get('apiStyle','') == key %}selected{% endif %}>{{ title }}</option>{% endfor %}</select></label>
+      <label>上下文窗口（Token）<input type="number" name="contextWindow" value="{{ value.get('contextWindow','') }}" min="1" max="10000000" placeholder="可选"></label>
+      <label>显示标签（逗号分隔）<input name="labels" value="{{ value.get('labels',[])|join(', ') }}" maxlength="2000" placeholder="例如推荐, 快速"></label>
+      <label class="full">说明<textarea name="description" maxlength="4000">{{ value.get('description','') }}</textarea></label>
+    </div>
+    <fieldset><legend>模型能力</legend>{% for key,title in [('vision','视觉输入'),('tool_use','工具调用'),('reasoning','推理')] %}<label><input type="checkbox" name="{{ key }}" {% if key in value.get('capabilities',[]) %}checked{% endif %}>{{ title }}</label>{% endfor %}</fieldset>
+    <button class="primary" type="submit">保存模型</button> <a class="button" href="{{ url_for('admin',tab='models') }}">取消</a>
+  </form>
+  {% if editing %}<details><summary>删除模型</summary><form class="danger-zone" action="{{ url_for('delete_model',provider=provider,collection=collection,index=request.view_args.index) }}" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label><input type="checkbox" name="confirm" required>确认删除此模型条目</label><button class="danger" type="submit">删除模型</button></form></details>{% endif %}
+</section>
+{% endblock %}

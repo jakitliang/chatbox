@@ -3,16 +3,12 @@ import { ChatboxAIAPIError } from '@shared/models/errors'
 import type { ImageGeneration } from '@shared/types'
 import { IconCheck, IconCopy, IconRefresh, IconSettings } from '@tabler/icons-react'
 import { Trans, useTranslation } from 'react-i18next'
+import { ChatboxAIErrorMessage } from '@/components/common/ChatboxAIErrorMessage'
 import { ErrorNotice } from '@/components/common/ErrorNotice'
 import classes from '@/components/common/ErrorNotice.module.css'
-import LinkTargetBlank from '@/components/common/Link'
 import { AppTooltip as Tooltip } from '@/components/ui/tooltip'
 import { useCopied } from '@/hooks/useCopied'
 import { navigateToSettings } from '@/modals/settings-navigation'
-import { trackingEvent } from '@/packages/event'
-import { buildChatboxUrl } from '@/packages/remote'
-import platform from '@/platform'
-import * as settingActions from '@/stores/settingActions'
 
 export interface ImageGenerationErrorTipsProps {
   record: ImageGeneration
@@ -67,40 +63,7 @@ export function ImageGenerationErrorTips({ record, onRetry, isRetrying }: ImageG
 
       {chatboxAIErrorDetail ? (
         <Text size="sm" c="chatbox-secondary" lh="20px" className={classes.tip}>
-          <Trans
-            i18nKey={chatboxAIErrorDetail.i18nKey}
-            values={{
-              model: record.model.modelId,
-            }}
-            components={{
-              OpenSettingButton: (
-                <Text
-                  component="span"
-                  className="cursor-pointer underline"
-                  c="chatbox-brand"
-                  onClick={() => navigateToSettings()}
-                />
-              ),
-              OpenMorePlanButton: (
-                <Text
-                  component="span"
-                  className="cursor-pointer underline"
-                  c="chatbox-brand"
-                  onClick={() => {
-                    platform.openLink(
-                      buildChatboxUrl(
-                        `/redirect_app/view_more_plans/${settingActions.getLanguage()}?utm_source=app&utm_content=image_creator_upgrade_required`
-                      )
-                    )
-                    trackingEvent('click_view_more_plans_button_from_image_creator', {
-                      event_category: 'user',
-                    })
-                  }}
-                />
-              ),
-              LinkToHomePage: <LinkTargetBlank href="https://chatboxai.app" />,
-            }}
-          />
+          <ChatboxAIErrorMessage errorCode={chatboxAIErrorDetail.code} model={record.model.modelId} />
         </Text>
       ) : imageGenerationTaskErrorCode ? (
         <Text size="sm" c="chatbox-secondary" lh="20px" className={classes.tip}>
@@ -161,7 +124,7 @@ export function ImageGenerationErrorTips({ record, onRetry, isRetrying }: ImageG
             size="sm"
             fw={400}
             rightSection={<IconSettings size={16} />}
-            onClick={() => navigateToSettings()}
+            onClick={() => navigateToSettings('/provider')}
             radius="md"
           >
             {t('Settings')}

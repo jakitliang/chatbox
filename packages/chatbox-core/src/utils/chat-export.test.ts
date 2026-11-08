@@ -33,6 +33,21 @@ function messageTexts(thread: { messages: Message[] }): string[] {
   return thread.messages.map((item) => item.contentParts.find((part) => part.type === 'text')?.text ?? '')
 }
 
+it('exports local chat content without promotional footers or remote logo markup', async () => {
+  const threads = [{ name: 'Thread', messages: [message('question', 'user', 'Local question')] }]
+  const markdown = await formatChatAsMarkdown('Local session', threads)
+  const txt = await formatChatAsTxt('Local session', threads)
+  for (const output of [markdown, txt]) {
+    expect(output).toContain('Local session')
+    expect(output).toContain('Thread')
+    expect(output).toContain('Local question')
+    expect(output).not.toContain('chatboxai.app')
+    expect(output).not.toContain('Chatbox AI')
+    expect(output).not.toContain('<img')
+    expect(output).not.toContain('<a href=')
+  }
+})
+
 describe('row chat export', () => {
   it('uses the session title for an unnamed active thread', async () => {
     const session: Session = {

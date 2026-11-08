@@ -1,0 +1,13 @@
+*
+!Dockerfile
+!requirements.txt
+!app.py
+!sync_service.py
+!sync_store.py
+!snapshot_validation.py
+!settings_forms.py
+!snapshot_avatars.py
+!docker-entrypoint.py
+!gunicorn.conf.py
+!templates/
+!templates/sync_*.html

@@ -227,20 +227,9 @@ export default class DesktopPlatform implements Platform {
   }
 
   public initTracking(): void {
-    // Desktop events are sent through the main-process Measurement Protocol bridge.
+    // Tracking is permanently disabled in self-hosted builds.
   }
-  public async trackingEvent(name: string, params: AnalyticsEventParams): Promise<void> {
-    const chatboxPlatform = await this.getPlatform()
-    const dataJson = JSON.stringify({
-      name,
-      params: {
-        ...params,
-        chatbox_platform_type: 'desktop',
-        chatbox_platform: chatboxPlatform,
-      },
-    })
-    await this.ipc.invoke('analysticTrackingEvent', dataJson)
-  }
+  public async trackingEvent(_name: string, _params: AnalyticsEventParams): Promise<void> {}
 
   public async shouldShowAboutDialogWhenStartUp(): Promise<boolean> {
     return cache('ipc:shouldShowAboutDialogWhenStartUp', () => this.ipc.invoke('shouldShowAboutDialogWhenStartUp'), {

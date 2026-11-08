@@ -7,36 +7,15 @@ export interface BuildinMCPServerConfig {
   url: string
 }
 
-const BUILTIN_MCP_BASE_URL = 'https://mcp.chatboxai.app'
+// Self-hosted deployments configure their own MCP servers; no vendor services
+// are seeded. Keep the registry and lookup exports for existing consumers.
+export const BUILTIN_MCP_SERVERS: BuildinMCPServerConfig[] = []
 
-export const BUILTIN_MCP_SERVERS: BuildinMCPServerConfig[] = [
-  {
-    id: 'fetch',
-    name: 'Fetch',
-    description:
-      'This server enables LLMs to retrieve and process content from web pages, converting HTML to markdown for easier consumption.',
-    url: `${BUILTIN_MCP_BASE_URL}/fetch`,
-  },
-  {
-    id: 'arxiv',
-    name: 'arXiv',
-    description: 'MCP server for accessing arXiv papers',
-    url: `${BUILTIN_MCP_BASE_URL}/arxiv`,
-  },
-  {
-    id: 'context7',
-    name: 'Context7',
-    description: 'Retrieves up-to-date documentation and code examples for any library.',
-    url: `${BUILTIN_MCP_BASE_URL}/context7`,
-  },
-]
-
-export function getBuiltinServerConfig(id: string, licenseKey?: string): MCPServerConfig | null {
+export function getBuiltinServerConfig(id: string, _licenseKey?: string): MCPServerConfig | null {
   const config = BUILTIN_MCP_SERVERS.find((s) => s.id === id)
   if (!config) {
     return null
   }
-  const license = licenseKey
   return {
     id,
     name: config.name,
@@ -45,7 +24,6 @@ export function getBuiltinServerConfig(id: string, licenseKey?: string): MCPServ
     transport: {
       type: 'http',
       url: config.url,
-      headers: license ? { 'x-chatbox-license': license } : undefined,
     },
   }
 }

@@ -52,6 +52,7 @@ const copilot = { id: 'cp1', name: 'Tutor', prompt: 'p' }
 describe('copilot store', () => {
   beforeEach(async () => {
     persisted.clear()
+    persisted.set('local-copilots-initialized', true)
     persisted.set('myCopilots', [copilot])
     getItem.mockReset().mockImplementation(readPersisted)
     getItemRaw.mockReset().mockImplementation(readRawPersisted)
@@ -358,8 +359,8 @@ describe('copilot store', () => {
   test('mutations queued during a slow hydration read all survive', async () => {
     vi.resetModules()
     let finishRead: ((copilots: unknown) => void) | undefined
-    getItem.mockImplementation((key: string, initialValue: unknown) => {
-      if (key !== 'myCopilots') return readPersisted(key, initialValue)
+    getItemRaw.mockImplementation((key: string) => {
+      if (key !== 'myCopilots') return readRawPersisted(key)
       return new Promise((resolve) => {
         finishRead = resolve
       })

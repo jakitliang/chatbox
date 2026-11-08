@@ -1,14 +1,19 @@
-export const CHATBOX_PRODUCT_SOURCES = `## Source of truth
+export const CHATBOX_PRODUCT_SOURCES = `## Local self-host manual
 
-- Start from https://chatboxai.app/llms.txt for current machine-readable discovery links.
-- For pricing, subscriptions, paid plans, usage limits, or billing, follow the "Machine-readable pricing" link from llms.txt, currently https://chatboxai.app/pricing.md.
-- For product guides, follow the guide link from llms.txt.
-- For developer, authentication, API, MCP, or integration questions, follow the relevant docs links from llms.txt.`
+- This edition uses the user's configured providers and self-host application server, not an official account or paid license.
+- For setup, guide the user to Settings > Provider to configure their model endpoint, API key, and model capabilities.
+- The Application API Server setting selects the self-host backend origin; ask the deployment administrator for its address and access requirements.
+- For file processing, use Settings > Document Parser and a supported local parser or the configured self-host service. Try smaller files or plain text when parsing is unavailable.
+- For web browsing, configure Settings > Web Search and a compatible model. For OCR and embeddings, check Settings > Default Models.
+- For API, MCP, integration, storage, and deployment help, use the local README and bundled documentation supplied with this installation, or ask the self-host administrator.
+- Model availability, limits, authentication, and any charges are determined by the configured provider or deployment. This app does not sell plans or manage official subscriptions.`
 
 export const CHATBOX_PRODUCT_ANSWERING_RULES = `## Answering rules
 
-- Fetch the relevant source before answering when current product, pricing, plan, or access details matter.
-- Do not rely on memory for prices, plan names, model availability, quotas, or billing policies.
-- If the source cannot be fetched, say that the current source could not be accessed and avoid inventing details.
-- Include the source URL used in the answer when giving product or billing facts.
+- Use the local self-host manual above for help. These rules override any legacy documentation-lookup or official sales instructions in the surrounding skill.
+- Do not fetch official product, pricing, account, or help pages, and do not run network requests for documentation lookup.
+- Inspect capabilities and read-only local settings only when the available tools support them. Guide the user to change settings manually; never bypass the read-only restriction.
+- Do not recommend official login, license activation, upgrades, subscriptions, or sales pages.
+- Do not invent configured models, provider prices, quotas, access policies, or deployment capabilities. If local information is missing, say so and ask the user or deployment administrator.
+- Cite the local setting or bundled document used, rather than an official sales URL.
 - Answer in the user's language unless they ask otherwise.`

@@ -19,6 +19,7 @@ import type { RemoteModelInfo } from '@/packages/remote'
 import platform from '@/platform'
 import { queryClient } from '@/stores/queryClient'
 import { settingsStore } from '@/stores/settingsStore'
+import { getAPIOrigin } from './remote'
 import { type ImageModelCatalogOptions, type ImageModelOption, loadProviderImageModels } from './image-model-provider'
 
 const log = getLogger('image-model-catalog')
@@ -62,9 +63,6 @@ function observeCredentials(): void {
     if (apiKey !== previous.providers?.[ModelProviderEnum.OpenRouter]?.apiKey) {
       credentialRevision(ModelProviderEnum.OpenRouter, apiKey)
     }
-    if (settings.licenseKey !== previous.licenseKey) {
-      credentialRevision(ModelProviderEnum.ChatboxAI, settings.licenseKey)
-    }
   })
 }
 
@@ -73,13 +71,12 @@ export function providerImageModelsQueryOptions(provider: ModelProviderEnum, opt
   const revision =
     provider === ModelProviderEnum.OpenRouter
       ? credentialRevision(provider, options.apiKey)
-      : provider === ModelProviderEnum.ChatboxAI
-        ? credentialRevision(provider, options.licenseKey)
-        : 0
+      : 0
   return queryOptions({
-    queryKey: ['provider-image-models', provider, options.language, revision],
+    queryKey: ['provider-image-models', getAPIOrigin(), provider, options.language, revision],
     staleTime: 3600 * 1000,
-    queryFn: () => loadProviderImageModels(provider, options),
+    queryFn: () =>
+      provider === ModelProviderEnum.ChatboxAI ? Promise.resolve([]) : loadProviderImageModels(provider, options),
   })
 }
 
@@ -128,7 +125,6 @@ async function loadRemoteModels(provider: ModelProviderEnum, settings: Settings)
       providerImageModelsQueryOptions(provider, {
         apiKey: provider === ModelProviderEnum.OpenRouter ? providerSettings.apiKey : undefined,
         language: settings.language,
-        licenseKey: settings.licenseKey,
       })
     )
   } catch (error) {
@@ -144,18 +140,16 @@ export async function getAvailableImageModels(
   const providers = getConfiguredImageProviders(
     [
       ...[
-        ModelProviderEnum.ChatboxAI,
         ModelProviderEnum.Gemini,
         ModelProviderEnum.OpenAI,
         ModelProviderEnum.OpenRouter,
       ].map((id) => ({ id, name: id })),
-      ...(settings.customProviders ?? []),
+      ...(settings.customProviders ?? []).filter((provider) => provider.id !== ModelProviderEnum.ChatboxAI),
     ],
     settings,
     platform.type
   )
   const remoteProviders = [
-    ModelProviderEnum.ChatboxAI,
     ModelProviderEnum.Gemini,
     ModelProviderEnum.OpenAI,
     ModelProviderEnum.OpenRouter,

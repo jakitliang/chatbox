@@ -106,11 +106,47 @@ function renderHtmlDocument(sessionName: string, content: string, interactiveScr
 <head>
     <meta charset="utf-8">
     <title>${escapedSessionName}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
-    <link rel="shortcut icon" href="https://chatboxai.app/icon.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; background: #f1f5f9; color: #1e293b; font: 16px/1.65 system-ui, sans-serif; }
+      .prose { max-width: 64rem; margin: 0 auto; padding: 1.5rem 2rem; background: white; overflow-wrap: anywhere; box-shadow: 0 1px 6px #0001; }
+      h1, h2, h3, h4 { line-height: 1.3; margin: 1.5em 0 0.75em; color: #0f172a; }
+      h1 { font-size: 2rem; } h2 { font-size: 1.5rem; } h3 { font-size: 1.25rem; }
+      p { margin: 0.75em 0; } a { color: #0369a1; text-decoration: underline; }
+      hr { border: 0; border-top: 1px solid #e2e8f0; margin: 1.5rem 0; }
+      img, svg { max-width: 100%; height: auto; } img { display: block; }
+      ul, ol { padding-left: 1.5rem; } li { margin: 0.25em 0; }
+      blockquote { margin: 1rem 0; padding: 0.25rem 1rem; border-left: 4px solid #cbd5e1; color: #475569; }
+      table { display: block; overflow-x: auto; border-collapse: collapse; max-width: 100%; }
+      th, td { padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; text-align: left; } th { background: #f8fafc; }
+      pre, code { font-family: ui-monospace, monospace; font-size: 0.875em; }
+      code { background: #f1f5f9; padding: 0.15em 0.3em; border-radius: 0.25rem; }
+      pre { overflow-x: auto; padding: 1rem; border-radius: 0.5rem; background: #0f172a; color: #e2e8f0; white-space: pre; }
+      pre code { padding: 0; background: transparent; color: inherit; }
+      .code-block-container { margin: 1rem 0; border-radius: 0.5rem; overflow: hidden; background: #0f172a; color: #e2e8f0; }
+      .code-block-header { display: flex; justify-content: space-between; padding: 0.5rem 1rem; color: #cbd5e1; }
+      .code-block-header > div { display: flex; align-items: center; gap: 0.5rem; }
+      .code-block-header svg { width: 14px; height: 14px; }
+      .code-block-container pre { margin: 0; border-radius: 0; }
+      .shiki-code-wrapper { max-width: 100%; overflow-x: auto; }
+      .inline-code { background: #f1f5f9; color: #334155; }
+      .chatbox-export-message { margin-bottom: 1.5rem; }
+      .text-green-500 { color: #15803d; } .text-blue-500 { color: #1d4ed8; }
+      .text-lg { font-size: 1.125rem; } .text-sm, .prose-sm { font-size: 0.875rem; } .text-xs { font-size: 0.75rem; }
+      .font-semibold { font-weight: 600; } .text-slate-500 { color: #64748b; } .text-slate-600 { color: #475569; }
+      .mt-1 { margin-top: 0.25rem; } .mt-2 { margin-top: 0.5rem; } .mb-1 { margin-bottom: 0.25rem; }
+      .my-2 { margin-top: 0.5rem; margin-bottom: 0.5rem; } .mb-4 { margin-bottom: 1rem; }
+      .rounded, .rounded-lg { border-radius: 0.5rem; } .border { border: 1px solid #e2e8f0; }
+      .bg-white { background: white; } .bg-slate-50 { background: #f8fafc; }
+      .p-2 { padding: 0.5rem; } .p-3 { padding: 0.75rem; } .pl-6 { padding-left: 1.5rem; }
+      .whitespace-pre-wrap { white-space: pre-wrap; } .overflow-x-auto { overflow-x: auto; }
+      /* KaTeX includes accessible MathML. Use native math rendering without CDN fonts/CSS. */
+      .katex-html { display: none; }
+      .katex-mathml { position: static !important; clip: auto !important; width: auto !important; height: auto !important; overflow: visible !important; }
+      .katex-display { display: block; text-align: center; margin: 1rem 0; overflow-x: auto; }
+      @media (max-width: 640px) { .prose { padding: 1rem; } h1 { font-size: 1.5rem; } }
+      @media print { body { background: white; } .prose { max-width: none; box-shadow: none; padding: 0; } }
       .chatbox-fork-navigation { display: flex; justify-content: flex-end; align-items: center; gap: 0.5rem; margin: -0.5rem 1rem 0.75rem; color: #868e96; }
       .chatbox-fork-navigation button { appearance: none; border: 0; border-radius: 9999px; background: transparent; color: inherit; cursor: pointer; font-size: 1.25rem; line-height: 1; padding: 0.25rem 0.5rem; }
       .chatbox-fork-navigation button:hover { background: #f1f3f5; color: #495057; }
@@ -119,20 +155,10 @@ function renderHtmlDocument(sessionName: string, content: string, interactiveScr
 </head>
 <body class='bg-slate-100'>
     <div class='mx-auto max-w-5xl shadow-md prose bg-white px-2 py-4'>
-        <h1 class='flex flex-row justify-between items-center my-4 h-8'>
-            <span>${escapedSessionName}</span>
-            <a href="https://chatboxai.app" target="_blank" >
-                <img src='https://chatboxai.app/icon.png' class="w-12">
-            </a>
-        </h1>
+        <h1>${escapedSessionName}</h1>
         <hr />
         ${content}
         <hr />
-        <a href="https://chatboxai.app" style="display: flex; align-items: center;" class="text-sky-500" target="_blank">
-            <img src='https://chatboxai.app/icon.png' class="w-12 pr-2">
-            <b style='font-size:30px'>Chatbox AI</b>
-        </a>
-        <p><a href="https://chatboxai.app" target="_blank">https://chatboxai.app</a></p>
     </div>
     ${interactiveScript}
 </body>

@@ -1,10 +1,9 @@
 import { Box } from '@mui/material'
+import { getChatboxAPIOrigin } from '@shared/request/chatbox-api-origin'
 import type { MouseEvent } from 'react'
 import ReactMarkdown from 'react-markdown'
 
-const NOTIFICATION_ASSET_ORIGIN = 'https://assets.chatboxai.app'
 const NOTIFICATION_ASSET_PATH = '/notifications/'
-const LOCAL_NOTIFICATION_ASSET_ORIGINS = new Set(['http://127.0.0.1:8003', 'http://localhost:8003'])
 const ALLOWED_ELEMENTS = [
   'p',
   'strong',
@@ -35,10 +34,8 @@ export function isNotificationAssetUrl(rawUrl: string | undefined) {
   if (!rawUrl) return false
   try {
     const url = new URL(rawUrl)
-    const allowedOrigin =
-      url.origin === NOTIFICATION_ASSET_ORIGIN ||
-      (import.meta.env.DEV && LOCAL_NOTIFICATION_ASSET_ORIGINS.has(url.origin))
-    return allowedOrigin && url.pathname.startsWith(NOTIFICATION_ASSET_PATH)
+    return !url.username && !url.password &&
+      url.origin === getChatboxAPIOrigin() && url.pathname.startsWith(NOTIFICATION_ASSET_PATH)
   } catch {
     return false
   }

@@ -88,8 +88,8 @@ export async function getRegistry(): Promise<ModelRegistryData> {
     }
   }
 
-  // Cache stale or missing — fetch with fallback to sync data
-  return fetchAndUpdateRegistry(cached?.data ?? MODELS_DEV_SNAPSHOT)
+  // Offline-first: expiration never grants permission to contact a server.
+  return applyRegistry(cached?.data ?? MODELS_DEV_SNAPSHOT)
 }
 
 /**
@@ -140,9 +140,7 @@ export async function prefetchModelRegistry(): Promise<void> {
     }
   }
 
-  fetchAndUpdateRegistry(cached?.data ?? MODELS_DEV_SNAPSHOT).catch((error: unknown) => {
-    console.error('[model-registry] Prefetch failed:', error)
-  })
+  applyRegistry(cached?.data ?? MODELS_DEV_SNAPSHOT)
 }
 
 /**
@@ -152,11 +150,8 @@ export async function prefetchModelRegistry(): Promise<void> {
  * ids do not hit the network on every request.
  */
 export function requestUnknownModelRegistryRefresh(): Promise<ModelRegistryData> | null {
-  if (fetchPromise) return fetchPromise
-  if (lastNetworkAttemptAt > 0 && Date.now() - lastNetworkAttemptAt < UNKNOWN_MODEL_REFRESH_COOLDOWN_MS) {
-    return null
-  }
-  return fetchAndUpdateRegistry()
+  // Unknown/custom IDs are not a reason to make unsolicited Internet requests.
+  return null
 }
 
 /**

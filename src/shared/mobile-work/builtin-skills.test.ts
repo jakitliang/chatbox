@@ -72,11 +72,13 @@ it('defaults to documents and websites and respects explicit skill overrides', a
   expect(await catalog.load('presentations')).toBeNull()
 })
 
-it('provides official product guidance and capability-gated image commands', async () => {
+it('provides local self-host guidance and capability-gated image commands', async () => {
   const catalog = createLocalBuiltinSkillCatalog([])
   const loaded = await catalog.load('chatbox-product-info')
-  expect(loaded?.instructions).toContain('https://chatboxai.app/llms.txt')
-  expect(loaded?.instructions).toContain('https://chatboxai.app/pricing.md')
+  expect(loaded?.instructions).toContain('Local self-host manual')
+  expect(loaded?.instructions).toContain('Settings > Provider')
+  expect(loaded?.instructions).toContain('do not run network requests for documentation lookup')
+  expect(loaded?.instructions).not.toContain('https://chatboxai.app')
   expect(loaded?.instructions).toContain('parse_link')
   expect(loaded?.instructions).toContain('enable web browsing')
   expect(loaded?.instructions).toContain('capabilities reports imageGeneration=true')

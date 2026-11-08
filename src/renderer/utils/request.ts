@@ -42,39 +42,28 @@ async function retryRequest<T>(fn: () => Promise<T>, retry: number, url: string)
   throw requestError || new Error('Unknown error')
 }
 
-function buildHeaders(options: RequestOptions, url: string): Headers {
+function buildHeaders(options: RequestOptions): Headers {
   const headers = new Headers(options.headers)
   headers.set('Content-Type', 'application/json')
-
-  if (options.useProxy && !isLocalHost(url) && platform.type !== 'mobile' && platform.type !== 'desktop') {
-    headers.set('CHATBOX-TARGET-URI', url)
-    headers.set('CHATBOX-PLATFORM', platform.type)
-  }
-
   return headers
 }
 
 async function doRequest(url: string, options: RequestOptions): Promise<Response> {
   const { signal, retry = 3, useProxy = false, body, method } = options
-  let requestUrl = url
-  const headers = buildHeaders(options, url)
+  const headers = buildHeaders(options)
   const nativeBackgroundStream =
     platform.type === 'mobile' && backgroundStreamPrototypeEnabled && isBackgroundStreamRequest(url, body, headers)
 
-  if (useProxy && !isLocalHost(url) && platform.type !== 'mobile' && platform.type !== 'desktop') {
-    const version = await platform.getVersion()
-    headers.set('CHATBOX-VERSION', version || 'unknown')
-    requestUrl = 'https://cors-proxy.chatboxai.app/proxy-api/completions'
-  }
-
+  // Legacy useProxy selects native compatibility transports, never a hosted relay.
+  // Web BYOK requests go directly to the provider and require its CORS support.
   const makeRequest = async () => {
     let res: Response
     if (platform.type === 'mobile' && (useProxy || nativeBackgroundStream)) {
-      res = await handleMobileRequest(requestUrl, method, headers, body, signal)
+      res = await handleMobileRequest(url, method, headers, body, signal)
     } else if (platform.type === 'desktop' && useProxy && !isLocalHost(url)) {
-      res = await desktopDirectRequestFromWindow(requestUrl, method, headers, body, signal)
+      res = await desktopDirectRequestFromWindow(url, method, headers, body, signal)
     } else {
-      res = await fetch(requestUrl, { method, headers, body, signal })
+      res = await fetch(url, { method, headers, body, signal })
     }
 
     if (!res.ok) {
@@ -90,7 +79,7 @@ async function doRequest(url: string, options: RequestOptions): Promise<Response
     return res
   }
 
-  return retryRequest(makeRequest, nativeBackgroundStream ? 0 : retry, requestUrl)
+  return retryRequest(makeRequest, nativeBackgroundStream ? 0 : retry, url)
 }
 
 export const apiRequest = {

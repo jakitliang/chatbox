@@ -34,7 +34,9 @@ export function isCopilotDetail(value: unknown): value is CopilotDetail {
     typeof value.id === 'string' &&
     typeof value.name === 'string' &&
     typeof value.prompt === 'string' &&
-    ['picUrl', 'description', 'sourceId'].every((key) => value[key] === undefined || typeof value[key] === 'string') &&
+    ['picUrl', 'description', 'sourceId', 'category'].every(
+      (key) => value[key] === undefined || typeof value[key] === 'string'
+    ) &&
     ['createdAt', 'updatedAt', 'usedCount'].every(
       (key) => value[key] === undefined || (typeof value[key] === 'number' && Number.isFinite(value[key]))
     ) &&
@@ -63,7 +65,9 @@ export function searchCopilots(copilots: readonly CopilotDetail[], search: strin
   return copilots.filter(
     (copilot) =>
       !query ||
-      [copilot.name, copilot.prompt, copilot.description ?? ''].some((value) => value.toLowerCase().includes(query))
+      [copilot.name, copilot.prompt, copilot.description ?? '', copilot.category ?? ''].some((value) =>
+        value.toLowerCase().includes(query)
+      )
   )
 }
 
@@ -126,6 +130,7 @@ export class CopilotService {
       avatar: copilot.avatar ?? (copilot.picUrl ? { type: 'url', url: copilot.picUrl } : undefined),
       backgroundImage: copilot.backgroundImage,
       description: copilot.description,
+      ...(copilot.category === undefined ? {} : { category: copilot.category }),
     })
   }
 
@@ -208,6 +213,7 @@ export class CopilotService {
       name,
       prompt,
       ...(copilot.description === undefined ? {} : { description: copilot.description.trim() }),
+      ...(copilot.category === undefined ? {} : { category: copilot.category.trim() }),
       createdAt: previous?.createdAt ?? now,
       updatedAt: now,
     }

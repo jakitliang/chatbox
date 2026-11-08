@@ -14,6 +14,8 @@ export {
   copilotMemoryTokensAtom,
   getCopilotName,
   myCopilotsAtom,
+  myCopilotsStatusAtom,
+  reloadCopilotDefinitions,
   removeMyCopilot,
 } from './memoryRuntime'
 

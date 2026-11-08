@@ -2,17 +2,18 @@ import { settings as defaultSettings } from '@shared/defaults'
 import { ModelProviderEnum, ModelProviderType, type Settings } from '@shared/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { createModelDependenciesMock, fetchOpenRouterImageModelsMock, getModelManifestMock } = vi.hoisted(() => ({
+const { createModelDependenciesMock, fetchOpenRouterImageModelsMock, getModelManifestMock, backend } = vi.hoisted(() => ({
   createModelDependenciesMock: vi.fn(),
   fetchOpenRouterImageModelsMock: vi.fn(),
   getModelManifestMock: vi.fn(),
+  backend: { origin: 'http://127.0.0.1:4567' },
 }))
 
 vi.mock('@/adapters', () => ({ createModelDependencies: createModelDependenciesMock }))
 vi.mock('@shared/providers/definitions/models/openrouter-image-api', () => ({
   fetchOpenRouterImageModels: fetchOpenRouterImageModelsMock,
 }))
-vi.mock('@/packages/remote', () => ({ getModelManifest: getModelManifestMock }))
+vi.mock('@/packages/remote', () => ({ getModelManifest: getModelManifestMock, getAPIOrigin: () => backend.origin }))
 vi.mock('@/platform', () => ({ default: { type: 'desktop' } }))
 vi.mock('@/stores/settingsStore', async () => {
   const { createStore } = await import('zustand/vanilla')
@@ -47,6 +48,7 @@ describe('image model catalog', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     queryClient.clear()
+    backend.origin = 'http://127.0.0.1:4567'
     createModelDependenciesMock.mockResolvedValue({ request: {} })
   })
 
@@ -74,11 +76,14 @@ describe('image model catalog', () => {
     expect(getModelManifestMock).not.toHaveBeenCalled()
   })
 
-  it('loads the Chatbox manifest, applies exclusions, and preserves server order', async () => {
+  it('ignores stored Chatbox licenses and image models without loading the provider', async () => {
     const settings = createSettings()
     settings.licenseKey = 'license'
     settings.providers = {
-      [ModelProviderEnum.ChatboxAI]: { excludedModels: ['disabled-image'] },
+      [ModelProviderEnum.ChatboxAI]: {
+        excludedModels: ['disabled-image'],
+        models: [{ modelId: 'old-image', type: 'image', nickname: 'Old Image' }],
+      },
     }
     getModelManifestMock.mockResolvedValue(
       manifest([
@@ -88,15 +93,11 @@ describe('image model catalog', () => {
       ])
     )
 
-    await expect(getAvailableImageModels(settings)).resolves.toEqual([
-      { provider: ModelProviderEnum.ChatboxAI, modelId: 'other-image', nickname: 'Other Image' },
-      { provider: ModelProviderEnum.ChatboxAI, modelId: 'gpt-image-1.5', nickname: 'GPT Image 1.5' },
-    ])
-    expect(getModelManifestMock).toHaveBeenCalledWith({
-      aiProvider: ModelProviderEnum.ChatboxAI,
-      language: settings.language,
-      licenseKey: 'license',
-    })
+    await expect(getAvailableImageModels(settings)).resolves.toEqual([])
+    await expect(queryClient.fetchQuery(providerImageModelsQueryOptions(ModelProviderEnum.ChatboxAI, {
+      licenseKey: settings.licenseKey,
+    }))).resolves.toEqual([])
+    expect(getModelManifestMock).not.toHaveBeenCalled()
   })
 
   it('merges remote and manual models for configured built-in and custom providers', async () => {
@@ -210,7 +211,7 @@ describe('image model catalog', () => {
     expect(getModelManifestMock).not.toHaveBeenCalled()
   })
 
-  it('falls back to the Chatbox manifest when OpenRouter image model discovery fails', async () => {
+  it('falls back to the self-host manifest when OpenRouter image model discovery fails', async () => {
     const settings = createSettings()
     settings.providers = {
       [ModelProviderEnum.OpenRouter]: {
@@ -286,6 +287,24 @@ describe('image model catalog', () => {
 })
 
 describe('targeted image capabilities', () => {
+  it('scopes catalog queries by the selected backend without storing license credentials', async () => {
+    queryClient.clear()
+    vi.clearAllMocks()
+    backend.origin = 'http://127.0.0.1:4567'
+    const options = { language: 'en', licenseKey: 'old-secret' }
+    const first = providerImageModelsQueryOptions(ModelProviderEnum.OpenAI, options)
+    getModelManifestMock.mockResolvedValueOnce(manifest([{ modelId: 'first-image', modelName: 'First' }]))
+    await queryClient.fetchQuery(first)
+    backend.origin = 'https://selfhost.example'
+    const second = providerImageModelsQueryOptions(ModelProviderEnum.OpenAI, options)
+    getModelManifestMock.mockResolvedValueOnce(manifest([{ modelId: 'second-image', modelName: 'Second' }]))
+    await expect(queryClient.fetchQuery(second)).resolves.toEqual([{ modelId: 'second-image', displayName: 'Second' }])
+    expect(second.queryKey).not.toEqual(first.queryKey)
+    expect(JSON.stringify([first.queryKey, second.queryKey])).not.toContain('old-secret')
+    expect(getModelManifestMock).toHaveBeenCalledTimes(2)
+    backend.origin = 'http://127.0.0.1:4567'
+  })
+
   it('rotates the cache identity on logout and relogin between catalog consumers', () => {
     const providers = { openrouter: { apiKey: 'relogin-key' } }
     settingsStore.setState({ providers })

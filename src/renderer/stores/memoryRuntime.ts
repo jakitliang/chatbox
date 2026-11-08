@@ -1,4 +1,4 @@
-import { MY_COPILOTS_STORAGE_KEY } from '@chatbox/core/application/copilots'
+import { initializeLocalCopilots, MY_COPILOTS_STORAGE_KEY } from '@chatbox/core/application/copilots'
 import {
   AGENT_MEMORIES_STORAGE_KEY,
   COPILOT_MEMORIES_STORAGE_KEY,
@@ -9,10 +9,12 @@ import {
 } from '@chatbox/core/application/memory'
 import type { CopilotDetail } from '@shared/types'
 import { type CopilotMemoryStateToken, parseCopilotMemoryStateTokens } from '@shared/types/agent-persona'
-import { getDefaultStore } from 'jotai'
+import { atom, getDefaultStore } from 'jotai'
 import { atomWithStorage } from 'jotai/utils'
 import storage from '@/storage'
 import { nonSessionStorageKey } from '@/storage/non-session-key'
+
+export const myCopilotsStatusAtom = atom<{ isLoading: boolean; error: Error | null }>({ isLoading: true, error: null })
 
 /**
  * An `atomWithStorage` that also keeps its current value in a module-level mirror.
@@ -33,11 +35,42 @@ function createMirroredListAtom<T>(
   /** Load the persisted list once; a write landing meanwhile is newer and wins. */
   const read = (storageKey: string = key, initialValue: T[] = []): Promise<T[]> => {
     if (current !== undefined) return Promise.resolve(current)
-    pendingRead ??= storage
-      .getItem<unknown>(storageKey, initialValue, { persistInitialValue: true })
+    if (storageKey === MY_COPILOTS_STORAGE_KEY) {
+      getDefaultStore().set(myCopilotsStatusAtom, { isLoading: true, error: null })
+    }
+    pendingRead ??= (storageKey === MY_COPILOTS_STORAGE_KEY
+      ? initializeLocalCopilots(
+          {
+            get: <V>(key: string) => storage.getItemRaw<V>(key),
+            set: <V>(key: string, value: V) => storage.setItemNow(nonSessionStorageKey(key), value),
+          },
+          async () => {
+            const [{ loadBundledCopilotSeed }, { currentBlobStorage }, { default: platform }] = await Promise.all([
+              import('@/catalog/bundled-copilots'),
+              import('@/adapters/CurrentBlobStorage'),
+              import('@/platform'),
+            ])
+            const language = await platform.getLocale().catch(() => 'en')
+            const seed = loadBundledCopilotSeed(Date.now(), language)
+            for (const avatar of seed.avatars) await currentBlobStorage.set(avatar.storageKey, avatar.data)
+            return seed.copilots
+          }
+        )
+      : storage.getItem<unknown>(storageKey, initialValue, { persistInitialValue: true }))
       .then((stored) => {
         if (current === undefined) current = parse ? parse(stored) : (stored as T[])
+        if (storageKey === MY_COPILOTS_STORAGE_KEY) {
+          getDefaultStore().set(myCopilotsStatusAtom, { isLoading: false, error: null })
+        }
         return current
+      })
+      .catch((cause: unknown) => {
+        if (storageKey !== MY_COPILOTS_STORAGE_KEY) throw cause
+        const error = cause instanceof Error ? cause : new Error(String(cause))
+        getDefaultStore().set(myCopilotsStatusAtom, { isLoading: false, error })
+        // Keep the atom renderable so the UI can offer retry. Do not set the mirror:
+        // a later mutation must retry the read, never replace unread data.
+        return [] as T[]
       })
       .finally(() => {
         pendingRead = undefined
@@ -64,13 +97,23 @@ function createMirroredListAtom<T>(
     // One hydration read resolves for every mutation waiting on it, so build on the
     // mirror rather than that shared value: otherwise the second mutation restarts
     // from the pre-hydration list and drops the first.
-    return read().then((items) => store.set(listAtom, updater(current ?? items)))
+    return read().then((items) => {
+      if (key === MY_COPILOTS_STORAGE_KEY) {
+        const status = store.get(myCopilotsStatusAtom)
+        if (status.error) throw status.error
+      }
+      return store.set(listAtom, updater(current ?? items))
+    })
   }
 
   const reload = async (): Promise<T[]> => {
     await pendingRead?.catch(() => undefined)
     current = undefined
     const value = await read()
+    if (key === MY_COPILOTS_STORAGE_KEY) {
+      const status = getDefaultStore().get(myCopilotsStatusAtom)
+      if (status.error) throw status.error
+    }
     replacingFromStorage = true
     try {
       await getDefaultStore().set(listAtom, value)
@@ -171,6 +214,7 @@ export function withCopilotDefinitionsLock<T>(
 }
 
 export function addOrUpdateMyCopilot(target: CopilotDetail): Promise<void> {
+  target = { ...target, ...(target.category === undefined ? {} : { category: target.category.trim() }) }
   return withCopilotDefinitionsLock(() =>
     myCopilots.update((copilots) => {
       const existingIndex = copilots.findIndex((copilot) => copilot.id === target.id)

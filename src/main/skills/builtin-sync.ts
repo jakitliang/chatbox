@@ -1,6 +1,7 @@
 import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
+import { getChatboxAPIOrigin } from '@shared/request/chatbox-api-origin'
 import type { SkillInfo, SkillMetadata } from '@shared/types/skills'
 import { app } from 'electron'
 import { getLogger } from '../util'
@@ -94,13 +95,6 @@ function hashSkillContent(body: string, files: RemoteSkillFile[] = []): string {
     .createHash('sha256')
     .update(JSON.stringify({ body: body.trim(), files: normalized }))
     .digest('hex')
-}
-
-function getApiOrigin(): string {
-  if (process.env.USE_LOCAL_API) {
-    return 'http://localhost:8002'
-  }
-  return 'https://api.chatboxai.app'
 }
 
 function readManifest(): SnapshotManifest {
@@ -286,10 +280,10 @@ function buildMetadataFromDetail(detail: RemoteSkillDetail): SkillMetadata {
  * 任何网络/解析失败都静默保留现有快照（绝不清空），保证内置 skill 永远可用。
  * @returns 是否有快照被更新
  */
-export async function syncBuiltinSkills(lang?: string): Promise<boolean> {
+async function legacySyncBuiltinSkills(lang?: string): Promise<boolean> {
   ensureBuiltinSeeded()
 
-  const origin = getApiOrigin()
+  const origin = getChatboxAPIOrigin()
   const langQuery = lang ? `?lang=${encodeURIComponent(lang)}` : ''
   const manifestUrl = `${origin}/api/builtin_skills${langQuery}`
 
@@ -346,6 +340,12 @@ export async function syncBuiltinSkills(lang?: string): Promise<boolean> {
   writeManifest(manifest)
   log.info(`syncBuiltinSkills: done, remote=${remote.data.length} skill(s), changed=${changed}`)
   return changed
+}
+
+/** Compatibility only: the backend is exclusively a manual snapshot archive. */
+export async function syncBuiltinSkills(_lang?: string): Promise<boolean> {
+  ensureBuiltinSeeded()
+  return false
 }
 
 /** 从快照目录发现所有内置 skill（解析 SKILL.md），标记 isBuiltin。 */

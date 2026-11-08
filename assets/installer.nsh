@@ -1,5 +1,88 @@
 !include LogicLib.nsh
 
+; Remove only commands owned by this installation. HKCR is a merged view:
+; never delete it directly or search/delete unrelated keys by product substring.
+!macro ChatboxRemoveOwnedProtocol ROOT
+  StrCpy $R4 0
+  ReadRegStr $R0 ${ROOT} "Software\Classes\chatbox\shell\open\command" ""
+  StrCpy $R1 '$"$INSTDIR\${APP_EXECUTABLE_FILENAME}$"'
+  StrLen $R2 $R1
+  StrCpy $R3 $R0 $R2
+  ${If} $R3 == $R1
+    ; Require end-of-command or a separating space, not a longer path/token.
+    StrCpy $R3 $R0 1 $R2
+    ${If} $R3 == ""
+    ${OrIf} $R3 == " "
+      StrCpy $R4 1
+      DeleteRegKey ${ROOT} "Software\Classes\chatbox"
+      DetailPrint "Removed owned chatbox protocol registration (${ROOT})"
+    ${EndIf}
+  ${EndIf}
+!macroend
+
+!macro ChatboxRemoveOwnedStartup ROOT
+  ReadRegStr $R0 ${ROOT} "Software\Microsoft\Windows\CurrentVersion\Run" "Chatbox"
+  StrCpy $R1 '$"$INSTDIR\${APP_EXECUTABLE_FILENAME}$"'
+  StrLen $R2 $R1
+  StrCpy $R3 $R0 $R2
+  ${If} $R3 == $R1
+    StrCpy $R3 $R0 1 $R2
+    ${If} $R3 == ""
+    ${OrIf} $R3 == " "
+      ; Shared Run/StartupApproved keys must survive. Delete named values only.
+      DeleteRegValue ${ROOT} "Software\Microsoft\Windows\CurrentVersion\Run" "Chatbox"
+      DeleteRegValue ${ROOT} "Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" "Chatbox"
+      DeleteRegValue ${ROOT} "Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run32" "Chatbox"
+      DetailPrint "Removed owned Chatbox startup registration (${ROOT})"
+    ${EndIf}
+  ${ElseIf} $R0 == ""
+  ${AndIf} $R4 == 1
+    ; Task Manager approval may outlive auto-launch.disable(). Only clean that
+    ; orphan when this hive's protocol proved ownership and no other Run value
+    ; exists. A different installation's Run value always blocks this branch.
+    DeleteRegValue ${ROOT} "Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" "Chatbox"
+    DeleteRegValue ${ROOT} "Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run32" "Chatbox"
+  ${EndIf}
+!macroend
+
+!macro ChatboxCleanRegistryView
+  !insertmacro ChatboxRemoveOwnedProtocol HKCU
+  !insertmacro ChatboxRemoveOwnedStartup HKCU
+  ; Elevated all-users installs may have machine-wide registrations.
+  ; Ownership checks also protect registrations for another installation.
+  ${If} $installMode == "all"
+    !insertmacro ChatboxRemoveOwnedProtocol HKLM
+    !insertmacro ChatboxRemoveOwnedStartup HKLM
+  ${EndIf}
+!macroend
+
+!macro customUnInstall
+  ; electron-builder invokes its uninstaller during upgrades as well.
+  ${IfNot} ${isUpdated}
+    Push $R0
+    Push $R1
+    Push $R2
+    Push $R3
+    Push $R4
+    SetRegView 32
+    !insertmacro ChatboxCleanRegistryView
+    ${If} ${RunningX64}
+    !ifdef APP_ARM64
+      ${OrIf} ${IsNativeARM64}
+    !endif
+      SetRegView 64
+      !insertmacro ChatboxCleanRegistryView
+    ${EndIf}
+    ; Restore electron-builder's native registry view for its own cleanup.
+    !insertmacro check64BitAndSetRegView
+    Pop $R4
+    Pop $R3
+    Pop $R2
+    Pop $R1
+    Pop $R0
+  ${EndIf}
+!macroend
+
 ; electron-builder's default close request sends WM_CLOSE on some Windows
 ; installations. Chatbox remains alive after its last window closes because it
 ; owns a tray icon, so ask the running instance to quit explicitly first.

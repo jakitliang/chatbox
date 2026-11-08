@@ -1,4 +1,5 @@
 import { app, type BrowserWindow, Menu, type MenuItemConstructorOptions, shell } from 'electron'
+import { getChatboxAPIOrigin } from '../shared/request/chatbox-api-origin'
 import Locale from './locales'
 
 interface DarwinMenuItemConstructorOptions extends MenuItemConstructorOptions {
@@ -220,25 +221,13 @@ export default class MenuBuilder {
         {
           label: 'Learn More',
           click() {
-            shell.openExternal('https://chatboxai.app')
+            shell.openExternal(getChatboxAPIOrigin())
           },
         },
         {
           label: 'Github Repo',
           click() {
             shell.openExternal('https://github.com/chatboxai/chatbox')
-          },
-        },
-        // {
-        //   label: 'Community Discussions',
-        //   click() {
-        //     shell.openExternal('https://www.electronjs.org/community');
-        //   },
-        // },
-        {
-          label: 'Search Issues',
-          click() {
-            shell.openExternal('https://github.com/chatboxai/chatbox/issues?q=is%3Aissue')
           },
         },
       ],
@@ -311,25 +300,13 @@ export default class MenuBuilder {
           {
             label: 'Learn More',
             click() {
-              shell.openExternal('https://chatboxai.app')
+              shell.openExternal(getChatboxAPIOrigin())
             },
           },
           {
             label: 'Github Repo',
             click() {
               shell.openExternal('https://github.com/chatboxai/chatbox')
-            },
-          },
-          // {
-          //   label: 'Community Discussions',
-          //   click() {
-          //     shell.openExternal('https://www.electronjs.org/community');
-          //   },
-          // },
-          {
-            label: 'Search Issues',
-            click() {
-              shell.openExternal('https://github.com/chatboxai/chatbox/issues?q=is%3Aissue')
             },
           },
         ],

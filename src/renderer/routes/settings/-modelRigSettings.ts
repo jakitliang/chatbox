@@ -46,13 +46,13 @@ export function modelRefsEqual(a?: ModelRef, b?: ModelRef) {
 
 export function effectiveParserType(settings: Settings, platformDefault: DocumentParserType): DocumentParserType {
   const type = settings.extension?.documentParser?.type
-  if (!type || type === 'none') return platformDefault
+  if (!type || type === 'none' || type === 'chatbox-ai') return platformDefault === 'chatbox-ai' ? 'local' : platformDefault
   return type
 }
 
 export function customParserTypes(host: { isDesktopLike: boolean; isMobile: boolean }): DocumentParserType[] {
   const types: DocumentParserType[] = []
-  if (host.isDesktopLike || host.isMobile) types.push('local')
+  types.push('local')
   if (host.isDesktopLike) types.push('mineru')
   return types
 }
@@ -75,9 +75,9 @@ export function isSlotPresetOn(
     case 'rerank':
       return isAutoOrChatbox(settings.defaultRerankModel)
     case 'parser':
-      return effectiveParserType(settings, parserDefault) === 'chatbox-ai'
+      return effectiveParserType(settings, parserDefault) === 'local'
     case 'search':
-      return (settings.extension?.webSearch?.provider ?? 'build-in') === 'build-in'
+      return searchProvider(settings) === 'bing'
     case 'image':
       return !picture || isChatboxProvider(picture.provider)
     case 'asr':
@@ -117,7 +117,8 @@ export function settingsPatchForModelSlot(slotId: ModelSlotId, selection: ModelR
 }
 
 export function searchProvider(settings: Settings): WebSearchProviderValue {
-  return (settings.extension?.webSearch?.provider ?? 'build-in') as WebSearchProviderValue
+  const provider = settings.extension?.webSearch?.provider
+  return !provider || (provider as string) === 'build-in' ? 'bing' : provider
 }
 
 export function applyAllPresetsSettings(): Pick<
@@ -144,11 +145,11 @@ export function applyAllPresetsExtension(settings: Settings): Settings['extensio
     ...settings.extension,
     documentParser: {
       ...settings.extension.documentParser,
-      type: 'chatbox-ai',
+      type: 'local',
     },
     webSearch: {
       ...settings.extension.webSearch,
-      provider: 'build-in',
+      provider: 'bing',
     },
   }
 }
@@ -193,8 +194,8 @@ export function describeError(error: unknown): { error: string; fix: string } {
   }
   if (/license|activate chatbox/i.test(msg)) {
     return {
-      error: 'Chatbox AI is not activated',
-      fix: 'Activate Chatbox AI in Chatbox AI settings, or use your own model.',
+      error: 'This provider is unavailable',
+      fix: 'Choose a model in Model Provider settings.',
     }
   }
   return {

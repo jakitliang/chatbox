@@ -97,6 +97,7 @@ const copilotSchema = z
     avatar: ImageSourceSchema.optional(),
     backgroundImage: ImageSourceSchema.optional(),
     description: z.string().optional(),
+    category: z.string().optional(),
     tags: z.array(z.string()).optional(),
     screenshots: z.array(ImageSourceSchema).optional(),
     createdAt: z.number().finite().optional(),

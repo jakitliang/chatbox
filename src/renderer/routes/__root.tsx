@@ -215,6 +215,7 @@ function Root() {
       void prefetchModelRegistry()
 
       const syncRemoteConfig = async () => {
+        // Compatibility state is local; backend access belongs exclusively to manual sync.
         const remoteConfig = await remote
           .getRemoteConfig('setting_chatboxai_first')
           .catch(() => ({ setting_chatboxai_first: false }) as RemoteConfig)
@@ -252,7 +253,7 @@ function Root() {
       if (
         location.pathname === '/guide' ||
         location.pathname.startsWith('/dev') ||
-        location.pathname === '/settings/mcp'
+        location.pathname.startsWith('/settings')
       ) {
         initialized.current = true
         return

@@ -1,11 +1,10 @@
-import { ActionIcon, Button, Flex, Loader, Text } from '@mantine/core'
+import { ActionIcon, Flex, Loader, Text } from '@mantine/core'
 import { Link } from '@mui/material'
 import { TestId } from '@shared/automation/testids'
 import { aiProviderNameHash } from '@shared/models'
 import type { Message } from '@shared/types'
 import { ModelProviderEnum } from '@shared/types/provider'
 import {
-  IconArrowRight,
   IconCheck,
   IconChevronDown,
   IconChevronRight,
@@ -16,20 +15,15 @@ import {
 import type React from 'react'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { trackJkClickEvent } from '@/analytics/jk'
-import { JK_EVENTS, JK_PAGE_NAMES } from '@/analytics/jk-events'
 import { ChatboxAIErrorMessage } from '@/components/common/ChatboxAIErrorMessage'
 import { ErrorNotice } from '@/components/common/ErrorNotice'
 import classes from '@/components/common/ErrorNotice.module.css'
-import LinkTargetBlank from '@/components/common/Link'
 import { AppTooltip as Tooltip } from '@/components/ui/tooltip'
 import { useCopied } from '@/hooks/useCopied'
 import { navigateToSettings } from '@/modals/settings-navigation'
-import { buildChatboxUrl } from '@/packages/remote'
 import { translateTexts } from '@/packages/translation'
-import platform from '@/platform'
 import * as settingActions from '@/stores/settingActions'
-import { useLanguage, useSettingsStore } from '@/stores/settingsStore'
+import { useLanguage } from '@/stores/settingsStore'
 import type { MessageErrorPresentation } from './message-error-presentation'
 
 const MAX_CHARS = 200
@@ -150,7 +144,7 @@ function ErrorTip({ presentation, model }: { presentation: GenericPresentation; 
                 <a
                   className="cursor-pointer"
                   style={errorLinkStyle}
-                  onClick={() => navigateToSettings(`/provider/${ModelProviderEnum.ChatboxAI}`)}
+                  onClick={() => navigateToSettings('/provider')}
                 />
               ),
             }}
@@ -159,7 +153,7 @@ function ErrorTip({ presentation, model }: { presentation: GenericPresentation; 
       }
       return (
         <Trans
-          i18nKey="Connection to {{aiProvider}} failed. This typically occurs due to incorrect configuration or {{aiProvider}} account issues. Please <buttonOpenSettings>check your settings</buttonOpenSettings> and verify your {{aiProvider}} account status, or purchase a <LinkToLicensePricing>Chatbox AI License</LinkToLicensePricing> to unlock all advanced models instantly without any configuration."
+          i18nKey="Connection to {{aiProvider}} failed. Please <buttonOpenSettings>check your provider settings</buttonOpenSettings>, API key, and server availability."
           values={{ aiProvider: getProviderName(presentation.providerId) }}
           components={{
             buttonOpenSettings: (
@@ -169,21 +163,6 @@ function ErrorTip({ presentation, model }: { presentation: GenericPresentation; 
                 onClick={() =>
                   navigateToSettings(presentation.providerId ? `/provider/${presentation.providerId}` : '/provider')
                 }
-              />
-            ),
-            LinkToLicensePricing: (
-              <LinkTargetBlank
-                style={errorLinkStyle}
-                href={buildChatboxUrl(
-                  `/redirect_app/advanced_url_processing/${settingActions.getLanguage()}?utm_source=app&utm_content=msg_bad_provider`
-                )}
-              />
-            ),
-            a: (
-              <a
-                style={errorLinkStyle}
-                href={buildChatboxUrl(`/redirect_app/faqs/${settingActions.getLanguage()}`)}
-                target="_blank"
               />
             ),
           }}
@@ -202,10 +181,17 @@ function ErrorTip({ presentation, model }: { presentation: GenericPresentation; 
     case 'paint-not-supported':
       return (
         <Trans
-          i18nKey="ai provider no implemented paint tips"
+          i18nKey="The configured provider ({{aiProvider}}) does not support image generation. Select a compatible image model in <0>provider settings</0>."
           values={{ aiProvider: getProviderName(presentation.providerId) }}
           components={[
-            <Link key="link" className="cursor-pointer" style={errorLinkStyle} onClick={() => navigateToSettings()} />,
+            <Link
+              key="link"
+              component="button"
+              type="button"
+              className="cursor-pointer"
+              style={errorLinkStyle}
+              onClick={() => navigateToSettings('/provider')}
+            />,
           ]}
         />
       )
@@ -218,17 +204,18 @@ function ErrorTip({ presentation, model }: { presentation: GenericPresentation; 
     case 'unknown':
       return (
         <Trans
-          i18nKey="unknown error tips"
-          components={[
-            <a
-              key="a"
-              style={errorLinkStyle}
-              href={buildChatboxUrl(
-                `/redirect_app/faqs/${settingActions.getLanguage()}?utm_source=app&utm_content=msg_error_unknown`
-              )}
-              target="_blank"
-            />,
-          ]}
+          i18nKey="An unexpected error occurred. Please retry or check your <OpenSettingButton>provider settings</OpenSettingButton> and self-host server logs."
+          components={{
+            OpenSettingButton: (
+              <Link
+                component="button"
+                type="button"
+                className="cursor-pointer"
+                style={errorLinkStyle}
+                onClick={() => navigateToSettings('/provider')}
+              />
+            ),
+          }}
         />
       )
   }
@@ -241,7 +228,6 @@ export function GenericMessageError(props: {
 }) {
   const { msg, presentation, onRetry } = props
   const { t } = useTranslation()
-  const licenseKey = useSettingsStore((state) => state.licenseKey)
   const language = useLanguage()
   const [retrying, setRetrying] = useState(false)
   const [expanded, setExpanded] = useState(false)
@@ -330,38 +316,6 @@ export function GenericMessageError(props: {
             onCopy={copy}
             t={t}
           />
-        </div>
-      )}
-      {!licenseKey && msg.aiProvider !== ModelProviderEnum.ChatboxAI && (
-        <div className={classes.trial}>
-          <Tooltip
-            label={t(
-              'If you have never had a license before, you can claim it after logging in on the official website.'
-            )}
-            withArrow
-            multiline
-            maw={240}
-            position="bottom-start"
-          >
-            <Button
-              variant="default"
-              size="xs"
-              radius="sm"
-              fw={400}
-              styles={{ label: { whiteSpace: 'normal', textAlign: 'start' }, root: { height: 'auto' } }}
-              leftSection={<span className={classes.trialDot} aria-hidden="true" />}
-              rightSection={<IconArrowRight size={14} />}
-              onClick={() => {
-                trackJkClickEvent(JK_EVENTS.FREE_LICENSE_CLAIM_CLICK, {
-                  pageName: JK_PAGE_NAMES.CHAT_PAGE,
-                  content: 'chat_error',
-                })
-                platform.openLink('https://chatboxai.app/login')
-              }}
-            >
-              {t('Chatbox AI free trial available')}
-            </Button>
-          </Tooltip>
         </div>
       )}
     </ErrorNotice>

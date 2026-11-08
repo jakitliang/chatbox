@@ -93,17 +93,17 @@ export const KnowledgeBaseChatboxAIInfo: React.FC<KnowledgeBaseChatboxAIInfoProp
     <Stack gap="sm">
       {showModelsLabel && (
         <Group>
-          {t('Models')}: <Pill>Chatbox AI</Pill>
+          {t('Models')}: <Pill>{t('Provider unavailable')}</Pill>
         </Group>
       )}
       <Text size="sm" c="dimmed">
         {t(
-          'Chatbox AI provides all the essential model support required for knowledge base processing. Consumes compute points.'
+          'This legacy provider has been removed. Choose a configured provider and recreate this knowledge base.'
         )}
       </Text>
       {hasError && (
         <Text size="sm" c="red">
-          {t('Failed to load Chatbox AI models configuration')}
+          {t('Provider unavailable')}
         </Text>
       )}
     </Stack>
@@ -130,7 +130,6 @@ export const KnowledgeBaseProviderModeSelect: React.FC<KnowledgeBaseProviderMode
       onChange={(value) => onChange(value as 'chatbox-ai' | 'custom')}
     >
       <Group mt="xs">
-        <Radio value="chatbox-ai" label="Chatbox AI" disabled={isChatboxAIDisabled} />
         <Radio value="custom" label={t('Custom')} />
       </Group>
     </Radio.Group>
@@ -221,12 +220,6 @@ const PARSER_OPTIONS: { value: DocumentParserType; label: string; description: s
     label: 'Local',
     description:
       'Uses built-in document parsing feature, supports common file types. Free usage, no compute points will be consumed.',
-  },
-  {
-    value: 'chatbox-ai',
-    label: 'Chatbox AI',
-    description:
-      'Cloud-based document parsing service, supports PDF, Office files, EPUB and many other file types. Consumes compute points.',
   },
   {
     value: 'mineru',

@@ -222,8 +222,6 @@ export function SettingsRoot() {
   const activeKey = settingsNavKeyForSection(section)
   const isSmallScreen = useIsSmallScreen()
   const { providers: availableProviders } = useProviders()
-  const isChatboxAIActivated = availableProviders.some((p) => p.id === 'chatbox-ai')
-  const licensePlanName = useSettingsStore((s) => s.licensePlanName)
   const groups = useMemo(() => getSettingsNavGroups(), [])
   const meta = useSettingsNavMeta()
   const [query, setQuery] = useState('')
@@ -272,7 +270,7 @@ export function SettingsRoot() {
             </div>
           ) : (
             <>
-              <Link to="/settings/chatbox-ai" className="block no-underline">
+              <Link to="/settings/provider" className="block no-underline">
                 <Flex
                   align="center"
                   gap="sm"
@@ -287,12 +285,10 @@ export function SettingsRoot() {
                   </Flex>
                   <Flex direction="column" flex={1} miw={0}>
                     <Text fz={16} fw={600} lh="22px">
-                      Chatbox AI
+                      {t('Model Provider')}
                     </Text>
-                    <Text fz={13} lh="18px" c={isChatboxAIActivated ? 'chatbox-success' : 'chatbox-tertiary'} truncate>
-                      {isChatboxAIActivated
-                        ? [t('Activated'), licensePlanName].filter(Boolean).join(' · ')
-                        : t('Not activated')}
+                    <Text fz={13} lh="18px" c="chatbox-tertiary" truncate>
+                      {t('{{count}} configured', { count: availableProviders.length })}
                     </Text>
                   </Flex>
                   <ScalableIcon icon={IconChevronRight} size={20} className="text-chatbox-tint-tertiary" />
@@ -390,11 +386,6 @@ export function SettingsRoot() {
                       <Text span fz={14} lh="20px" flex={1} lineClamp={1} className="!text-inherit !font-[inherit]">
                         {itemLabel(item)}
                       </Text>
-                      {item.key === 'chatbox-ai' && isChatboxAIActivated && (
-                        <Text span fz={11} c="chatbox-success">
-                          {t('Activated')}
-                        </Text>
-                      )}
                     </Link>
                   )
                 })}

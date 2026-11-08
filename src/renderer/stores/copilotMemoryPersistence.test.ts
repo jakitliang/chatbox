@@ -45,6 +45,7 @@ beforeEach(() => {
   vi.resetModules()
   vi.useFakeTimers()
   values.clear()
+  values.set('local-copilots-initialized', true)
   values.set(ownersKey, [])
   values.set(tokensKey, [])
   values.set('agent-memories', [])

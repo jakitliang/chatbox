@@ -78,12 +78,6 @@ export default class OpenAIResponses extends AbstractAISDKModel {
     if (this.options.extraHeaders && Object.keys(this.options.extraHeaders).length > 0) {
       return this.options.extraHeaders
     }
-    if (this.options.apiHost.includes('openrouter.ai')) {
-      return {
-        'HTTP-Referer': 'https://chatboxai.app',
-        'X-Title': 'Chatbox AI',
-      }
-    }
     if (this.options.apiHost.includes('aihubmix.com')) {
       return {
         'APP-Code': 'VAFU9221',

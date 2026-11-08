@@ -27,7 +27,7 @@ vi.mock('../platform', () => ({
   },
 }))
 
-describe('settings-backed telemetry initialization', () => {
+describe('permanently disabled telemetry initialization', () => {
   beforeEach(() => {
     initSettingsStoreMock.mockClear()
     settingsStoreGetStateMock.mockReset()
@@ -44,21 +44,25 @@ describe('settings-backed telemetry initialization', () => {
     expect(initSettingsStoreMock).not.toHaveBeenCalled()
   })
 
-  it('hydrates settings only after explicit post-migration initialization', async () => {
-    const [{ initGoogleAnalyticsTracking }, { initJkTracking }, { initPlausibleTracking }] = await Promise.all([
+  it('does not hydrate settings or subscribe even when explicitly initialized', async () => {
+    const [{ initGoogleAnalyticsTracking }, { initJkTracking }, { initPlausibleTracking }, { initSentry }] = await Promise.all([
       import('./ga_init'),
       import('./jk_analytics_init'),
       import('./plausible_init'),
+      import('./sentry_init'),
     ])
 
     await initGoogleAnalyticsTracking()
     await initPlausibleTracking()
     await initJkTracking()
 
-    expect(initSettingsStoreMock).toHaveBeenCalledTimes(3)
+    expect(await initSentry()).toBe(false)
+    expect(initSettingsStoreMock).not.toHaveBeenCalled()
+    expect(settingsStoreGetStateMock).not.toHaveBeenCalled()
+    expect(settingsStoreSubscribeMock).not.toHaveBeenCalled()
   })
 
-  it('subscribes to navigation without importing the application router', async () => {
+  it('does not subscribe to navigation or dispatch pageviews with consent enabled', async () => {
     initSettingsStoreMock.mockResolvedValueOnce({ allowReportingAndTracking: true })
     settingsStoreGetStateMock.mockReturnValue({ allowReportingAndTracking: true })
     const plausibleMock = vi.fn()
@@ -68,11 +72,12 @@ describe('settings-backed telemetry initialization', () => {
     const { initPlausibleTracking } = await import('./plausible_init')
     await initPlausibleTracking(navigationSubscriber)
 
-    expect(navigationSubscriber).toHaveBeenCalledOnce()
-    expect(plausibleMock).toHaveBeenCalledWith('pageview', expect.not.objectContaining({ props: expect.anything() }))
+    expect(navigationSubscriber).not.toHaveBeenCalled()
+    expect(plausibleMock).not.toHaveBeenCalled()
+    expect(window.plausible).toBe(plausibleMock)
   })
 
-  it('deduplicates pageviews using the normalized URL', async () => {
+  it('does not track private routes or retain navigation callbacks', async () => {
     initSettingsStoreMock.mockResolvedValueOnce({ allowReportingAndTracking: true })
     settingsStoreGetStateMock.mockReturnValue({ allowReportingAndTracking: true })
     const plausibleMock = vi.fn()
@@ -87,29 +92,21 @@ describe('settings-backed telemetry initialization', () => {
 
     window.history.replaceState({}, '', '/#/session/session-b')
     onNavigationResolved?.(true)
-    expect(plausibleMock).toHaveBeenCalledTimes(1)
+    expect(onNavigationResolved).toBeUndefined()
+    expect(plausibleMock).not.toHaveBeenCalled()
 
     window.history.replaceState({}, '', '/#/settings/general')
     onNavigationResolved?.(true)
-    expect(plausibleMock).toHaveBeenCalledTimes(2)
+    expect(plausibleMock).not.toHaveBeenCalled()
   })
 
-  it('attaches a normalized version only to custom events', async () => {
+  it('does not initialize JK analytics or emit launch events', async () => {
     initSettingsStoreMock.mockResolvedValueOnce({ allowReportingAndTracking: true })
     settingsStoreGetStateMock.mockReturnValue({ allowReportingAndTracking: true })
-    const plausibleMock = vi.fn()
-    window.plausible = plausibleMock
-
-    const { initPlausibleTracking } = await import('./plausible_init')
-    await initPlausibleTracking()
-    window.plausible?.('generate', { props: { provider: 'openai' } })
-
-    expect(plausibleMock).toHaveBeenLastCalledWith('generate', {
-      props: {
-        provider: 'openai',
-        version: '1.0',
-      },
-      u: window.location.href,
-    })
+    const { initJkAnalytics, trackJkViewEvent } = await import('@/analytics/jk')
+    const { initJkTracking } = await import('./jk_analytics_init')
+    await initJkTracking()
+    expect(initJkAnalytics).not.toHaveBeenCalled()
+    expect(trackJkViewEvent).not.toHaveBeenCalled()
   })
 })

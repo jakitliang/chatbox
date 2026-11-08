@@ -99,7 +99,8 @@ export function CopilotDetailModal({ opened, onClose, type, copilot, onUse }: Co
 
   if (!copilot) return null
 
-  const { name, avatar, picUrl, description, prompt, tags, screenshots, createdAt } = copilot
+  const { name, avatar, picUrl, description, prompt, category, screenshots, createdAt } = copilot
+  const tags = category ? [category] : []
 
   const formattedDate = createdAt
     ? new Date(createdAt).toLocaleDateString(i18n.language, {
@@ -271,6 +272,7 @@ export function CopilotDetailModal({ opened, onClose, type, copilot, onUse }: Co
                   avatar: copilot.avatar,
                   backgroundImage: copilot.backgroundImage,
                   description: copilot.description,
+                  category: copilot.category,
                 })
                 onClose()
               }}

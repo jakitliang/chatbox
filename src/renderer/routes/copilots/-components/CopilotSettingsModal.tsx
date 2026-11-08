@@ -27,7 +27,7 @@ export interface CopilotSettingsModalProps {
 const CopilotSettingsModal = NiceModal.create(
   ({ copilot, onSave, onDelete: _onDelete, mode = 'create' }: CopilotSettingsModalProps) => {
     const modal = useModal()
-    const { t } = useTranslation()
+    const { t, i18n } = useTranslation()
     const isSmallScreen = useIsSmallScreen()
     const [formData, setFormData] = useState<CopilotDetail | null>(null)
     const [errors, setErrors] = useState<Record<string, string>>({})
@@ -139,6 +139,7 @@ const CopilotSettingsModal = NiceModal.create(
         name: formData.name.trim(),
         prompt: formData.prompt.trim(),
         description: formData.description?.trim(),
+        category: formData.category?.trim(),
         updatedAt: Date.now(),
       }
 
@@ -179,6 +180,13 @@ const CopilotSettingsModal = NiceModal.create(
             onChange={(e) => updateField('name', e.currentTarget.value)}
             error={errors.name}
             autoFocus={!isSmallScreen}
+          />
+
+          <TextInput
+            label={t('Category', { defaultValue: i18n.language.startsWith('zh') ? '分类' : 'Category' })}
+            placeholder={t('Uncategorized', { defaultValue: i18n.language.startsWith('zh') ? '未分类' : 'Uncategorized' }) || ''}
+            value={formData.category ?? ''}
+            onChange={(event) => updateField('category', event.currentTarget.value)}
           />
 
           {/* Icon and Background Image */}

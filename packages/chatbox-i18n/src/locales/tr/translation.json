@@ -106,6 +106,8 @@
   "A serene mountain landscape at sunset": "Gün batımında huzurlu bir dağ manzarası",
   "About": "Hakkında",
   "about-introduction": "Birden çok gelişmiş AI modelini destekleyen, kullanımı kolay bir AI masaüstü istemcisi; en son yapay zeka teknolojisini kullanımı kolay bir üretkenlik aracına dönüştürür.",
+  "about-standalone-edition": "Bağımsız sürüm: Veriler yerel olarak saklanır ve sunucuyla eşitleme elle başlatılır.",
+  "about-standalone-title": "Chatbox — Bağımsız sürüm",
   "about-slogan": "AI ile verimliliğinizi artırın; iş ve öğrenim için en iyi yardımcı pilotunuz",
   "Action": "İşlem",
   "Activate License": "Lisansı Etkinleştir",
@@ -2094,5 +2096,12 @@
   "Validating SQLite, V3 records and conversation structure": "SQLite, V3 kayıtları ve konuşma yapısı doğrulanıyor",
   "Validating the local recovery backup": "Yerel kurtarma yedeği doğrulanıyor",
   "Whole-file snapshot verification failed. Local data is unchanged. Download again.": "Anlık görüntü dosyasının tamamı doğrulanamadı. Yerel veriler değişmedi. Yeniden indirin.",
-  "Cannot read snapshot JSON from {{path}}.": "{{path}} konumundaki anlık görüntü JSON verisi okunamıyor."
+  "Cannot read snapshot JSON from {{path}}.": "{{path}} konumundaki anlık görüntü JSON verisi okunamıyor.",
+  "Local image backend validation failed. The saved selection is unchanged.": "Yerel görsel oluşturma sunucusu doğrulanamadı. Kaydedilen seçim değiştirilmedi.",
+  "Local SDAPI address": "Yerel SDAPI adresi",
+  "Validate": "Doğrula",
+  "Enter an SDAPI address and press Enter to validate and use it.": "Bir SDAPI adresi girin ve doğrulayıp kullanmak için Enter tuşuna basın.",
+  "Local SDAPI supports only one reference image.": "Yerel SDAPI yalnızca bir referans görselini destekler.",
+  "Used in Image Creator. Temporary local model changes there do not change this default.": "Görsel Oluşturucu'da kullanılır. Orada yerel modeli geçici olarak değiştirmek bu varsayılan seçimi değiştirmez.",
+  "Local SDAPI": "Yerel SDAPI"
 }

@@ -235,7 +235,10 @@ export class ImageGenerationService {
       if (!params.model.provider || !params.model.modelId) throw new Error('Select an image model before generating.')
       const normalized = {
         ...params,
-        model: { ...params.model },
+        model: {
+          ...params.model,
+          ...(params.model.localBackend ? { localBackend: { ...params.model.localBackend } } : {}),
+        },
         referenceImages: [...params.referenceImages],
         parentIds: params.parentIds ? [...new Set(params.parentIds)] : undefined,
         aspectRatio: params.aspectRatio === 'auto' ? undefined : params.aspectRatio,

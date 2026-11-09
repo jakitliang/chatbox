@@ -106,6 +106,8 @@
   "A serene mountain landscape at sunset": "Un sereno paesaggio montano al tramonto",
   "About": "Informazioni",
   "about-introduction": "Un client desktop AI facile da usare che supporta molteplici modelli AI avanzati, trasformando la tecnologia di intelligenza artificiale all'avanguardia in uno strumento di produttività semplice da utilizzare.",
+  "about-standalone-edition": "Edizione autonoma: i dati restano in locale e la sincronizzazione con il server viene avviata manualmente.",
+  "about-standalone-title": "Chatbox — Edizione autonoma",
   "about-slogan": "Aumenta la tua efficienza con AI, il tuo Copilot definitivo per il lavoro e l'apprendimento",
   "Action": "Azione",
   "Activate License": "Attiva licenza",
@@ -2094,5 +2096,12 @@
   "Validating SQLite, V3 records and conversation structure": "Verifica di SQLite, record V3 e struttura delle conversazioni",
   "Validating the local recovery backup": "Verifica del backup di recupero locale",
   "Whole-file snapshot verification failed. Local data is unchanged. Download again.": "Verifica dell’intera istantanea fallita. Dati locali invariati. Scarica di nuovo.",
-  "Cannot read snapshot JSON from {{path}}.": "Impossibile leggere il JSON dell’istantanea da {{path}}."
+  "Cannot read snapshot JSON from {{path}}.": "Impossibile leggere il JSON dell’istantanea da {{path}}.",
+  "Local image backend validation failed. The saved selection is unchanged.": "La verifica del server locale di generazione delle immagini non è riuscita. La selezione salvata rimane invariata.",
+  "Local SDAPI address": "Indirizzo SDAPI locale",
+  "Validate": "Verifica",
+  "Enter an SDAPI address and press Enter to validate and use it.": "Inserisci un indirizzo SDAPI e premi Invio per verificarlo e utilizzarlo.",
+  "Local SDAPI supports only one reference image.": "SDAPI locale supporta una sola immagine di riferimento.",
+  "Used in Image Creator. Temporary local model changes there do not change this default.": "Usato nel Creatore di immagini. Cambiare temporaneamente il modello locale in quella schermata non modifica questa selezione predefinita.",
+  "Local SDAPI": "SDAPI locale"
 }

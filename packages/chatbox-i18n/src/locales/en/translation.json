@@ -171,6 +171,8 @@
   "A serene mountain landscape at sunset": "A serene mountain landscape at sunset",
   "About": "About",
   "about-introduction": "A user-friendly AI desktop client that supports multiple advanced AI models, transforming cutting-edge artificial intelligence technology into an easy-to-use productivity tool.",
+  "about-standalone-edition": "Standalone edition: data stays local, and server sync is initiated manually.",
+  "about-standalone-title": "Chatbox Standalone",
   "about-slogan": "Boost your efficiency with AI, your ultimate copilot for work and learning",
   "Action": "Action",
   "Activate License": "Activate License",
@@ -2094,5 +2096,12 @@
   "Save the original conversation as JSON for recovery. Attached files are not included. Your chat will not be changed.": "Save the original conversation as JSON for recovery. Attached files are not included. Your chat will not be changed.",
   "No pre-migration data is available for this chat.": "No pre-migration data is available for this chat.",
   "Could not export pre-migration data. Your chat has not been changed.": "Could not export pre-migration data. Your chat has not been changed.",
-  "Cannot read snapshot JSON from {{path}}.": "Cannot read snapshot JSON from {{path}}."
+  "Cannot read snapshot JSON from {{path}}.": "Cannot read snapshot JSON from {{path}}.",
+  "Local image backend validation failed. The saved selection is unchanged.": "Local image backend validation failed. The saved selection is unchanged.",
+  "Local SDAPI address": "Local SDAPI address",
+  "Validate": "Validate",
+  "Enter an SDAPI address and press Enter to validate and use it.": "Enter an SDAPI address and press Enter to validate and use it.",
+  "Local SDAPI supports only one reference image.": "Local SDAPI supports only one reference image.",
+  "Used in Image Creator. Temporary local model changes there do not change this default.": "Used in Image Creator. Temporary local model changes there do not change this default.",
+  "Local SDAPI": "Local SDAPI"
 }

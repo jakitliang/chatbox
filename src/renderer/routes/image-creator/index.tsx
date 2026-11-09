@@ -27,20 +27,18 @@ import {
 import { createFileRoute } from '@tanstack/react-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { JK_PAGE_NAMES } from '@/analytics/jk-events'
-import { ChatboxWelcomeCard } from '@/components/common/ChatboxWelcomeCard'
 import errorNoticeClasses from '@/components/common/ErrorNotice.module.css'
 import { ImageModelSelect } from '@/components/ImageModelSelect'
 import { SEND_BUTTON_BLOCKED_CLASS } from '@/components/InputBox/inputSurface'
 import Page from '@/components/layout/Page'
 import { type ImageModelGroup, useImageModelGroups } from '@/hooks/useImageModelGroups'
+import { useLocalImageModels } from '@/hooks/useLocalImageModels'
 import { useProviders } from '@/hooks/useProviders'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
-import useVersion from '@/hooks/useVersion'
 import { getLogger } from '@/lib/utils'
 import { resumeImageGenerationWithFollowUp } from '@/packages/chatbox-cli/image-task-follow-up'
+import { LOCAL_IMAGE_BACKEND_ID } from '@/packages/local-image-backend'
 import imageFailurePlaceholder from '@/static/images/errors/img-fail-placeholder.png'
-import { useAuthInfoStore } from '@/stores/authInfoStore'
 import { cancelGeneration, createAndGenerate, retryGeneration } from '@/stores/imageGenerationActions'
 import {
   deleteRecord,
@@ -52,10 +50,10 @@ import {
   useImageGenerationRecord,
 } from '@/stores/imageGenerationStore'
 import { lastUsedModelStore, useLastUsedModelStore } from '@/stores/lastUsedModelStore'
+import { useLocalImageBackendStore } from '@/stores/localImageBackendStore'
 import { queryClient } from '@/stores/queryClient'
-import { settingsStore, useSettingsStore } from '@/stores/settingsStore'
+import { settingsStore } from '@/stores/settingsStore'
 import * as toastActions from '@/stores/toastActions'
-import { getHomeWelcomeCardMode } from '@/utils/homeWelcomeCard'
 import { HISTORY_PANEL_WIDTH } from './-components/constants'
 import { EmptyState } from './-components/EmptyState'
 import { GeneratedImagesGallery } from './-components/GeneratedImagesGallery'
@@ -77,6 +75,7 @@ import { LoadingShimmer } from './-components/Shimmer'
 import { useReferenceImageDraft } from './-hooks/useReferenceImageDraft'
 
 const log = getLogger('image-creator')
+const LOCAL_RATIO_OPTIONS = ['auto', '1:1', '4:3', '3:4', '16:9', '9:16']
 
 export const Route = createFileRoute('/image-creator/')({
   component: ImageCreatorPage,
@@ -228,25 +227,17 @@ function InputToolbar({
    Main Page Component
    ============================================ */
 
-function ImageCreatorPage() {
+export function ImageCreatorPage() {
   const { t } = useTranslation()
   const isSmallScreen = useIsSmallScreen()
   const { providers } = useProviders()
-  const imageModelGroups = useImageModelGroups()
-  const hasLicense = useSettingsStore((s) => Boolean(s.licenseKey))
-  const hasExpiredLicense = useSettingsStore((s) => s.hasExpiredLicense)
-  const isLoggedIn = useAuthInfoStore((s) => Boolean(s.accessToken && s.refreshToken))
-  const { isExceeded, isExceededResolved } = useVersion()
-  const welcomeCardMode = useMemo(
-    () =>
-      getHomeWelcomeCardMode({
-        providerCount: providers.length,
-        isLoggedIn,
-        hasLicense,
-        hasExpiredLicense,
-        hideForStoreReview: isExceeded || !isExceededResolved,
-      }),
-    [providers.length, isLoggedIn, hasLicense, hasExpiredLicense, isExceeded, isExceededResolved]
+  const providerImageGroups = useImageModelGroups()
+  const { group: localImageGroup, data: localDiscovery } = useLocalImageModels()
+  const localDefaultModelId = useLocalImageBackendStore((state) => state.defaultModelId)
+  const localUrl = useLocalImageBackendStore((state) => state.url)
+  const imageModelGroups = useMemo(
+    () => [...providerImageGroups, ...(localImageGroup ? [localImageGroup] : [])],
+    [providerImageGroups, localImageGroup]
   )
 
   const [prompt, setPrompt] = useState('')
@@ -262,13 +253,24 @@ function ImageCreatorPage() {
   const picture = useLastUsedModelStore((state) => state.picture)
   const [showHistory, setShowHistory] = useState(true)
   const [showMobileHistory, setShowMobileHistory] = useState(false)
-  const selection = resolveImageModelSelection(
-    imageModelGroups,
-    picture?.provider ?? ModelProviderEnum.ChatboxAI,
-    picture?.modelId ?? ''
-  )
+  const [temporarySelection, setTemporarySelection] = useState<{ provider: string; model: string }>()
+  const defaultLocalModel = localDefaultModelId || localDiscovery?.currentModelId || localImageGroup?.models[0]?.modelId
+  const useLocalDefault = picture?.provider === LOCAL_IMAGE_BACKEND_ID || (!picture && !!localUrl)
+  const preferredSelection = temporarySelection || (useLocalDefault
+    ? { provider: LOCAL_IMAGE_BACKEND_ID, model: defaultLocalModel || '' }
+    : undefined)
+  const selection = preferredSelection?.provider === LOCAL_IMAGE_BACKEND_ID
+    ? localUrl && localImageGroup?.models.some((model) => model.modelId === preferredSelection.model)
+      ? preferredSelection
+      : undefined
+    : resolveImageModelSelection(
+        imageModelGroups,
+        preferredSelection?.provider ?? picture?.provider ?? ModelProviderEnum.ChatboxAI,
+        preferredSelection?.model ?? picture?.modelId ?? ''
+      )
   const selectedProvider = selection?.provider ?? ''
   const selectedModel = selection?.model ?? ''
+  const isLocalBackend = selectedProvider === LOCAL_IMAGE_BACKEND_ID
   const [selectedRatio, setSelectedRatio] = useState<string>('auto')
   const [showModelDrawer, setShowModelDrawer] = useState(false)
   const [showRatioDrawer, setShowRatioDrawer] = useState(false)
@@ -281,8 +283,9 @@ function ImageCreatorPage() {
     [imageModelGroups, selectedProvider, selectedModel]
   )
   const ratioOptions = useMemo(
-    () => getImageModelRatioOptions(selectedModel, selectedModelCapabilities),
-    [selectedModel, selectedModelCapabilities]
+    () =>
+      isLocalBackend ? LOCAL_RATIO_OPTIONS : getImageModelRatioOptions(selectedModel, selectedModelCapabilities),
+    [isLocalBackend, selectedModel, selectedModelCapabilities]
   )
 
   const currentGeneratingId = useCurrentGeneratingId()
@@ -312,7 +315,8 @@ function ImageCreatorPage() {
 
   const handleModelSelect = useCallback(
     (provider: string, model: string) => {
-      lastUsedModelStore.getState().setPictureModel(provider, model)
+      setTemporarySelection({ provider, model })
+      if (provider !== LOCAL_IMAGE_BACKEND_ID) lastUsedModelStore.getState().setPictureModel(provider, model)
 
       const capabilities = imageModelGroups
         .find((group) => group.providerId === provider)
@@ -329,7 +333,6 @@ function ImageCreatorPage() {
       toastActions.add(t('Please select a model'))
       return
     }
-
     if (selectedProvider === ModelProviderEnum.ChatboxAI && !settingsStore.getState().licenseKey) {
       toastActions.add(t('Please log in to Chatbox AI first'))
       return
@@ -357,7 +360,15 @@ function ImageCreatorPage() {
     } catch (error) {
       log.error('Failed to generate image:', error)
     }
-  }, [prompt, beginSubmission, selectedProvider, selectedModel, selectedRatio, isCurrentlyGenerating, t])
+  }, [
+    prompt,
+    beginSubmission,
+    selectedProvider,
+    selectedModel,
+    selectedRatio,
+    isCurrentlyGenerating,
+    t,
+  ])
 
   const handleQuickPromptSubmit = useCallback(
     async (quickPrompt: string) => {
@@ -437,8 +448,11 @@ function ImageCreatorPage() {
   }, [])
 
   const getImageModelDisplayName = useCallback(
-    (model: ImageGenerationModel) => resolveImageModelDisplayName(model, { imageModelGroups, providers }),
-    [imageModelGroups, providers]
+    (model: ImageGenerationModel) =>
+      model.provider === LOCAL_IMAGE_BACKEND_ID
+        ? localImageGroup?.models.find((option) => option.modelId === model.modelId)?.displayName || 'Local SDAPI'
+        : resolveImageModelDisplayName(model, { imageModelGroups, providers }),
+    [imageModelGroups, localImageGroup, providers]
   )
 
   const modelDisplayName = useMemo(() => {
@@ -450,8 +464,11 @@ function ImageCreatorPage() {
   }, [selectedProvider, selectedModel, getImageModelDisplayName, t])
 
   const getHistoryImageModelDisplayName = useCallback(
-    (model: ImageGenerationModel) => resolveHistoryImageModelDisplayName(model, { imageModelGroups, providers }),
-    [imageModelGroups, providers]
+    (model: ImageGenerationModel) =>
+      model.provider === LOCAL_IMAGE_BACKEND_ID
+        ? getImageModelDisplayName(model)
+        : resolveHistoryImageModelDisplayName(model, { imageModelGroups, providers }),
+    [imageModelGroups, providers, getImageModelDisplayName]
   )
 
   const headerRight = isSmallScreen ? (
@@ -539,10 +556,6 @@ function ImageCreatorPage() {
           {/* Input Area */}
           <Box py="md" px="sm">
             <Stack gap="sm" maw={800} mx="auto">
-              {!currentRecord && welcomeCardMode !== 'none' && (
-                <ChatboxWelcomeCard mode={welcomeCardMode} pageName={JK_PAGE_NAMES.IMAGE_PAGE} />
-              )}
-
               <ReferenceImagesPreview
                 images={referenceImages}
                 onRemove={handleRemoveReferenceImage}
@@ -553,7 +566,7 @@ function ImageCreatorPage() {
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
-                multiple
+                multiple={selectedModelCapabilities?.inputReferences?.max !== 1}
                 style={{ display: 'none' }}
                 onChange={(e) => handleImageUpload(e.target.files)}
               />

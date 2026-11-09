@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ApiError, ChatboxAIAPIError } from '../models/errors'
 import { createAfetch, createAuthenticatedAfetch, uploadFile } from './request'
+import { configureAppApiServer } from './chatbox-api-origin'
 
 const platformInfo = {
   type: 'desktop',
@@ -11,6 +12,7 @@ const platformInfo = {
 
 describe('createAfetch', () => {
   afterEach(() => {
+    configureAppApiServer(() => '')
     vi.unstubAllGlobals()
   })
 
@@ -19,7 +21,8 @@ describe('createAfetch', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     const afetch = createAfetch(platformInfo)
-    const url = 'https://api.chatboxai.app/gateway/openai/v1/chat/completions'
+    configureAppApiServer(() => 'https://selfhost.example')
+    const url = 'https://selfhost.example/api/example'
 
     await afetch(url, {
       headers: {

@@ -1,4 +1,5 @@
-import { Button, Flex, Image } from '@mantine/core'
+import { Button, Flex, Image, Text } from '@mantine/core'
+import { version as packageVersion } from '../../../../release/app/package.json'
 import { IconChevronRight } from '@tabler/icons-react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
@@ -19,7 +20,7 @@ export function RouteComponent() {
   const version = useVersion()
   const autoLaunch = useSettingsStore((s) => s.autoLaunch)
   const setSettings = useSettingsStore((s) => s.setSettings)
-  const hasVersion = /\d/.test(version.version)
+  const displayVersion = /\d/.test(version.version) ? version.version : packageVersion
 
   return (
     <SettingsPage title={t('About Chatbox')} description={t('Version and startup behavior.')}>
@@ -29,9 +30,10 @@ export function RouteComponent() {
           label={
             <Flex align="center" gap="sm">
               <Image src={iconPNG} w={32} h={32} radius="md" />
-              <span>Chatbox{hasVersion ? ` ${version.version}` : ''}</span>
+              <span>Chatbox</span>
             </Flex>
           }
+          control={<Text c="chatbox-tertiary" size="sm">v{displayVersion}</Text>}
         />
         <SettingRow
           id="about-chatbox"

@@ -16,6 +16,13 @@ export interface ImageModelCapabilities {
 export const ImageGenerationModelSchema = z.object({
   provider: z.string(),
   modelId: z.string(),
+  // Immutable local drawing request configuration; absent on legacy URL-only records.
+  localBackend: z
+    .object({
+      url: z.string(),
+      steps: z.number().int().min(1).max(40),
+    })
+    .optional(),
 })
 export type ImageGenerationModel = z.infer<typeof ImageGenerationModelSchema>
 

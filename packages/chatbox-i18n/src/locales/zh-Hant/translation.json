@@ -171,6 +171,8 @@
   "A serene mountain landscape at sunset": "日落時分寧靜的山景",
   "About": "關於",
   "about-introduction": "一款友善的 AI 桌上型用戶端，支援多種先進的 AI 模型，將尖端的 AI 技術轉化為易於使用的生產力工具。",
+  "about-standalone-edition": "獨立版：資料儲存在本機，與伺服器的同步由您手動啟動。",
+  "about-standalone-title": "Chatbox 獨立版",
   "about-slogan": "透過 AI 提升您的效率，您工作與學習的最佳搭檔",
   "Action": "動作",
   "Activate License": "啟用許可證",
@@ -2094,5 +2096,12 @@
   "Save the original conversation as JSON for recovery. Attached files are not included. Your chat will not be changed.": "將原始對話儲存為 JSON 以便復原，不包含附件檔案。此操作不會變更對話。",
   "No pre-migration data is available for this chat.": "此對話沒有可用的遷移前資料。",
   "Could not export pre-migration data. Your chat has not been changed.": "無法匯出遷移前資料。對話未被變更。",
-  "Cannot read snapshot JSON from {{path}}.": "無法讀取 {{path}} 中的快照 JSON。"
+  "Cannot read snapshot JSON from {{path}}.": "無法讀取 {{path}} 中的快照 JSON。",
+  "Local image backend validation failed. The saved selection is unchanged.": "本機繪圖後端驗證失敗，已儲存的選擇維持不變。",
+  "Local SDAPI address": "本機 SDAPI 繪圖位址",
+  "Validate": "驗證",
+  "Enter an SDAPI address and press Enter to validate and use it.": "輸入 SDAPI 位址，按 Enter 鍵驗證後使用。",
+  "Local SDAPI supports only one reference image.": "本機 SDAPI 僅支援一張參考圖。",
+  "Used in Image Creator. Temporary local model changes there do not change this default.": "用於圖片產生器。在其中暫時切換本機模型不會變更此預設設定。",
+  "Local SDAPI": "本機 SDAPI"
 }

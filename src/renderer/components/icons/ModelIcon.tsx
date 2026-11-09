@@ -1,5 +1,6 @@
 import { Image, useComputedColorScheme } from '@mantine/core'
 import { type ModelProvider, ModelProviderEnum } from '@shared/types'
+import { IconServer } from '@tabler/icons-react'
 import { renderModelIcon } from '@/utils/modelLogo'
 import { getProviderIconSrc } from '@/utils/providerIconSrc'
 import ProviderIcon from './ProviderIcon'
@@ -23,6 +24,10 @@ interface ModelIconProps {
 export function ModelIcon({ modelId, providerId, size = 16, className }: ModelIconProps) {
   const colorScheme = useComputedColorScheme('light')
   const isDarkMode = colorScheme === 'dark'
+
+  if (providerId === 'local-sdapi') {
+    return <IconServer size={size} className={className} style={{ flexShrink: 0 }} />
+  }
 
   const icon = renderModelIcon(modelId, size, isDarkMode)
 

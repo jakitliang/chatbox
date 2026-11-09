@@ -1,7 +1,7 @@
 /** biome-ignore-all lint/style/noNonNullAssertion: auto-text fallbacks are always defined for these selectors */
 
 import NiceModal from '@ebay/nice-modal-react'
-import { Anchor, Button, Flex, Stack, Text, Title } from '@mantine/core'
+import { Anchor, Button, Flex, NumberInput, Stack, Text, Title } from '@mantine/core'
 import { TestId } from '@shared/automation/testids'
 import { SystemProviders } from '@shared/defaults'
 import type { ProviderModelInfo } from '@shared/types'
@@ -27,21 +27,25 @@ import {
   IconWorldWww,
 } from '@tabler/icons-react'
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { forwardRef, useCallback, useMemo, useRef, useState } from 'react'
+import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { createModelDependencies } from '@/adapters'
 import { AdaptiveSelect } from '@/components/AdaptiveSelect'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
 import { ImageModelSelect } from '@/components/ImageModelSelect'
+import { LocalImageBackendInput, type LocalImageBackendInputHandle } from '@/components/LocalImageBackendInput'
 import ModelSelectorV2 from '@/components/ModelSelectorV2'
 import type { ImageModelGroup } from '@/hooks/useImageModelGroups'
 import { useImageModelGroups } from '@/hooks/useImageModelGroups'
+import { useLocalImageModels } from '@/hooks/useLocalImageModels'
 import { useProviders } from '@/hooks/useProviders'
+import { getLocalImageModels, LOCAL_IMAGE_BACKEND_ID } from '@/packages/local-image-backend'
 import { enrichModelsFromRegistry, useModelRegistryVersion } from '@/packages/model-registry'
 import { testWebSearchConnection } from '@/packages/web-search'
 import { WEB_SEARCH_PROVIDERS, type WebSearchProviderValue } from '@/packages/web-search/constants'
 import platform from '@/platform'
 import { lastUsedModelStore, useLastUsedModelStore } from '@/stores/lastUsedModelStore'
+import { useLocalImageBackendStore } from '@/stores/localImageBackendStore'
 import { getPlatformDefaultDocumentParser, settingsStore, useSettingsStore } from '@/stores/settingsStore'
 import { pingModel } from '@/utils/model-tester'
 import { isEmbeddingModel, isRerankModel } from './-defaultModelFilters'
@@ -61,7 +65,7 @@ import {
   searchProvider,
   settingsPatchForModelSlot,
 } from './-modelRigSettings'
-import { runSlotTest, type SlotTestStatus } from './-modelRigTest'
+import { type ModelRigTestDeps, runSlotTest, type SlotTestStatus } from './-modelRigTest'
 import { modelEndpointLocation } from './-modelSource'
 
 export const Route = createFileRoute('/settings/default-models')({
@@ -71,6 +75,33 @@ export const Route = createFileRoute('/settings/default-models')({
 type SlotUiState = { status: SlotTestStatus; latencyMs: number; error?: string; fix?: string }
 
 const IDLE_SLOT: SlotUiState = { status: 'idle', latencyMs: 0 }
+
+// Dedicated local image configuration bypasses registered-provider checks.
+export async function runDefaultModelSlotTest(
+  slotId: ModelRigSlotId,
+  deps: ModelRigTestDeps,
+  signal?: AbortSignal,
+  validateDraft?: () => ReturnType<LocalImageBackendInputHandle['validate']>
+): Promise<SlotUiState> {
+  if (slotId === 'image' && validateDraft) {
+    const started = performance.now()
+    return { ...await validateDraft(), latencyMs: Math.round(performance.now() - started) }
+  }
+  if (slotId !== 'image' || deps.picture?.provider !== LOCAL_IMAGE_BACKEND_ID) {
+    return runSlotTest(slotId, deps)
+  }
+  const started = performance.now()
+  try {
+    await getLocalImageModels(useLocalImageBackendStore.getState().url, signal)
+    return { status: 'ok', latencyMs: Math.round(performance.now() - started) }
+  } catch (error) {
+    return {
+      status: 'fail',
+      latencyMs: Math.round(performance.now() - started),
+      error: error instanceof Error ? error.message : String(error),
+    }
+  }
+}
 
 const ACTIVE_SLOT_IDS = MODEL_RIG_SLOT_IDS.filter((id) => !FUTURE_SLOT_IDS.has(id))
 
@@ -111,7 +142,7 @@ const SLOT_COPY: Record<ModelRigSlotId, { name: string; desc: string }> = {
   search: { name: 'Web search', desc: 'Searches the web when web search is enabled in a conversation.' },
   image: {
     name: 'Image generation',
-    desc: 'Used in Image Creator. Changing the model there also updates this selection.',
+    desc: 'Used in Image Creator. Temporary local model changes there do not change this default.',
   },
   tts: { name: 'Speech synthesis', desc: 'Read replies aloud.' },
 }
@@ -149,17 +180,32 @@ export function RouteComponent() {
   const { t } = useTranslation()
   const settings = useSettingsStore((state) => state)
   const setSettings = settings.setSettings
-  const picture = useLastUsedModelStore((state) => state.picture)
+  const savedPicture = useLastUsedModelStore((state) => state.picture)
+  const localDefaultModelId = useLocalImageBackendStore((state) => state.defaultModelId)
+  const picture = savedPicture?.provider === LOCAL_IMAGE_BACKEND_ID || (!savedPicture && localDefaultModelId)
+    ? { provider: LOCAL_IMAGE_BACKEND_ID, modelId: localDefaultModelId }
+    : savedPicture
   const setPictureModel = useLastUsedModelStore((state) => state.setPictureModel)
   const imageModelGroups = useImageModelGroups()
+  const { group: localImageGroup } = useLocalImageModels()
   const { providers } = useProviders()
   const [results, setResults] = useState(idleResults)
   const [running, setRunning] = useState(false)
   const runningRef = useRef(false)
+  const testController = useRef(new AbortController())
+  const imageBackendInput = useRef<LocalImageBackendInputHandle>(null)
+
+  useEffect(() => {
+    testController.current = new AbortController()
+    return () => testController.current.abort()
+  }, [])
 
   const customImageGroups = useMemo(
-    () => imageModelGroups.filter((group) => group.providerId !== ModelProviderEnum.ChatboxAI),
-    [imageModelGroups]
+    () => [
+      ...imageModelGroups.filter((group) => group.providerId !== ModelProviderEnum.ChatboxAI),
+      ...(localImageGroup ? [localImageGroup] : []),
+    ],
+    [imageModelGroups, localImageGroup]
   )
 
   const pingChat = useCallback(async (provider: string, modelId: string, vision?: boolean) => {
@@ -183,7 +229,7 @@ export function RouteComponent() {
     () => ({
       settings: settingsStore.getState(),
       configuredProviderIds: new Set(providers.map((provider) => provider.id)),
-      picture: lastUsedModelStore.getState().picture,
+      picture,
       hasLicense: false,
       isDesktopLike: platform.isDesktopLike,
       pingChat,
@@ -195,39 +241,51 @@ export function RouteComponent() {
         await testWebSearchConnection(AbortSignal.timeout(20_000))
       },
     }),
-    [pingChat, providers]
+    [pingChat, providers, picture]
   )
+
+  const checkSlot = useCallback((slotId: ModelRigSlotId, signal: AbortSignal) => {
+    const input = imageBackendInput.current
+    const validateDraft = slotId === 'image' && input &&
+      (picture?.provider === LOCAL_IMAGE_BACKEND_ID || !picture || input.hasDraft())
+      ? () => input.validate(signal)
+      : undefined
+    return runDefaultModelSlotTest(slotId, makeDeps(), signal, validateDraft)
+  }, [makeDeps, picture])
 
   const testSlot = useCallback(
     async (slotId: ModelRigSlotId) => {
       if (runningRef.current) return
+      const { signal } = testController.current
       runningRef.current = true
       setRunning(true)
       try {
         setResults((prev) => ({ ...prev, [slotId]: { status: 'testing', latencyMs: 0 } }))
-        const result = await runSlotTest(slotId, makeDeps())
-        setResults((prev) => ({ ...prev, [slotId]: result }))
+        const result = await checkSlot(slotId, signal)
+        if (!signal.aborted) setResults((prev) => ({ ...prev, [slotId]: result }))
       } finally {
-        setRunning(false)
+        if (!signal.aborted) setRunning(false)
         runningRef.current = false
       }
     },
-    [makeDeps]
+    [checkSlot]
   )
 
   const runAll = useCallback(async () => {
     if (runningRef.current) return
+    const { signal } = testController.current
     runningRef.current = true
     setRunning(true)
     setResults(idleResults())
     for (const slotId of ACTIVE_SLOT_IDS) {
       setResults((prev) => ({ ...prev, [slotId]: { status: 'testing', latencyMs: 0 } }))
-      const result = await runSlotTest(slotId, makeDeps())
+      const result = await checkSlot(slotId, signal)
+      if (signal.aborted) return
       setResults((prev) => ({ ...prev, [slotId]: result }))
     }
     setRunning(false)
     runningRef.current = false
-  }, [makeDeps])
+  }, [checkSlot])
 
   const applyAllPresets = useCallback(() => {
     const current = settingsStore.getState()
@@ -345,6 +403,7 @@ export function RouteComponent() {
                 picture={picture}
                 customImageGroups={customImageGroups}
                 running={running}
+                imageBackendInput={imageBackendInput}
                 onTest={() => void testSlot(slotId)}
                 onSelectModel={(provider, model) => {
                   if (
@@ -366,6 +425,9 @@ export function RouteComponent() {
                   setResults((prev) => ({ ...prev, search: { ...IDLE_SLOT } }))
                 }}
                 onSelectImage={(provider, model) => {
+                  if (provider === LOCAL_IMAGE_BACKEND_ID) {
+                    useLocalImageBackendStore.getState().setDefaultModelId(model)
+                  }
                   setPictureModel(provider, model)
                   setResults((prev) => ({ ...prev, image: { ...IDLE_SLOT } }))
                 }}
@@ -419,6 +481,7 @@ function SlotCard(props: {
   picture?: { provider: string; modelId: string }
   customImageGroups: ImageModelGroup[]
   running: boolean
+  imageBackendInput: React.RefObject<LocalImageBackendInputHandle>
   onTest: () => void
   onSelectModel: (provider?: string, model?: string) => void
   onSelectParser: (type: DocumentParserType) => void
@@ -468,7 +531,7 @@ function SlotCard(props: {
       </Flex>
 
       <Flex align="center" gap="xs" wrap="wrap">
-        <fieldset className="w-full sm:w-[320px] min-w-0 m-0 p-0 border-0 [&>button]:w-full" disabled={props.running}>
+        <fieldset className={`${props.slotId === 'image' ? 'w-full' : 'w-full sm:w-[320px]'} min-w-0 m-0 p-0 border-0 [&>button]:w-full`} disabled={props.running}>
           <SlotSelector {...props} selection={selection} autoText={autoText} modelText={modelText} />
         </fieldset>
         <Button
@@ -478,21 +541,23 @@ function SlotCard(props: {
           disabled={props.running || props.result.status === 'testing'}
           aria-label={t('Check {{name}}', { name: props.name })}
         >
-          {t(isConnectionCheck(props.slotId, selection, props.parser) ? 'Test connection' : 'Check configuration')}
+          {t(
+            isConnectionCheck(props.slotId, selection, props.parser, props.picture?.provider)
+              ? 'Test connection'
+              : 'Check configuration'
+          )}
         </Button>
-        <SlotStatus result={props.result} connection={isConnectionCheck(props.slotId, selection, props.parser)} />
+        <SlotStatus
+          result={props.result}
+          connection={isConnectionCheck(props.slotId, selection, props.parser, props.picture?.provider)}
+        />
       </Flex>
 
-      <Text size="xs" c="chatbox-tertiary">
-        {t(
-          sourceForSlot(
-            props.slotId,
-            props.slotId === 'image' ? props.picture?.provider : selection?.provider,
-            settings,
-            props.parser
-          )
-        )}
-      </Text>
+      {props.slotId !== 'image' && (
+        <Text size="xs" c="chatbox-tertiary">
+          {t(sourceForSlot(props.slotId, selection?.provider, settings, props.parser))}
+        </Text>
+      )}
       {props.slotId === 'parser' && (
         <Button
           component={Link}
@@ -534,6 +599,8 @@ function SlotSelector(
   props: Parameters<typeof SlotCard>[0] & { selection?: ModelRef; autoText: string; modelText: string }
 ) {
   const { t } = useTranslation()
+  const steps = useLocalImageBackendStore((state) => state.steps)
+  const localUrl = useLocalImageBackendStore((state) => state.url)
   if (props.future) {
     return (
       <Flex
@@ -593,15 +660,50 @@ function SlotSelector(
   if (props.slotId === 'image') {
     const groups = props.customImageGroups
     return (
-      <ImageModelSelect
-        position="bottom-start"
-        width={320}
-        withinPortal
-        modelGroups={groups}
-        onSelect={props.onSelectImage}
-      >
-        <ModelSelectContent autoText={props.autoText} displayText={props.modelText} asDiv />
-      </ImageModelSelect>
+      <Stack gap="xs">
+        <LocalImageBackendInput
+          ref={props.imageBackendInput}
+          disabled={props.running}
+          onValidationRequested={props.onTest}
+          onValidated={() => {
+            const { defaultModelId } = useLocalImageBackendStore.getState()
+            props.onSelectImage(LOCAL_IMAGE_BACKEND_ID, defaultModelId)
+          }}
+        />
+        <Flex gap="sm" align="flex-end" wrap="wrap">
+          <Stack gap={4} className="flex-1 min-w-[160px] [&>button]:w-full">
+            <Text size="sm" fw={500}>
+              {t('Model')}
+            </Text>
+            <ImageModelSelect
+              position="bottom-start"
+              width={320}
+              withinPortal
+              modelGroups={groups}
+              onSelect={props.onSelectImage}
+            >
+              <ModelSelectContent autoText={props.autoText} displayText={props.modelText} asDiv />
+            </ImageModelSelect>
+          </Stack>
+          <NumberInput
+            label={t('Steps')}
+            aria-label={t('Steps') as string}
+            disabled={props.running || !localUrl}
+            min={1}
+            max={40}
+            step={1}
+            clampBehavior="strict"
+            allowDecimal={false}
+            allowNegative={false}
+            value={steps}
+            onChange={(value) => {
+              if (typeof value === 'number') useLocalImageBackendStore.getState().setSteps(value)
+            }}
+            w={100}
+            className="shrink-0"
+          />
+        </Flex>
+      </Stack>
     )
   }
 
@@ -712,13 +814,20 @@ function displayTextForSlot(props: Parameters<typeof SlotCard>[0], autoText: str
     const groups = props.customImageGroups
     const group = groups.find((item) => item.providerId === props.picture?.provider)
     const model = group?.models.find((item) => item.modelId === props.picture?.modelId)
+    if (props.picture.provider === LOCAL_IMAGE_BACKEND_ID) return model?.displayName || autoText
     return `${group?.label || props.picture.provider} / ${model?.displayName || props.picture.modelId}`
   }
   return autoText
 }
 
-function isConnectionCheck(slotId: ModelRigSlotId, selection: ModelRef | undefined, parser: DocumentParserType) {
+function isConnectionCheck(
+  slotId: ModelRigSlotId,
+  selection: ModelRef | undefined,
+  parser: DocumentParserType,
+  imageProvider?: string
+) {
   return (
+    (slotId === 'image' && (!imageProvider || imageProvider === LOCAL_IMAGE_BACKEND_ID)) ||
     (slotId === 'llm' && Boolean(selection)) ||
     slotId === 'ocr' ||
     slotId === 'search' ||
@@ -740,6 +849,7 @@ function sourceForSlot(
         ? 'Built-in parsing. Image recognition may use the selected OCR provider.'
         : 'Local parsing is disabled.'
   if (slotId === 'search') return 'Search requests are sent to the selected service.'
+  if (slotId === 'image' && provider === LOCAL_IMAGE_BACKEND_ID) return 'Local SDAPI'
   if (!provider) return 'Automatic selection follows the defaults for this feature.'
   const endpoint =
     settings.providers?.[provider]?.apiHost ||

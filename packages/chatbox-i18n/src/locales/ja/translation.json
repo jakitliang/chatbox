@@ -171,6 +171,8 @@
   "A serene mountain landscape at sunset": "夕暮れ時の穏やかな山の風景",
   "About": "バージョン情報",
   "about-introduction": "複数の高度なAIモデルをサポートするユーザーフレンドリーなAIデスクトップクライアントで、最先端のAI技術を使いやすい生産性ツールに変えます。",
+  "about-standalone-edition": "スタンドアロン版：データはローカルに保存され、サーバーとの同期は手動で開始します。",
+  "about-standalone-title": "Chatbox スタンドアロン版",
   "about-slogan": "仕事や学習の究極のCopilotであるAIで、効率を向上させましょう",
   "Action": "アクション",
   "Activate License": "ライセンスを有効化",
@@ -2094,5 +2096,12 @@
   "Save the original conversation as JSON for recovery. Attached files are not included. Your chat will not be changed.": "復元用に元の会話を JSON として保存します。添付ファイルは含まれません。会話は変更されません。",
   "No pre-migration data is available for this chat.": "このチャットには移行前のデータがありません。",
   "Could not export pre-migration data. Your chat has not been changed.": "移行前のデータをエクスポートできませんでした。チャットは変更されていません。",
-  "Cannot read snapshot JSON from {{path}}.": "{{path}} からスナップショットの JSON を読み取れません。"
+  "Cannot read snapshot JSON from {{path}}.": "{{path}} からスナップショットの JSON を読み取れません。",
+  "Local image backend validation failed. The saved selection is unchanged.": "ローカル画像生成バックエンドの検証に失敗しました。保存済みの選択内容は変更されていません。",
+  "Local SDAPI address": "ローカル SDAPI アドレス",
+  "Validate": "検証",
+  "Enter an SDAPI address and press Enter to validate and use it.": "SDAPI アドレスを入力し、Enter キーを押すと、検証後に使用できます。",
+  "Local SDAPI supports only one reference image.": "ローカル SDAPI で使用できる参照画像は1枚のみです。",
+  "Used in Image Creator. Temporary local model changes there do not change this default.": "画像生成で使用します。画像生成でローカルモデルを一時的に変更しても、この既定の設定は変わりません。",
+  "Local SDAPI": "ローカル SDAPI"
 }

@@ -106,6 +106,8 @@
   "A serene mountain landscape at sunset": "Eine ruhige Berglandschaft bei Sonnenuntergang",
   "About": "Über",
   "about-introduction": "Ein benutzerfreundlicher AI-Desktop-Client, der mehrere fortschrittliche AI-Modelle unterstützt und modernste künstliche Intelligenztechnologie in ein einfach zu bedienendes Produktivitätswerkzeug verwandelt.",
+  "about-standalone-edition": "Eigenständige Edition: Daten bleiben lokal, und die Synchronisierung mit dem Server wird manuell gestartet.",
+  "about-standalone-title": "Chatbox – Eigenständige Edition",
   "about-slogan": "Steigern Sie Ihre Effizienz mit AI, Ihrem ultimativen Copilot für Arbeit und Lernen",
   "Action": "Aktion",
   "Activate License": "Lizenz aktivieren",
@@ -2094,5 +2096,12 @@
   "Validating SQLite, V3 records and conversation structure": "SQLite, V3-Datensätze und Gesprächsstruktur werden geprüft",
   "Validating the local recovery backup": "Lokale Wiederherstellungssicherung wird geprüft",
   "Whole-file snapshot verification failed. Local data is unchanged. Download again.": "Prüfung der gesamten Snapshot-Datei fehlgeschlagen. Lokale Daten sind unverändert. Erneut herunterladen.",
-  "Cannot read snapshot JSON from {{path}}.": "Snapshot-JSON aus {{path}} lässt sich nicht lesen."
+  "Cannot read snapshot JSON from {{path}}.": "Snapshot-JSON aus {{path}} lässt sich nicht lesen.",
+  "Local image backend validation failed. The saved selection is unchanged.": "Die Prüfung des lokalen Bildgenerierungs-Backends ist fehlgeschlagen. Die gespeicherte Auswahl bleibt unverändert.",
+  "Local SDAPI address": "Lokale SDAPI-Adresse",
+  "Validate": "Prüfen",
+  "Enter an SDAPI address and press Enter to validate and use it.": "Gib eine SDAPI-Adresse ein und drücke die Eingabetaste, um sie zu prüfen und zu verwenden.",
+  "Local SDAPI supports only one reference image.": "Die lokale SDAPI unterstützt nur ein Referenzbild.",
+  "Used in Image Creator. Temporary local model changes there do not change this default.": "Wird im Bild-Ersteller verwendet. Ein vorübergehender Wechsel des lokalen Modells dort ändert diese Standardeinstellung nicht.",
+  "Local SDAPI": "Lokale SDAPI"
 }

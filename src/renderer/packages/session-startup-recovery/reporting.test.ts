@@ -42,26 +42,18 @@ beforeEach(() => {
 })
 afterEach(() => vi.useRealTimers())
 
-it('reports a sanitized error once and exposes an ID only after a successful transport response', async () => {
+it('does not send even sanitized startup errors', async () => {
   const { reportStartupFailure } = await import('./reporting')
   const diagnostic = createStartupDiagnostic(new Error('Active thread projection is unavailable'), 'read')
   const report = reportStartupFailure('private-session', diagnostic)
-  expect(reportStartupFailure('private-session', { ...diagnostic })).toBe(report)
-  await vi.waitFor(() => expect(mocks.capture).toHaveBeenCalledTimes(1))
-  expect(mocks.clear).toHaveBeenCalled()
-  expect(mocks.tags).toHaveBeenCalledWith(expect.objectContaining({ error_priority: 'high', startup_phase: 'read' }))
-  expect(JSON.stringify(mocks.capture.mock.calls)).not.toContain('private-session')
-  callback({ event_id: 'other' }, { statusCode: 200 })
-  callback({ event_id: 'event-1' }, { statusCode: 200 })
-  await expect(report).resolves.toBe('event-1')
-  expect(mocks.unsubscribe).toHaveBeenCalledOnce()
+  await expect(report).resolves.toBeUndefined()
+  expect(mocks.capture).not.toHaveBeenCalled()
 })
 
 it('does not claim delivery on a failed transport response', async () => {
   const { reportStartupFailure } = await import('./reporting')
   const report = reportStartupFailure('s', createStartupDiagnostic(new Error('database is locked'), 'read'))
-  await vi.waitFor(() => expect(mocks.capture).toHaveBeenCalledOnce())
-  callback({ event_id: 'event-1' }, { statusCode: 429 })
+  expect(mocks.capture).not.toHaveBeenCalled()
   await expect(report).resolves.toBeUndefined()
 })
 
@@ -74,14 +66,23 @@ it('honors the reporting preference', async () => {
   expect(mocks.capture).not.toHaveBeenCalled()
 })
 
-it('can report the same failure after the user enables reporting', async () => {
+it('cannot enable reporting through a legacy preference', async () => {
   mocks.allowed = false
   const { reportStartupFailure } = await import('./reporting')
   const diagnostic = createStartupDiagnostic(new Error('database is locked'), 'read')
   await expect(reportStartupFailure('s', diagnostic)).resolves.toBeUndefined()
   mocks.allowed = true
   const report = reportStartupFailure('s', diagnostic)
-  await vi.waitFor(() => expect(mocks.capture).toHaveBeenCalledOnce())
-  callback({ event_id: 'event-1' }, { statusCode: 200 })
-  await expect(report).resolves.toBe('event-1')
+  await expect(report).resolves.toBeUndefined()
+  expect(mocks.capture).not.toHaveBeenCalled()
+})
+
+it('keeps startup diagnostics local without initializing telemetry', async () => {
+  const fetch = vi.spyOn(globalThis, 'fetch')
+  try {
+    const { reportStartupFailure } = await import('./reporting')
+    await expect(reportStartupFailure('private-session', createStartupDiagnostic(new Error('database is locked'), 'read'))).resolves.toBeUndefined()
+    expect(mocks.init).not.toHaveBeenCalled()
+    expect(fetch).not.toHaveBeenCalled()
+  } finally { fetch.mockRestore() }
 })

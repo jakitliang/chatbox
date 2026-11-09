@@ -106,6 +106,8 @@
   "A serene mountain landscape at sunset": "Ett fridfullt bergslandskap vid solnedgången",
   "About": "Om",
   "about-introduction": "En användarvänlig AI-skrivbordsklient som stöder flera avancerade AI-modeller och förvandlar banbrytande artificiell intelligens-teknik till ett lättanvänt produktivitetsverktyg.",
+  "about-standalone-edition": "Fristående utgåva: Data lagras lokalt och synkronisering med servern startas manuellt.",
+  "about-standalone-title": "Chatbox – Fristående utgåva",
   "about-slogan": "Öka din effektivitet med AI, din ultimata Copilot för arbete och lärande",
   "Action": "Åtgärd",
   "Activate License": "Aktivera licens",
@@ -2094,5 +2096,12 @@
   "Validating SQLite, V3 records and conversation structure": "Validerar SQLite, V3-poster och konversationsstruktur",
   "Validating the local recovery backup": "Validerar den lokala återställningskopian",
   "Whole-file snapshot verification failed. Local data is unchanged. Download again.": "Verifieringen av hela ögonblicksbildsfilen misslyckades. Lokala data är oförändrade. Ladda ned igen.",
-  "Cannot read snapshot JSON from {{path}}.": "Kan inte läsa ögonblicksbildens JSON från {{path}}."
+  "Cannot read snapshot JSON from {{path}}.": "Kan inte läsa ögonblicksbildens JSON från {{path}}.",
+  "Local image backend validation failed. The saved selection is unchanged.": "Kontrollen av den lokala bildgenereringstjänsten misslyckades. Det sparade valet är oförändrat.",
+  "Local SDAPI address": "Lokal SDAPI-adress",
+  "Validate": "Kontrollera",
+  "Enter an SDAPI address and press Enter to validate and use it.": "Ange en SDAPI-adress och tryck på Enter för att kontrollera och använda den.",
+  "Local SDAPI supports only one reference image.": "Lokal SDAPI stöder bara en referensbild.",
+  "Used in Image Creator. Temporary local model changes there do not change this default.": "Används i Bildskapare. Tillfälliga byten av lokal modell där ändrar inte detta standardval.",
+  "Local SDAPI": "Lokal SDAPI"
 }

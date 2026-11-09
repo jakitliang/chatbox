@@ -75,7 +75,8 @@ policy.configureLocalRuntime(() => ({}))
 
 // Application API Server is independent of model endpoints and explicitly authorizes its origin.
 const apiOrigin = load('src/shared/request/chatbox-api-origin.ts', { '../privacy/local-runtime': policy })
-assert.equal(apiOrigin.getChatboxAPIOrigin(), policy.LOCAL_SERVICE_ORIGIN)
+assert.equal(apiOrigin.getChatboxAPIOrigin(), '')
+apiOrigin.configureAppApiServer(() => 'https://ui-api.example.test:8443')
 policy.configureLocalRuntime(() => ({ localRuntime: { appApiServer: 'https://ui-api.example.test:8443/', allowedOrigins: [] } }))
 assert.equal(apiOrigin.getChatboxAPIOrigin(), 'https://ui-api.example.test:8443')
 assert.equal(policy.isNetworkUrlAllowed('https://ui-api.example.test:8443/api/remote_config/current_version'), true)
@@ -91,12 +92,13 @@ const backendFetch = policy.createPrivateFetch(async (request) => {
 })
 assert.equal((await (await backendFetch(`${apiOrigin.getChatboxAPIOrigin()}/api/remote_config/current_version`)).json()).data.current_version, 'self-hosted')
 assert.equal(backendCalls, 1)
-for (const appApiServer of ['https://api.chatboxai.app', 'https://ui-api.example.test/api', 'https://user:secret@ui-api.example.test', 'not-a-url']) {
-  policy.configureLocalRuntime(() => ({ localRuntime: { appApiServer, allowedOrigins: [] } }))
-  assert.equal(apiOrigin.getChatboxAPIOrigin(), policy.LOCAL_SERVICE_ORIGIN)
+for (const appApiServer of ['https://ui-api.example.test/api', 'https://user:secret@ui-api.example.test', 'not-a-url']) {
+  apiOrigin.configureAppApiServer(() => appApiServer)
+  assert.throws(() => apiOrigin.getChatboxAPIOrigin())
 }
 policy.configureLocalRuntime(() => ({}))
-assert.equal(apiOrigin.getChatboxAPIOrigin(), policy.LOCAL_SERVICE_ORIGIN)
+apiOrigin.configureAppApiServer(() => '')
+assert.equal(apiOrigin.getChatboxAPIOrigin(), '')
 assert.equal(policy.isNetworkUrlAllowed('https://ui-api.example.test:8443/api'), false)
 
 const consentTimer = globalThis.setInterval
@@ -112,9 +114,11 @@ try {
 } finally {
   globalThis.setInterval = consentTimer
 }
-const license = load('src/renderer/packages/lemonsqueezy.ts')
-assert.equal((await license.activateLicense('private-key', 'private-device')).valid, false)
-assert.equal((await license.validateLicense('private-key', 'private-device')).valid, false)
+const license = load('src/renderer/packages/lemonsqueezy.ts', { './remote': {
+  LocalUnavailableError: class LocalUnavailableError extends Error {},
+} })
+await assert.rejects(license.activateLicense('private-key', 'private-device'))
+await assert.rejects(license.validateLicense('private-key', 'private-device'))
 
 // Real Node transports; Electron's boundary is exercised with a session test double.
 let beforeRequest
@@ -142,6 +146,7 @@ try {
   const response = await globalThis.fetch(`http://127.0.0.1:${server.address().port}/check`)
   assert.equal(await response.text(), 'local-ok')
   policy.configureLocalRuntime(() => ({ localRuntime: { appApiServer: `http://127.0.0.1:${server.address().port}`, allowedOrigins: [] } }))
+  apiOrigin.configureAppApiServer(() => `http://127.0.0.1:${server.address().port}`)
   assert.equal(await (await globalThis.fetch(`${apiOrigin.getChatboxAPIOrigin()}/api/remote_config/current_version`)).text(), 'local-ok')
 } finally {
   policy.configureLocalRuntime(() => ({}))

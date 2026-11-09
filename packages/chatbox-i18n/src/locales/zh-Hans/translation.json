@@ -171,6 +171,8 @@
   "A serene mountain landscape at sunset": "宁静的日落山景",
   "About": "关于",
   "about-introduction": "一个简约强大的 AI 桌面客户端，支持最先进的多款大语言模型，让前沿的人工智能技术变成易于使用的生产力工具。",
+  "about-standalone-edition": "独立版：数据保存在本地，服务端同步由你手动发起。",
+  "about-standalone-title": "Chatbox 独立版",
   "about-slogan": "用 AI 提高效率，工作学习的最佳搭档",
   "Action": "动作",
   "Activate License": "激活许可证",
@@ -2094,5 +2096,12 @@
   "Save the original conversation as JSON for recovery. Attached files are not included. Your chat will not be changed.": "将原始对话保存为 JSON 以便恢复，不包含附件文件。此操作不会更改对话。",
   "No pre-migration data is available for this chat.": "此对话没有可用的迁移前数据。",
   "Could not export pre-migration data. Your chat has not been changed.": "无法导出迁移前数据。对话未被更改。",
-  "Cannot read snapshot JSON from {{path}}.": "无法读取 {{path}} 中的快照 JSON。"
+  "Cannot read snapshot JSON from {{path}}.": "无法读取 {{path}} 中的快照 JSON。",
+  "Local image backend validation failed. The saved selection is unchanged.": "本地绘图后端验证失败，已保存的选择保持不变。",
+  "Local SDAPI address": "本地 SDAPI 绘图地址",
+  "Validate": "验证",
+  "Enter an SDAPI address and press Enter to validate and use it.": "输入 SDAPI 地址，按回车键验证后使用。",
+  "Local SDAPI supports only one reference image.": "本地 SDAPI 仅支持一张参考图。",
+  "Used in Image Creator. Temporary local model changes there do not change this default.": "用于图片生成器。在其中临时切换本地模型不会更改此默认设置。",
+  "Local SDAPI": "本地 SDAPI"
 }

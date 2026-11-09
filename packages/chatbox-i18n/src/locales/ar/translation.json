@@ -106,6 +106,8 @@
   "A serene mountain landscape at sunset": "مشهد جبلي هادئ عند غروب الشمس",
   "About": "حول",
   "about-introduction": "عميل سطح مكتب AI سهل الاستخدام يدعم العديد من نماذج AI المتقدمة، ويحول تقنية الذكاء الاصطناعي المتطورة إلى أداة إنتاجية سهلة الاستخدام.",
+  "about-standalone-edition": "الإصدار المستقل: تبقى البيانات محليًا، وتبدأ المزامنة مع الخادم يدويًا.",
+  "about-standalone-title": "Chatbox — الإصدار المستقل",
   "about-slogan": "عزز كفاءتك باستخدام AI، رفيقك الأمثل للعمل والتعلم",
   "Action": "الإجراء",
   "Activate License": "تفعيل الترخيص",
@@ -2094,5 +2096,12 @@
   "Validating SQLite, V3 records and conversation structure": "التحقق من SQLite وسجلات V3 وبنية المحادثات",
   "Validating the local recovery backup": "التحقق من نسخة الاسترداد المحلية",
   "Whole-file snapshot verification failed. Local data is unchanged. Download again.": "فشل التحقق من ملف اللقطة بالكامل. لم تتغير البيانات المحلية. نزّله مجددًا.",
-  "Cannot read snapshot JSON from {{path}}.": "تعذرت قراءة JSON اللقطة من {{path}}."
+  "Cannot read snapshot JSON from {{path}}.": "تعذرت قراءة JSON اللقطة من {{path}}.",
+  "Local image backend validation failed. The saved selection is unchanged.": "فشل التحقق من خادم توليد الصور المحلي. لم يتغير الاختيار المحفوظ.",
+  "Local SDAPI address": "عنوان SDAPI المحلي",
+  "Validate": "تحقق",
+  "Enter an SDAPI address and press Enter to validate and use it.": "أدخل عنوان SDAPI واضغط على Enter للتحقق منه واستخدامه.",
+  "Local SDAPI supports only one reference image.": "يدعم SDAPI المحلي صورة مرجعية واحدة فقط.",
+  "Used in Image Creator. Temporary local model changes there do not change this default.": "يُستخدم في منشئ الصور. لا يؤدي تغيير النموذج المحلي مؤقتًا هناك إلى تغيير هذا الإعداد الافتراضي.",
+  "Local SDAPI": "SDAPI المحلي"
 }

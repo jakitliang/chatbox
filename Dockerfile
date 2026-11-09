@@ -14,13 +14,15 @@ RUN apt-get -o Acquire::Retries=5 update && apt-get -o Acquire::Retries=5 instal
     && grep " node-v${NODE_VERSION}-linux-${node_arch}.tar.xz$" SHASUMS256.txt | sha256sum -c - \
     && tar -xJf "node-v${NODE_VERSION}-linux-${node_arch}.tar.xz" -C /usr/local --strip-components=1 \
     && rm "node-v${NODE_VERSION}-linux-${node_arch}.tar.xz" SHASUMS256.txt
+ARG NPM_REGISTRY=https://registry.npmmirror.com
+ENV COREPACK_NPM_REGISTRY=${NPM_REGISTRY}
 WORKDIR /source
 ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY packages ./packages
 COPY patches ./patches
 COPY release/app/package.json release/app/package-lock.json ./release/app/
-RUN corepack enable && pnpm install --frozen-lockfile --ignore-scripts --registry=https://registry.npmmirror.com
+RUN corepack enable && pnpm install --frozen-lockfile --ignore-scripts --registry=${NPM_REGISTRY}
 COPY src ./src
 COPY server/snapshot ./server/snapshot
 COPY scripts ./scripts

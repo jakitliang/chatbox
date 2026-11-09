@@ -13,6 +13,16 @@ import { currentBlobStorage } from '@/adapters/CurrentBlobStorage'
 import { normalizePlausibleModel, normalizePlausibleProvider } from '@/analytics/plausible'
 import { getLogger } from '@/lib/utils'
 import { getImageModelCapabilities } from '@/packages/image-model-catalog'
+import {
+  createLocalImageModel,
+  LOCAL_IMAGE_BACKEND_ID,
+  normalizeLocalImageBackendUrl,
+  resolveLocalImageJob,
+  selectLocalImageModel,
+  validateLocalImageReferences,
+  validateLocalImageSteps,
+  validateLocalImageBackend,
+} from '@/packages/local-image-backend'
 import { pollImageTask, submitImageGeneration } from '@/packages/remote'
 import platform from '@/platform'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
@@ -20,6 +30,7 @@ import { trackEvent } from '@/utils/track'
 import { imageGenerationStore } from './imageGenerationStore'
 import { queryClient } from './queryClient'
 import { settingsStore } from './settingsStore'
+import { useLocalImageBackendStore } from './localImageBackendStore'
 
 export type { GenerateImageParams, ImageGenerationHandle, StartImageGenerationOptions }
 
@@ -43,15 +54,26 @@ export function getImageGenerationService(): ImageGenerationService {
         submit: (params) => submitImageGeneration(params, getLicenseKey()),
         poll: (taskId, signal) => pollImageTask(taskId, getLicenseKey(), signal),
       },
-      createModel: async (model) =>
-        getModel(
+      createModel: async (model) => {
+        if (model.provider === LOCAL_IMAGE_BACKEND_ID) {
+          const job = resolveLocalImageJob(model)
+          return createLocalImageModel(job.url, job.modelId, job.steps)
+        }
+        return getModel(
           { provider: model.provider, modelId: model.modelId },
           settingsStore.getState().getSettings(),
           await platform.getConfig(),
           await createModelDependencies()
-        ),
+        )
+      },
       resolveReferenceImage: async (key) => (await createModelDependencies()).storage.getImage(key),
       validateRequest: async (params, signal) => {
+        if (params.model.provider === LOCAL_IMAGE_BACKEND_ID) {
+          const job = resolveLocalImageJob(params.model)
+          const discovery = await validateLocalImageBackend(job.url, signal)
+          validateLocalImageReferences(selectLocalImageModel(discovery, job.modelId), params.referenceImages.length)
+          return
+        }
         if (params.model.provider === 'chatbox-ai') getLicenseKey()
         const capabilities = await getImageModelCapabilities(
           params.model,
@@ -106,7 +128,24 @@ export async function startImageGeneration(
   params: GenerateImageParams,
   options: StartImageGenerationOptions = {}
 ): Promise<ImageGenerationHandle> {
-  const handle = await getImageGenerationService().start(params, options)
+  let normalized = params
+  if (params.model.provider === LOCAL_IMAGE_BACKEND_ID) {
+    const defaults = useLocalImageBackendStore.getState()
+    // URL-only legacy callers retain their endpoint. New callers use a separate model ID.
+    const legacy = !params.model.localBackend && /^(https?:\/\/|local-sdapi:v1:)/i.test(params.model.modelId)
+    const job = params.model.localBackend || legacy ? resolveLocalImageJob(params.model) : {
+      url: normalizeLocalImageBackendUrl(defaults.url),
+      steps: validateLocalImageSteps(defaults.steps),
+      modelId: params.model.modelId || defaults.defaultModelId,
+    }
+    const discovery = await validateLocalImageBackend(job.url)
+    const selected = selectLocalImageModel(discovery, job.modelId || undefined)
+    normalized = { ...params, model: {
+      provider: LOCAL_IMAGE_BACKEND_ID, modelId: selected.id,
+      localBackend: { url: job.url, steps: job.steps },
+    } }
+  }
+  const handle = await getImageGenerationService().start(normalized, options)
   imageGenerationStore.getState().setCurrentRecordId(handle.recordId)
   return handle
 }

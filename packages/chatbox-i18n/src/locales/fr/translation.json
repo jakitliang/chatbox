@@ -106,6 +106,8 @@
   "A serene mountain landscape at sunset": "Un paysage de montagne serein au coucher du soleil",
   "About": "À propos",
   "about-introduction": "Un client de bureau AI convivial qui prend en charge plusieurs modèles AI avancés, transformant la technologie d'intelligence artificielle de pointe en un outil de productivité facile à utiliser.",
+  "about-standalone-edition": "Édition autonome : les données restent locales et la synchronisation avec le serveur est lancée manuellement.",
+  "about-standalone-title": "Chatbox — Édition autonome",
   "about-slogan": "Boostez votre efficacité avec l'AI, votre ultime Copilot pour le travail et l'apprentissage",
   "Action": "Action",
   "Activate License": "Activer la licence",
@@ -2094,5 +2096,12 @@
   "Validating SQLite, V3 records and conversation structure": "Validation de SQLite, des enregistrements V3 et de la structure des conversations",
   "Validating the local recovery backup": "Validation de la sauvegarde locale de récupération",
   "Whole-file snapshot verification failed. Local data is unchanged. Download again.": "Échec de vérification de l’instantané complet. Les données locales sont inchangées. Téléchargez à nouveau.",
-  "Cannot read snapshot JSON from {{path}}.": "Impossible de lire le JSON de l’instantané dans {{path}}."
+  "Cannot read snapshot JSON from {{path}}.": "Impossible de lire le JSON de l’instantané dans {{path}}.",
+  "Local image backend validation failed. The saved selection is unchanged.": "La vérification du serveur local de génération d’images a échoué. La sélection enregistrée reste inchangée.",
+  "Local SDAPI address": "Adresse SDAPI locale",
+  "Validate": "Vérifier",
+  "Enter an SDAPI address and press Enter to validate and use it.": "Saisissez une adresse SDAPI et appuyez sur Entrée pour la vérifier et l’utiliser.",
+  "Local SDAPI supports only one reference image.": "SDAPI local ne prend en charge qu’une seule image de référence.",
+  "Used in Image Creator. Temporary local model changes there do not change this default.": "Utilisé dans le Créateur d’images. Changer temporairement de modèle local dans cet outil ne modifie pas cette sélection par défaut.",
+  "Local SDAPI": "SDAPI local"
 }

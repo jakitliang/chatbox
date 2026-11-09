@@ -1,4 +1,5 @@
 import type { ChatboxAILicenseDetail, ProviderModelInfo } from '@shared/types'
+import type { ChatboxAIModelList } from '@/packages/remote'
 
 // Historical selector contract only; the commercial provider and remote catalog are removed.
 const models: ProviderModelInfo[] = []
@@ -10,7 +11,7 @@ export function useRefreshChatboxAIModelsOnLicenseChange(
 export default function useChatboxAIModels() {
   return {
     allChatboxAIModels: models, chatboxAIModels: models, chatboxAIImageModels: models,
-    chatboxAIModelList: null, isLoading: false, isFetching: false, error: null,
+    chatboxAIModelList: null as ChatboxAIModelList | null, isLoading: false, isFetching: false, error: null,
     refetch: async () => ({ data: undefined }),
   }
 }

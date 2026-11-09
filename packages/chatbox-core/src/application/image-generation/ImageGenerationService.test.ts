@@ -115,6 +115,23 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('ImageGenerationService', () => {
+  it('snapshots nested local settings before asynchronous work and reuses them for retry', async () => {
+    const createModel = vi.fn(async () => ({ paint: vi.fn().mockResolvedValue(['data:image/png;base64,AAAA']) }))
+    const f = fixture({ createModel })
+    const model = { provider: 'local-sdapi', modelId: 'native-selection', localBackend: { url: 'http://localhost:1234', steps: 4 } }
+    const starting = f.service.start({ ...params, model })
+    model.localBackend.url = 'http://other-host:5555'
+    model.localBackend.steps = 19
+    const handle = await starting
+    await handle.completion
+    expect(f.records.get(handle.recordId)?.model.localBackend).toEqual({ url: 'http://localhost:1234', steps: 4 })
+    await (await f.service.retry(handle.recordId)).completion
+    expect(createModel).toHaveBeenCalledTimes(2)
+    for (const [snapshot] of createModel.mock.calls as unknown as [typeof model][]) {
+      expect(snapshot).toEqual({ provider: 'local-sdapi', modelId: 'native-selection', localBackend: { url: 'http://localhost:1234', steps: 4 } })
+    }
+  })
+
   it.each(['user', 'background'] as const)(
     'classifies an ordinary native fetch error after %s cancellation and releases its lock',
     async (reason) => {

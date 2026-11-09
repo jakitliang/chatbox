@@ -106,6 +106,8 @@
   "A serene mountain landscape at sunset": "Безмятежный горный пейзаж на закате",
   "About": "О программе",
   "about-introduction": "Удобный настольный AI-клиент, поддерживающий множество передовых AI-моделей, превращающий новейшие технологии искусственного интеллекта в простой в использовании инструмент продуктивности.",
+  "about-standalone-edition": "Автономная версия: данные хранятся локально, а синхронизация с сервером запускается вручную.",
+  "about-standalone-title": "Chatbox — Автономная версия",
   "about-slogan": "Повысьте свою эффективность с помощью AI, вашего идеального Copilot для работы и обучения",
   "Action": "Действие",
   "Activate License": "Активировать лицензию",
@@ -2094,5 +2096,12 @@
   "Validating SQLite, V3 records and conversation structure": "Проверка SQLite, записей V3 и структуры разговоров",
   "Validating the local recovery backup": "Проверка локальной восстановительной копии",
   "Whole-file snapshot verification failed. Local data is unchanged. Download again.": "Ошибка проверки всего файла снимка. Локальные данные не изменены. Загрузите снова.",
-  "Cannot read snapshot JSON from {{path}}.": "Не удалось прочитать JSON снимка из {{path}}."
+  "Cannot read snapshot JSON from {{path}}.": "Не удалось прочитать JSON снимка из {{path}}.",
+  "Local image backend validation failed. The saved selection is unchanged.": "Не удалось проверить локальный сервер генерации изображений. Сохранённый выбор не изменён.",
+  "Local SDAPI address": "Адрес локального SDAPI",
+  "Validate": "Проверить",
+  "Enter an SDAPI address and press Enter to validate and use it.": "Введите адрес SDAPI и нажмите Enter, чтобы проверить и использовать его.",
+  "Local SDAPI supports only one reference image.": "Локальный SDAPI поддерживает только одно референсное изображение.",
+  "Used in Image Creator. Temporary local model changes there do not change this default.": "Используется в генераторе изображений. Временная смена локальной модели в нём не меняет этот выбор по умолчанию.",
+  "Local SDAPI": "Локальный SDAPI"
 }

@@ -9,18 +9,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   loadProviderImageModels: vi.fn(),
+  providers: [] as { id: string; name: string; isCustom?: boolean }[],
+  providerSettings: {} as Record<string, ProviderSettings>,
 }))
 
+vi.mock('./useProviders', () => ({ useProviders: () => ({ providers: mocks.providers }) }))
+vi.mock('./useChatboxAIModels', () => ({ default: () => ({ chatboxAIImageModels: [] }) }))
 vi.mock('@/packages/image-model-provider', () => ({ loadProviderImageModels: mocks.loadProviderImageModels }))
 vi.mock('@/stores/queryClient', () => ({ queryClient: {} }))
 
 vi.mock('@/stores/settingsStore', () => ({
   settingsStore: { subscribe: vi.fn() },
   useLanguage: () => 'en',
-  useSettingsStore: (selector: (state: { licenseKey: string }) => unknown) => selector({ licenseKey: '' }),
+  useSettingsStore: (selector: (state: { licenseKey: string; providers: Record<string, ProviderSettings> }) => unknown) => selector({ licenseKey: '', providers: mocks.providerSettings }),
 }))
 
-import { useProviderImageModels } from './useImageModelGroups'
+import { useImageModelGroups, useProviderImageModels } from './useImageModelGroups'
 
 let testQueryClient: QueryClient
 
@@ -37,6 +41,8 @@ function modelForCredential(apiKey?: string) {
 
 describe('useProviderImageModels', () => {
   beforeEach(() => {
+    mocks.providers = []
+    mocks.providerSettings = {}
     testQueryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     mocks.loadProviderImageModels
       .mockReset()
@@ -47,6 +53,20 @@ describe('useProviderImageModels', () => {
 
   afterEach(() => {
     testQueryClient.clear()
+  })
+
+  it('returns no synthetic models and loads no catalogs on a fresh install', () => {
+    const { result } = renderHook(useImageModelGroups, { wrapper: createWrapper() })
+    expect(result.current).toEqual([])
+    expect(mocks.loadProviderImageModels).not.toHaveBeenCalled()
+  })
+
+  it('preserves explicitly configured custom image models without loading an official catalog', () => {
+    mocks.providers = [{ id: 'my-images', name: 'My images', isCustom: true }]
+    mocks.providerSettings = { 'my-images': { models: [{ modelId: 'my-model', nickname: 'My model', type: 'image' }] } }
+    const { result } = renderHook(useImageModelGroups, { wrapper: createWrapper() })
+    expect(result.current).toEqual([{ providerId: 'my-images', label: 'My images', isCustom: true, models: [{ modelId: 'my-model', displayName: 'My model' }] }])
+    expect(mocks.loadProviderImageModels).not.toHaveBeenCalled()
   })
 
   it('uses one query and fetch for the same settings object in StrictMode', async () => {
@@ -197,7 +217,7 @@ describe('useProviderImageModels', () => {
       .getAll()
       .map((query) => query.queryKey)
     expect(queryKeys).toHaveLength(5)
-    expect(new Set(queryKeys.map((key) => key[3])).size).toBe(5)
+    expect(new Set(queryKeys.map((key) => key[4])).size).toBe(5)
     const serializedQueryKeys = JSON.stringify(queryKeys)
     expect(serializedQueryKeys).not.toContain(settingsA.apiKey)
     expect(serializedQueryKeys).not.toContain(settingsB.apiKey)

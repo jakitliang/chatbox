@@ -134,6 +134,12 @@ afterEach(() => {
 })
 
 describe('image model details', () => {
+  it('uses the existing empty menu without synthetic models', () => {
+    render(<MantineProvider><ImageModelSelect modelGroups={[]} opened>None</ImageModelSelect></MantineProvider>)
+    expect(screen.getByText('No models available')).not.toBeNull()
+    expect(screen.queryByRole('option')).toBeNull()
+  })
+
   it.each(['click', 'keyboard'])('opens a controlled model list with $0', async (method) => {
     const user = userEvent.setup()
     const { onChange, onSelect } = mountControlled(false)

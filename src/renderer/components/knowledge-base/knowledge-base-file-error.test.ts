@@ -20,9 +20,9 @@ describe('knowledge base file error policy', () => {
   })
 
   test.each(['token_quota_exhausted', 'expired_license'])(
-    'keeps server retry available after %s so the user can retry once the account is fixed',
+    'does not restore the official parser after %s',
     (error) => {
-      expect(canRetryKnowledgeBaseFileWithServer({ error, parsed_remotely: 1 })).toBe(true)
+      expect(canRetryKnowledgeBaseFileWithServer({ error, parsed_remotely: 1 })).toBe(false)
     }
   )
 

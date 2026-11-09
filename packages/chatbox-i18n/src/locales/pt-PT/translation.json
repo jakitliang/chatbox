@@ -106,6 +106,8 @@
   "A serene mountain landscape at sunset": "Uma paisagem montanhosa serena ao pôr do sol",
   "About": "Sobre",
   "about-introduction": "Um cliente desktop de AI fácil de usar que suporta múltiplos modelos de AI avançados, transformando a tecnologia de inteligência artificial de ponta numa ferramenta de produtividade fácil de utilizar.",
+  "about-standalone-edition": "Edição autónoma: os dados ficam guardados localmente e a sincronização com o servidor é iniciada manualmente.",
+  "about-standalone-title": "Chatbox — Edição autónoma",
   "about-slogan": "Aumente a sua eficiência com AI, o seu Copilot definitivo para o trabalho e aprendizagem",
   "Action": "Ação",
   "Activate License": "Ativar Licença",
@@ -2094,5 +2096,12 @@
   "Validating SQLite, V3 records and conversation structure": "A validar SQLite, registos V3 e estrutura das conversas",
   "Validating the local recovery backup": "A validar a cópia de recuperação local",
   "Whole-file snapshot verification failed. Local data is unchanged. Download again.": "A verificação do snapshot completo falhou. Os dados locais não foram alterados. Descarregue novamente.",
-  "Cannot read snapshot JSON from {{path}}.": "Não é possível ler o JSON do snapshot em {{path}}."
+  "Cannot read snapshot JSON from {{path}}.": "Não é possível ler o JSON do snapshot em {{path}}.",
+  "Local image backend validation failed. The saved selection is unchanged.": "A verificação do servidor local de geração de imagens falhou. A seleção guardada permanece inalterada.",
+  "Local SDAPI address": "Endereço SDAPI local",
+  "Validate": "Verificar",
+  "Enter an SDAPI address and press Enter to validate and use it.": "Introduza um endereço SDAPI e prima Enter para o verificar e utilizar.",
+  "Local SDAPI supports only one reference image.": "O SDAPI local suporta apenas uma imagem de referência.",
+  "Used in Image Creator. Temporary local model changes there do not change this default.": "Utilizado no Criador de Imagens. Alterar temporariamente o modelo local nessa área não modifica esta seleção predefinida.",
+  "Local SDAPI": "SDAPI local"
 }

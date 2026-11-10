@@ -40,10 +40,10 @@ describe('Ollama native model discovery', () => {
     const models = await model.listModels()
 
     expect(models).toEqual([
-      { modelId: 'gpt-oss:20b', type: 'chat', capabilities: ['tool_use', 'reasoning'] },
-      { modelId: 'my-vision-alias:latest', type: 'chat', capabilities: ['tool_use', 'vision'] },
-      { modelId: 'qwen3:plain', type: 'chat', capabilities: [] },
-      { modelId: 'nomic-embed-text:latest', type: 'embedding', capabilities: [] },
+      { modelId: 'gpt-oss:20b', type: 'chat', capabilities: ['tool_use', 'reasoning'], ollamaDisplayMetadata: {} },
+      { modelId: 'my-vision-alias:latest', type: 'chat', capabilities: ['tool_use', 'vision'], ollamaDisplayMetadata: {} },
+      { modelId: 'qwen3:plain', type: 'chat', capabilities: [], ollamaDisplayMetadata: {} },
+      { modelId: 'nomic-embed-text:latest', type: 'embedding', capabilities: [], ollamaDisplayMetadata: {} },
     ])
     expect(apiRequest).toHaveBeenNthCalledWith(1, {
       url: `${host}/api/tags`,
@@ -66,14 +66,14 @@ describe('Ollama native model discovery', () => {
     for (const discovered of models) {
       const runtime = getModel(
         { provider: 'ollama', modelId: discovered.modelId },
-        { providers: { ollama: { apiHost: host, models } } } as Settings,
+        { providers: { ollama: { apiHost: host, models } } } as unknown as Settings,
         { uuid: '' } as Config,
         dependencies()
       )
       expect(runtime.isSupportToolUse('agent')).toBe(discovered.capabilities?.includes('tool_use'))
       expect(runtime.isSupportToolUse('read-file')).toBe(discovered.capabilities?.includes('tool_use'))
       expect(runtime.isSupportVision()).toBe(discovered.capabilities?.includes('vision'))
-      expect(runtime.isSupportReasoning()).toBe(discovered.capabilities?.includes('reasoning'))
+      expect((runtime as Ollama).isSupportReasoning()).toBe(discovered.capabilities?.includes('reasoning'))
     }
   })
 
@@ -95,6 +95,7 @@ describe('Ollama native model discovery', () => {
         type: 'chat',
         ...(modelId === 'gpt-oss:20b' ? { capabilities: ['tool_use'] } : {}),
         ...(modelId === 'empty' ? { capabilities: [] } : {}),
+        ...(['gpt-oss:20b', 'old-server', 'empty'].includes(modelId) ? { ollamaDisplayMetadata: {} } : {}),
       }))
     )
   })
@@ -116,10 +117,29 @@ describe('Ollama native model discovery', () => {
 
     expect(await model.listModels()).toEqual([
       { modelId: 'failed-show', type: 'chat', capabilities: ['tool_use', 'reasoning'] },
-      { modelId: 'missing-capabilities', type: 'chat', capabilities: ['tool_use', 'reasoning'] },
-      { modelId: 'empty-capabilities', type: 'chat', capabilities: [] },
-      { modelId: 'embedding', type: 'embedding', capabilities: [] },
+      { modelId: 'missing-capabilities', type: 'chat', capabilities: ['tool_use', 'reasoning'], ollamaDisplayMetadata: {} },
+      { modelId: 'empty-capabilities', type: 'chat', capabilities: [], ollamaDisplayMetadata: {} },
+      { modelId: 'embedding', type: 'embedding', capabilities: [], ollamaDisplayMetadata: {} },
     ])
+  })
+
+  it.each([
+    [{ 'general.architecture': 'llama', 'llama.context_length': 131072 }, 'num_ctx 32768\ntemperature 0.15', { contextLength: 131072, configuredContextLength: 32768 }],
+    [{ 'general.architecture': 'mistral3', 'mistral3.context_length': 262144, 'mistral3.rope.scaling.original_context_length': 16384 }, undefined, { contextLength: 262144 }],
+    [{ 'general.architecture': 'gemma2', 'gemma2.context_length': 8192 }, 'num_predict 4096', { contextLength: 8192 }],
+    [{ 'general.architecture': 'llama', 'llama.context_length': -1 }, 'num_ctx -1', {}],
+    [{ 'general.architecture': 'llama', 'llama.context_length': '131072' }, 'num_ctx 3.5', {}],
+    [undefined, undefined, {}],
+  ])('reads informational metadata without setting runtime limits (%j)', async (model_info, parameters, expected) => {
+    const apiRequest = vi.fn<ModelDependencies['request']['apiRequest']>().mockImplementation((options) =>
+      response(options.method === 'GET' ? { models: [{ name: 'local:latest' }] } : { model_info, parameters })
+    )
+    const model = new Ollama({ ollamaHost: 'http://localhost:11434', model: { modelId: '' } }, dependencies(apiRequest))
+    const [discovered] = await model.listModels()
+    expect(discovered.ollamaDisplayMetadata).toEqual(expected)
+    expect(discovered.contextWindow).toBeUndefined()
+    expect(discovered.maxOutput).toBeUndefined()
+    expect(apiRequest).toHaveBeenCalledTimes(2)
   })
 
   it.each(['offline', 'http-error', 'invalid-payload'])('handles a failed tags request: %s', async (failure) => {

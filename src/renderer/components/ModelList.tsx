@@ -119,7 +119,12 @@ export function ModelList({
                   )}
                 </Flex>
 
-                {(model.type !== 'chat' || model.capabilities?.length || model.contextWindow || model.maxOutput) && (
+                {(model.type !== 'chat' ||
+                  model.capabilities?.length ||
+                  model.contextWindow ||
+                  model.maxOutput ||
+                  model.ollamaDisplayMetadata?.contextLength ||
+                  model.ollamaDisplayMetadata?.configuredContextLength) && (
                   <Flex gap="xs" align="center" wrap="wrap">
                     {model.type && model.type !== 'chat' && <Badge color="blue">{t(capitalize(model.type))}</Badge>}
 
@@ -145,7 +150,23 @@ export function ModelList({
                       </Tooltip>
                     )}
 
-                    {model.contextWindow && (
+                    {model.ollamaDisplayMetadata?.contextLength || model.ollamaDisplayMetadata?.configuredContextLength ? (
+                      <Tooltip
+                        label={[
+                          `${t('Context Window')} (Ollama model_info): ${model.ollamaDisplayMetadata.contextLength ?? '—'} ${t('tokens')}`,
+                          `Ollama num_ctx: ${model.ollamaDisplayMetadata.configuredContextLength ?? '—'}`,
+                        ].join(' · ')}
+                      >
+                        <Flex gap={2} align="center" c="dimmed" style={{ flexShrink: 0, opacity: 0.8 }}>
+                          <ScalableIcon icon={IconDatabase} size={12} />
+                          <Text size="xs" style={{ whiteSpace: 'nowrap' }}>
+                            {formatTokenCount(
+                              model.ollamaDisplayMetadata.contextLength ?? model.ollamaDisplayMetadata.configuredContextLength
+                            )}
+                          </Text>
+                        </Flex>
+                      </Tooltip>
+                    ) : model.contextWindow ? (
                       <Tooltip
                         label={`${t('Context Window')}: ${formatTokenCount(model.contextWindow)} ${t('tokens')}`}
                       >
@@ -156,7 +177,7 @@ export function ModelList({
                           </Text>
                         </Flex>
                       </Tooltip>
-                    )}
+                    ) : null}
                     {model.maxOutput && (
                       <Tooltip label={`${t('Max Output')}: ${formatTokenCount(model.maxOutput)} ${t('tokens')}`}>
                         <Flex gap={2} align="center" c="dimmed" style={{ flexShrink: 0, opacity: 0.8 }}>

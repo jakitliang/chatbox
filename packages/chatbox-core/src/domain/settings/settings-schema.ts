@@ -58,6 +58,14 @@ export const ProviderModelInfoSchema = z.object({
     .catch([]),
   contextWindow: z.number().optional().catch(undefined),
   maxOutput: z.number().optional().catch(undefined),
+  // Informational only: never use these values for generation or compaction budgets.
+  ollamaDisplayMetadata: z
+    .object({
+      contextLength: z.number().int().positive().optional().catch(undefined),
+      configuredContextLength: z.number().int().positive().optional().catch(undefined),
+    })
+    .optional()
+    .catch(undefined),
 })
 
 export const OAuthCredentialsSchema = z.object({

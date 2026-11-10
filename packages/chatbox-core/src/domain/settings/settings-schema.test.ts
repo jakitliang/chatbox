@@ -38,6 +38,19 @@ describe('self-host settings', () => {
 })
 
 describe('provider model groups', () => {
+  it('persists Ollama display metadata separately from user-configured limits', () => {
+    const provider = {
+      models: [{
+        modelId: 'local', contextWindow: 4096, maxOutput: 512,
+        ollamaDisplayMetadata: { contextLength: 131072, configuredContextLength: 32768 },
+      }],
+    }
+    expect(ProviderSettingsSchema.parse(JSON.parse(JSON.stringify(provider)))).toEqual(provider)
+    const displayOnly = ProviderSettingsSchema.parse({ models: [{ modelId: 'local', ollamaDisplayMetadata: { contextLength: 131072 } }] }).models![0]
+    expect(displayOnly.contextWindow).toBeUndefined()
+    expect(displayOnly.maxOutput).toBeUndefined()
+  })
+
   it('accepts saved settings without groups and retains groups when present', () => {
     const provider = { models: [{ modelId: 'model' }], excludedModels: ['hidden'] }
     expect(ProviderSettingsSchema.parse(provider)).toEqual(provider)

@@ -26,7 +26,7 @@ describe('Ollama settings capability refresh', () => {
     const existing: ProviderModelInfo[] = [
       { modelId: 'gpt-oss:20b', nickname: 'Local GPT', contextWindow: 8192, capabilities: [] },
       { modelId: 'qwen3:plain', capabilities: ['tool_use', 'vision'] },
-      { modelId: 'failed-show', capabilities: ['vision'] },
+      { modelId: 'failed-show', capabilities: ['vision'], ollamaDisplayMetadata: { contextLength: 8192 } },
       { modelId: 'offline-model', nickname: 'Keep me' },
     ]
     const apiRequest = vi.fn<ModelDependencies['request']['apiRequest']>().mockImplementation((options) => {
@@ -39,6 +39,8 @@ describe('Ollama settings capability refresh', () => {
       if (model === 'failed-show') return Promise.reject(new Error('unavailable'))
       return response({
         capabilities: model === 'qwen3:plain' ? ['completion'] : ['completion', 'tools', 'thinking'],
+        model_info: { 'general.architecture': 'llama', 'llama.context_length': 131072 },
+        parameters: 'num_ctx 32768',
       })
     })
     const deps: ModelDependencies = {
@@ -58,6 +60,9 @@ describe('Ollama settings capability refresh', () => {
     expect(remote.getModelManifest).not.toHaveBeenCalled()
     expect(options.map((model) => model.modelId)).toEqual([...existing.map((model) => model.modelId), 'new-alias'])
     expect(options[0]).toMatchObject({ ...existing[0], capabilities: ['tool_use', 'reasoning'] })
+    expect(options[0].ollamaDisplayMetadata).toEqual({ contextLength: 131072, configuredContextLength: 32768 })
+    expect(options[0].contextWindow).toBe(8192)
+    expect(options[0].maxOutput).toBeUndefined()
     expect(options[1].capabilities).toEqual([])
     expect(options[2]).toBe(existing[2])
     expect(options[3]).toBe(existing[3])
@@ -72,11 +77,22 @@ describe('Ollama settings capability refresh', () => {
     expect(selectorModel.capabilities?.includes('tool_use')).toBe(true)
     const runtime = getModel(
       { provider: 'ollama', modelId: selectorModel.modelId },
-      { providers: { ollama: { models: persisted } } } as Settings,
+      { providers: { ollama: { models: persisted } } } as unknown as Settings,
       { uuid: '' } as Config,
       deps
     )
     expect(runtime.isSupportToolUse('agent')).toBe(true)
+  })
+
+  it('refreshes display data without capabilities, preserves limits and clears successfully missing metadata', () => {
+    const saved: ProviderModelInfo[] = [{
+      modelId: 'local', contextWindow: 4096, maxOutput: 512,
+      ollamaDisplayMetadata: { contextLength: 8192, configuredContextLength: 2048 },
+    }]
+    const refreshed = refreshOllamaModelCapabilities(saved, [{ modelId: 'local', ollamaDisplayMetadata: { contextLength: 131072 } }])
+    expect(refreshed[0]).toEqual({ ...saved[0], ollamaDisplayMetadata: { contextLength: 131072 } })
+    expect(refreshOllamaModelCapabilities(saved, [{ modelId: 'local' }])[0]).toBe(saved[0])
+    expect(refreshOllamaModelCapabilities(saved, [{ modelId: 'local', ollamaDisplayMetadata: {} }])[0]).toEqual({ ...saved[0], ollamaDisplayMetadata: {} })
   })
 
   it('preserves saved capabilities if discovery is unavailable', () => {

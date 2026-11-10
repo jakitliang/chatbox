@@ -2,7 +2,7 @@ import { SESSION_TOKEN_PAGE_MESSAGES } from '../../ports/session-token-cache'
 import { getContextProjectionText, selectContextMessages } from '@shared/context'
 import { setRuntimeRegistry } from '@shared/model-registry'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { CompactionPoint, Message } from '../../types'
+import type { CompactionPoint, Message, ProviderModelInfo } from '../../types'
 import { SessionEventBus } from '../session/session-events'
 import {
   SESSION_TEXT_TOKEN_VERSION,
@@ -23,6 +23,22 @@ const message = (id: string, text = 'batch content'): Message => ({
   role: 'user',
   contentParts: [{ type: 'text', text }],
 })
+
+it('does not use Ollama informational metadata for context resolution or compaction', () => {
+  const model: ProviderModelInfo & { provider: string } = {
+    provider: 'ollama', modelId: 'display-only-test:local',
+    contextWindow: 4096,
+    ollamaDisplayMetadata: { contextLength: 262144, configuredContextLength: 32768 },
+  }
+  const { ollamaDisplayMetadata: _display, ...withoutDisplay } = model
+  expect(resolveModelContextWindow(model)).toBe(4096)
+  expect(getCompactionBudgetForModel({ model })).toEqual(getCompactionBudgetForModel({ model: withoutDisplay }))
+  delete model.contextWindow
+  delete withoutDisplay.contextWindow
+  expect(resolveModelContextWindow(model)).toEqual(resolveModelContextWindow(withoutDisplay))
+  expect(getCompactionBudgetForModel({ model })).toEqual(getCompactionBudgetForModel({ model: withoutDisplay }))
+})
+
 function fixture(
   messages: Message[],
   get = vi.fn(async (_key: string): Promise<string | null> => null),

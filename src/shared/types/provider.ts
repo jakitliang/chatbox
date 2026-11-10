@@ -17,6 +17,7 @@ export enum ModelProviderEnum {
   Moonshot = 'moonshot',
   MoonshotCN = 'moonshot-cn',
   Ollama = 'ollama',
+  FastFlowLM = 'fastflowlm',
   Groq = 'groq',
   DeepSeek = 'deepseek',
   SiliconFlow = 'siliconflow',

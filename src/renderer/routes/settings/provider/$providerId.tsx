@@ -88,6 +88,7 @@ const BUILTIN_API_HOST_PROVIDERS = new Set<string>([
   ModelProviderEnum.Moonshot,
   ModelProviderEnum.MoonshotCN,
   ModelProviderEnum.Ollama,
+  ModelProviderEnum.FastFlowLM,
   ModelProviderEnum.LMStudio,
   ModelProviderEnum.VercelAIGateway,
   ModelProviderEnum.OpenCodeGo,
@@ -319,16 +320,17 @@ function ProviderSettings({ providerId }: { providerId: string }) {
       apiPath: e.currentTarget.value,
     })
   }
-  const normalizedBuiltinApiHost = baseInfo
-    ? normalizeAPIHost(
-        {
-          ...providerSettings,
-          apiHost: providerSettings?.apiHost || baseInfo.defaultSettings?.apiHost,
-          apiPath: providerSettings?.apiPath || baseInfo.defaultSettings?.apiPath,
-        },
-        baseInfo.type
-      )
-    : { apiHost: '', apiPath: '' }
+  const normalizedBuiltinApiHost =
+    baseInfo && !(baseInfo.id === ModelProviderEnum.FastFlowLM && !providerSettings?.apiHost?.trim())
+      ? normalizeAPIHost(
+          {
+            ...providerSettings,
+            apiHost: providerSettings?.apiHost || baseInfo.defaultSettings?.apiHost,
+            apiPath: providerSettings?.apiPath || baseInfo.defaultSettings?.apiPath,
+          },
+          baseInfo.type
+        )
+      : { apiHost: '', apiPath: '' }
 
   const handleAddModel = async () => {
     const newModel: ProviderModelInfo = await NiceModal.show('model-edit', { providerId })
@@ -493,7 +495,13 @@ function ProviderSettings({ providerId }: { providerId: string }) {
   const isSystemManagedModelList = false
   const showApiKey =
     !isOAuthOnlyProvider &&
-    ![ModelProviderEnum.Ollama, ModelProviderEnum.LMStudio, ModelProviderEnum.Bedrock, ''].includes(baseInfo.id)
+    ![
+      ModelProviderEnum.Ollama,
+      ModelProviderEnum.FastFlowLM,
+      ModelProviderEnum.LMStudio,
+      ModelProviderEnum.Bedrock,
+      '',
+    ].includes(baseInfo.id)
   const showNetworkCompatibility = showsNetworkCompatibility(baseInfo, platform.type)
   const customApiHost = normalizeAPIHost(providerSettings, baseInfo.type)
   const azureEndpoint = normalizeAzureEndpoint(providerSettings?.endpoint || baseInfo.defaultSettings?.endpoint || '')
@@ -771,9 +779,11 @@ function ProviderSettings({ providerId }: { providerId: string }) {
                     autoCorrect="off"
                     spellCheck={false}
                   />
-                  <Text span fz={12} c="chatbox-tertiary" className="break-all">
-                    {t('Preview')}: {normalizedBuiltinApiHost.apiHost + normalizedBuiltinApiHost.apiPath}
-                  </Text>
+                  {normalizedBuiltinApiHost.apiHost && (
+                    <Text span fz={12} c="chatbox-tertiary" className="break-all">
+                      {t('Preview')}: {normalizedBuiltinApiHost.apiHost + normalizedBuiltinApiHost.apiPath}
+                    </Text>
+                  )}
                 </Stack>
               )}
             />

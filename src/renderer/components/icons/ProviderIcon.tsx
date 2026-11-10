@@ -6,10 +6,25 @@ import QwenColor from '@lobehub/icons/es/Qwen/components/Color'
 import XiaomiMiMoMono from '@lobehub/icons/es/XiaomiMiMo/components/Mono'
 import ZhipuColor from '@lobehub/icons/es/Zhipu/components/Color'
 import { type ModelProvider, ModelProviderEnum } from '@shared/types'
+import fastFlowLMLogo from '@/static/logos/fastflowlm-white.png'
 import BrandGithub from './BrandGithub'
 
 export default function ProviderIcon(props: { className?: string; size?: number; provider: ModelProvider | string }) {
   const { className, size = 24, provider } = props
+
+  if (provider === ModelProviderEnum.FastFlowLM) {
+    return (
+      <img
+        className={className}
+        src={fastFlowLMLogo}
+        width={size}
+        height={size}
+        style={{ borderRadius: '20%', flexShrink: 0 }}
+        alt=""
+        aria-hidden="true"
+      />
+    )
+  }
 
   if (provider === 'github-copilot') {
     return <BrandGithub className={className} style={{ width: size, height: size }} />

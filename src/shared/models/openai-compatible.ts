@@ -142,7 +142,7 @@ export async function fetchRemoteModels(
   dependencies: ModelDependencies
 ) {
   const headers = {
-    Authorization: `Bearer ${params.apiKey}`,
+    ...(params.apiKey ? { Authorization: `Bearer ${params.apiKey}` } : {}),
     ...(params.extraHeaders || {}),
   }
   const response = params.customFetch

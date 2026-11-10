@@ -161,18 +161,25 @@ def crawl(destination, languages, providers=PROVIDERS, max_pages=30):
     previous_configs = destination / "configs.json"
     if previous_configs.is_file():
         configs["models"] = json.loads(previous_configs.read_text(encoding="utf-8"))["models"]
+    catalog_path = destination / "browser-catalog.json"
+    catalog = json.loads(catalog_path.read_text(encoding="utf-8")) if catalog_path.is_file() else {"models": []}
+    model_records = {record["provider"]: record for record in catalog["models"]}
     for provider in providers:
         if provider not in PROVIDERS:
             raise ValueError("Provider not allowed (commercial Chatbox AI excluded)")
         try:
-            manifest = fetcher.api("/api/model_manifest", {"aiProvider": provider, "language": "en"})["data"]
+            response = fetcher.api("/api/model_manifest", {"aiProvider": provider, "language": "en"})
+            manifest = response["data"]
             value = {"groupName": manifest.get("groupName") or provider, "models": manifest.get("models") or [], "imageModels": manifest.get("imageModels") or []}
             validate_config("models", {provider: value})
+            model_records[provider] = {"provider": provider, "status": 200, "data": response}
             if value["models"] or value["imageModels"]:
                 configs["models"][provider] = value
             print(f"{provider}: {len(value['models'])} models, {len(value['imageModels'])} image models", flush=True)
         except (ValueError, KeyError, AttributeError, subprocess.TimeoutExpired) as error:
             warnings.append(f"models {provider}: {error}")
+    catalog["models"] = list(model_records.values())
+    catalog_path.write_text(json.dumps(catalog, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     # Do NOT inherit paid feature flags, update version, product IDs, AI endpoints.
     for name, value in [("assistants.json", assistants), ("configs.json", configs), ("sources.json", {"fetched_at": datetime.now(timezone.utc).isoformat(), "complete_assistant_pagination": complete, "sources": fetcher.sources, "warnings": warnings, "notice": "Public API snapshot for local use; no redistribution license inferred. Upstream content rights remain with their owners. No AI training use."})]:
         (destination / name).write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

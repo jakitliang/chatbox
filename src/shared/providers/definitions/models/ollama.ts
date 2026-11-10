@@ -1,45 +1,21 @@
 import OpenAICompatible, { type OpenAICompatibleSettings } from '../../../models/openai-compatible'
+import type { ProviderModelInfo } from '../../../types'
 import type { ModelDependencies } from '../../../types/adapters'
 import { normalizeOpenAIApiHostAndPath } from '../../../utils/llm_utils'
 
-const helpers = {
-  isModelSupportVision: (model: string) => {
-    return [
-      'gemma3',
-      'llava',
-      'llama3.2-vision',
-      'llava-llama3',
-      'moondream',
-      'bakllava',
-      'llava-phi3',
-      'granite3.2-vision',
-      'qwen3',
-    ].some((m) => model.startsWith(m))
-  },
-  isModelSupportToolUse: (model: string) => {
-    return [
-      'qwq',
-      'llama3.3',
-      'llama3.2',
-      'llama3.1',
-      'mistral',
-      'qwen2.5',
-      'qwen2.5-coder',
-      'qwen2',
-      'mistral-nemo',
-      'mixtral',
-      'smollm2',
-      'mistral-small',
-      'command-r',
-      'hermes3',
-      'mistral-large',
-      'qwen3',
-    ].some((m) => model.startsWith(m))
-  },
-}
-
 interface OllamaOptions extends OpenAICompatibleSettings {
   ollamaHost: string
+}
+
+function applyNativeCapabilities(model: ProviderModelInfo, capabilities: unknown) {
+  if (!Array.isArray(capabilities)) return
+
+  // Empty metadata is authoritative; absent metadata must remain unknown.
+  model.capabilities = []
+  if (capabilities.includes('tools')) model.capabilities.push('tool_use')
+  if (capabilities.includes('vision')) model.capabilities.push('vision')
+  if (capabilities.includes('thinking')) model.capabilities.push('reasoning')
+  model.type = capabilities.includes('embedding') && !capabilities.includes('completion') ? 'embedding' : 'chat'
 }
 
 export default class Ollama extends OpenAICompatible {
@@ -67,10 +43,48 @@ export default class Ollama extends OpenAICompatible {
       apiHost,
     }
   }
-  public isSupportToolUse(): boolean {
-    return helpers.isModelSupportToolUse(this.options.model.modelId) || super.isSupportToolUse()
-  }
-  public isSupportVision(): boolean {
-    return helpers.isModelSupportVision(this.options.model.modelId) || super.isSupportVision()
+
+  public async listModels(): Promise<ProviderModelInfo[]> {
+    // Chat uses the OpenAI-compatible /v1 endpoint; discovery must use the
+    // native API. Keep any reverse-proxy path prefix in the configured host.
+    const apiHost = this.options.apiHost.replace(/\/v1\/?$/, '')
+    try {
+      const response = await this.dependencies.request.apiRequest({
+        url: `${apiHost}/api/tags`,
+        method: 'GET',
+        useProxy: this.options.useProxy,
+      })
+      if (!response.ok) throw new Error(`Ollama tags request failed: ${response.status}`)
+      const json = await response.json()
+      if (!Array.isArray(json.models)) return []
+
+      return await Promise.all(
+        json.models.map(async (item: { name: string; capabilities?: string[] }): Promise<ProviderModelInfo> => {
+          const model: ProviderModelInfo = { modelId: item.name, type: 'chat' }
+          // Some native servers include capabilities in /api/tags as well.
+          // Retain them if /api/show is unavailable or omits this field.
+          applyNativeCapabilities(model, item.capabilities)
+          try {
+            const response = await this.dependencies.request.apiRequest({
+              url: `${apiHost}/api/show`,
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ model: item.name }),
+              useProxy: this.options.useProxy,
+            })
+            if (!response.ok) throw new Error(`Ollama show request failed: ${response.status}`)
+            const details = await response.json()
+            applyNativeCapabilities(model, details.capabilities)
+          } catch (error) {
+            // A missing/unavailable model must not hide the rest of the catalog.
+            console.error('Failed to fetch Ollama model capabilities', item.name, error)
+          }
+          return model
+        })
+      )
+    } catch (error) {
+      console.error('Failed to fetch Ollama models', error)
+      return []
+    }
   }
 }

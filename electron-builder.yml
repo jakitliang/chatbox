@@ -61,7 +61,6 @@ mac:
     target: default
     arch:
       - arm64
-      - x64
   type: distribution
   hardenedRuntime: true
   entitlements: assets/entitlements.mac.plist

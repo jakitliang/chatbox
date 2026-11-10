@@ -16,6 +16,7 @@ import { TestId } from '@shared/automation/testids'
 import { SystemProviders } from '@shared/defaults'
 import { type OAuthProviderInfo, toOAuthProviderId, toOAuthSettingsProviderId } from '@shared/oauth'
 import { getProviderDefinition } from '@shared/providers'
+import { refreshOllamaModelCapabilities } from '@shared/providers/ollama-capabilities'
 import {
   ModelProviderEnum,
   ModelProviderType,
@@ -388,6 +389,13 @@ function ProviderSettings({ providerId }: { providerId: string }) {
       })
 
       if (modelList.length) {
+        // Existing models are already checked in the fetch dialog, so onAddModel
+        // will not run for them. Persist refreshed Ollama capabilities now too.
+        if (baseInfo.id === ModelProviderEnum.Ollama) {
+          setProviderSettings((current) => ({
+            models: refreshOllamaModelCapabilities(current?.models || [], modelList),
+          }))
+        }
         setFetchedModels(modelList)
       } else {
         addToast(t('Failed to fetch models'))
@@ -485,12 +493,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
   const isSystemManagedModelList = false
   const showApiKey =
     !isOAuthOnlyProvider &&
-    ![
-      ModelProviderEnum.Ollama,
-      ModelProviderEnum.LMStudio,
-      ModelProviderEnum.Bedrock,
-      '',
-    ].includes(baseInfo.id)
+    ![ModelProviderEnum.Ollama, ModelProviderEnum.LMStudio, ModelProviderEnum.Bedrock, ''].includes(baseInfo.id)
   const showNetworkCompatibility = showsNetworkCompatibility(baseInfo, platform.type)
   const customApiHost = normalizeAPIHost(providerSettings, baseInfo.type)
   const azureEndpoint = normalizeAzureEndpoint(providerSettings?.endpoint || baseInfo.defaultSettings?.endpoint || '')

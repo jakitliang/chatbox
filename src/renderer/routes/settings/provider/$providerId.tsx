@@ -16,6 +16,7 @@ import { TestId } from '@shared/automation/testids'
 import { SystemProviders } from '@shared/defaults'
 import { type OAuthProviderInfo, toOAuthProviderId, toOAuthSettingsProviderId } from '@shared/oauth'
 import { getProviderDefinition } from '@shared/providers'
+import { refreshProviderModelCapabilities } from '@shared/providers/model-config'
 import { refreshOllamaModelCapabilities } from '@shared/providers/ollama-capabilities'
 import {
   ModelProviderEnum,
@@ -391,13 +392,12 @@ function ProviderSettings({ providerId }: { providerId: string }) {
       })
 
       if (modelList.length) {
-        // Existing models are already checked in the fetch dialog, so onAddModel
-        // will not run for them. Persist refreshed Ollama capabilities now too.
-        if (baseInfo.id === ModelProviderEnum.Ollama) {
-          setProviderSettings((current) => ({
-            models: refreshOllamaModelCapabilities(current?.models || [], modelList),
-          }))
-        }
+        // Existing rows do not trigger onAddModel; persist refreshed capabilities here for every provider.
+        setProviderSettings((current) => ({
+          models: (baseInfo.id === ModelProviderEnum.Ollama
+            ? refreshOllamaModelCapabilities
+            : refreshProviderModelCapabilities)(current?.models || baseInfo.defaultSettings?.models || [], modelList),
+        }))
         setFetchedModels(modelList)
       } else {
         addToast(t('Failed to fetch models'))

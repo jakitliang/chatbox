@@ -49,11 +49,21 @@ export default class Bedrock extends AbstractAISDKModel {
     return provider.languageModel(this.options.model.modelId)
   }
 
-  protected getCallSettings(_options: CallChatCompletionOptions): CallSettings {
+  protected getCallSettings(options: CallChatCompletionOptions): CallSettings {
+    const claude = options.providerOptions?.claude
+    const thinking = claude?.thinking
     return {
       temperature: this.options.temperature,
       topP: this.options.topP,
       maxOutputTokens: this.options.maxOutputTokens,
+      providerOptions: claude
+        ? {
+            bedrock: {
+              ...(thinking ? { reasoningConfig: thinking } : {}),
+              ...(claude.effort ? { additionalModelRequestFields: { output_config: { effort: claude.effort } } } : {}),
+            },
+          }
+        : undefined,
     }
   }
 }

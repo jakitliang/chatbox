@@ -43,14 +43,9 @@ function withThinking(options: ProviderOptions | undefined, enabled: boolean | u
 
 export const compatibleBooleanReasoningStrategy: ReasoningStrategy = {
   getCapabilities(model) {
-    if (model.capabilities !== undefined) {
-      return model.capabilities.includes('reasoning')
-        ? { supported: true, kind: 'compatible-toggle' }
-        : { supported: false, kind: 'toggle' }
-    }
-    // Preserve the old Qwen-family fallback only when metadata is unknown.
-    if (/(?:^|\/)qwen3/i.test(model.modelId)) return { supported: true, kind: 'compatible-toggle' }
-    return undefined
+    return model.capabilities?.includes('reasoning')
+      ? { supported: true, kind: 'compatible-toggle' }
+      : { supported: false, kind: 'toggle' }
   },
   getOptions: () => [
     { level: 'default', label: 'default' },

@@ -1,15 +1,26 @@
 import type { ProviderModelInfo } from '../types'
 
-/** Fill capabilities added to a built-in model after its settings were persisted. */
+/** Explicit discovery refresh updates known facts; absent metadata preserves saved choices. */
+export function refreshProviderModelCapabilities(
+  models: ProviderModelInfo[],
+  discoveredModels: ProviderModelInfo[]
+): ProviderModelInfo[] {
+  const discovered = new Map(discoveredModels.map((model) => [model.modelId, model]))
+  return models.map((model) => {
+    const fresh = discovered.get(model.modelId)
+    if (!fresh || fresh.capabilities === undefined) return model
+    return {
+      ...model,
+      capabilities: fresh.capabilities,
+      type: fresh.type ?? model.type,
+    }
+  })
+}
+
+/** Use built-in configuration only when no model configuration has been saved. */
 export function mergeProviderModelCapabilities(
   storedModel: ProviderModelInfo | undefined,
   defaultModel: ProviderModelInfo | undefined
 ): ProviderModelInfo | undefined {
-  if (!storedModel) return defaultModel
-  if (storedModel.capabilities !== undefined || defaultModel?.capabilities === undefined) return storedModel
-
-  return {
-    ...storedModel,
-    capabilities: defaultModel.capabilities,
-  }
+  return storedModel ?? defaultModel
 }

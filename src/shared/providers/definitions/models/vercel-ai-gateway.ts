@@ -1,5 +1,6 @@
 import { createGatewayProvider } from '@ai-sdk/gateway'
 import AbstractAISDKModel from '../../../models/abstract-ai-sdk'
+import type { CallChatCompletionOptions } from '../../../models/types'
 import { createFetchWithProxy } from '../../../models/utils/fetch-proxy'
 import type { ProviderModelInfo } from '../../../types'
 import type { ModelDependencies } from '../../../types/adapters'
@@ -25,11 +26,17 @@ export default class VercelAIGateway extends AbstractAISDKModel {
     super(options, dependencies)
   }
 
-  protected getCallSettings() {
+  protected getCallSettings(options: CallChatCompletionOptions) {
+    const { claude, openai, google } = options.providerOptions || {}
     return {
       temperature: this.options.temperature,
       topP: this.options.topP,
       maxOutputTokens: this.options.maxOutputTokens,
+      providerOptions: {
+        ...(claude ? { anthropic: claude } : {}),
+        ...(openai ? { openai } : {}),
+        ...(google ? { google } : {}),
+      },
     }
   }
 

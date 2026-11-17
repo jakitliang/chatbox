@@ -1,10 +1,12 @@
 import { createAzure } from '@ai-sdk/azure'
 import { extractReasoningMiddleware, wrapLanguageModel } from 'ai'
 import AbstractAISDKModel from '../../../models/abstract-ai-sdk'
+import type { CallChatCompletionOptions } from '../../../models/types'
 import { createOpenAIChatCompletionSseFetch } from '../../../models/utils/openai-chat-sse-termination'
 import type { ProviderModelInfo } from '../../../types'
 import type { ModelDependencies } from '../../../types/adapters'
 import { normalizeAzureEndpoint } from '../../../utils/llm_utils'
+import { normalizeOpenAIReasoningOptions } from '../../../utils/reasoning-control'
 
 const AZURE_V1_API_VERSION = 'v1'
 
@@ -89,11 +91,13 @@ export default class AzureOpenAI extends AbstractAISDKModel {
     })
   }
 
-  protected getCallSettings() {
+  protected getCallSettings(options: CallChatCompletionOptions) {
+    const openai = normalizeOpenAIReasoningOptions(this.options.model.modelId, options.providerOptions?.openai)
     return {
       temperature: this.options.temperature,
       topP: this.options.topP,
       maxOutputTokens: this.options.maxOutputTokens,
+      providerOptions: openai ? { openai } : undefined,
     }
   }
 

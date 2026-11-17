@@ -2,6 +2,7 @@ import { createMistral } from '@ai-sdk/mistral'
 import { extractReasoningMiddleware, wrapLanguageModel } from 'ai'
 import AbstractAISDKModel from '../../../models/abstract-ai-sdk'
 import { fetchRemoteModels } from '../../../models/openai-compatible'
+import type { CallChatCompletionOptions } from '../../../models/types'
 import { createOpenAIChatCompletionSseFetch } from '../../../models/utils/openai-chat-sse-termination'
 import type { ProviderModelInfo } from '../../../types'
 import type { ModelDependencies } from '../../../types/adapters'
@@ -25,7 +26,8 @@ export default class MistralAI extends AbstractAISDKModel {
     super(options, dependencies)
   }
 
-  protected getCallSettings() {
+  protected getCallSettings(options: CallChatCompletionOptions) {
+    const thinking = options.providerOptions?.openaiCompatible?.enable_thinking
     return {
       temperature: this.options.temperature,
       topP: this.options.topP,
@@ -34,6 +36,7 @@ export default class MistralAI extends AbstractAISDKModel {
         mistral: {
           documentImageLimit: 8,
           documentPageLimit: 64,
+          ...(thinking !== undefined ? { reasoningEffort: thinking ? 'high' : 'none' } : {}),
         },
       },
     }

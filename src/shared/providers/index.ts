@@ -100,10 +100,8 @@ function getModelConfig(settings: SessionSettings, globalSettings: Settings, pro
     }
   }
 
-  // Enrich with registry metadata (capabilities, contextWindow, maxOutput)
-  // so model instances have accurate data for capability checks.
-  // Stamp the resolving provider id so model instances can evaluate reasoning-control
-  // support using the same provider+model-id logic as the UI.
+  // Runtime enrichment updates limits, never the configured capability choices.
+  // Provider identity selects protocol serialization, not capability support.
   return { ...enrichModelFromRegistry(model, provider), providerId: provider }
 }
 

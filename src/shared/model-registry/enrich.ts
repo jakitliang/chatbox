@@ -66,8 +66,8 @@ export function findModelInRegistry(modelId: string, registry: ProviderModelRegi
  * Used by getModelConfig() to ensure model instances have correct capabilities.
  *
  * Enrichment strategy:
- * - capabilities, contextWindow, maxOutput: registry data OVERWRITES existing values
- *   (these are factual data, registry is more authoritative and up-to-date)
+ * - capabilities: read from model configuration, never replaced during runtime enrichment
+ * - contextWindow, maxOutput: refreshed from registry metadata
  * - nickname: only filled when missing (user may have customized it)
  * - type: only filled when missing
  */
@@ -122,7 +122,6 @@ export function enrichModelFromRegistry<T extends { modelId: string; [key: strin
 
   return {
     ...model,
-    capabilities: meta.capabilities.length > 0 ? meta.capabilities : model.capabilities,
     contextWindow: meta.contextWindow > 0 ? meta.contextWindow : model.contextWindow,
     maxOutput: meta.maxOutput > 0 ? meta.maxOutput : model.maxOutput,
     nickname: model.nickname || meta.name,

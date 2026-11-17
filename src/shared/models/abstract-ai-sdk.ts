@@ -32,7 +32,6 @@ import type {
   StreamTextResult,
 } from '../types'
 import type { ModelDependencies } from '../types/adapters'
-import { getReasoningControlCapabilities, stripReasoningProviderOptions } from '../utils/reasoning-control'
 import { withCacheReadUsage } from './cache-read-usage'
 import { normalizeCompletedResponse } from './completed-response-normalizer'
 import {
@@ -48,7 +47,7 @@ import { wrapOpenAICompatibleNonStreamingModel } from './openai-compatible-non-s
 import { openAIResponsesToolStrictMiddleware } from './openai-responses-tool-strict'
 import { stopWhenPersistentToolCallPause } from './persistent-tool-call-pause'
 import { bindReplaySource } from './provider-part-metadata'
-import type { ReasoningStrategy } from './reasoning-strategy'
+import { type ReasoningStrategy, stripReasoningProviderOptions } from './reasoning-strategy'
 import { createRetryableChatModel } from './retryable-chat-model'
 import { simulateStreamingWithTextReplayMetadataMiddleware, textReplayMetadataMiddleware } from './text-replay-metadata'
 import { repairToolCallJson } from './tool-call-json-repair'
@@ -256,12 +255,9 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
     return {}
   }
 
-  // Resolves call settings while ensuring reasoning provider options are never sent
-  // to a model that does not support reasoning control. Stale options can linger on a
-  // session after switching from a reasoning-capable model, so we strip them at the
-  // request edge using the same capability metadata and protocol/model-family rules
-  // as the UI control. When the provider is unknown we
-  // leave options untouched to avoid stripping anything we cannot positively classify.
+  // Saved capabilities alone decide whether reasoning options may reach the adapter.
+  // An unchecked capability omits stale options, rather than force-disabling thinking;
+  // a strategy only normalizes the protocol shape when reasoning is checked.
   //
   // Kimi K2/K3 families pin temperature and top_p. Moonshot rejects any other
   // value, so those fields are dropped here after subclass getCallSettings so
@@ -270,13 +266,12 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
   private resolveCallSettings(options: CallChatCompletionOptions): CallSettings {
     const providerId = this.options.model.providerId
     const strategy = (this.constructor as typeof AbstractAISDKModel).reasoningStrategy
-    const strategyCapabilities = strategy?.getCapabilities(this.options.model)
-    const capabilities = strategyCapabilities ?? getReasoningControlCapabilities(providerId, this.options.model)
-    const shouldStrip = !!providerId && !!options.providerOptions && !capabilities.supported
+    const supportsReasoning = this.isSupportReasoning()
+    const shouldStrip = !!options.providerOptions && !supportsReasoning
     let sanitizedOptions = shouldStrip
       ? { ...options, providerOptions: stripReasoningProviderOptions(options.providerOptions) }
       : options
-    if (strategy && strategyCapabilities?.supported) {
+    if (strategy && supportsReasoning) {
       sanitizedOptions = {
         ...sanitizedOptions,
         providerOptions: strategy.normalizeOptions(sanitizedOptions.providerOptions),

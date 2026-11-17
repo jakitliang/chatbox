@@ -96,11 +96,9 @@ export function normalizeGoogleThinkingConfig(
   if (mode === 'level') {
     const supportedLevels = getSupportedGoogleThinkingLevels(modelId)
 
-    // Strip stale levels for Gemini 3 models outside the supported families.
+    // Unknown families keep explicit configuration; the server decides what it accepts.
     if (supportedLevels.length === 0) {
-      return thinkingConfig.includeThoughts !== undefined
-        ? { includeThoughts: thinkingConfig.includeThoughts }
-        : undefined
+      return thinkingConfig
     }
 
     const thinkingLevel = normalizeGoogleThinkingLevel(modelId, thinkingConfig.thinkingLevel)
@@ -113,6 +111,7 @@ export function normalizeGoogleThinkingConfig(
     }
   }
 
-  // Mode 'none': the model does not support thinking, never send a thinkingConfig.
-  return undefined
+  // An unrecognized model name does not override an explicitly configured capability.
+  // Without a known protocol specialization, preserve the caller's config as supplied.
+  return thinkingConfig
 }

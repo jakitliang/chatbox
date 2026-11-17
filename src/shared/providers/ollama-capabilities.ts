@@ -1,21 +1,14 @@
 import type { ProviderModelInfo } from '../types'
+import { refreshProviderModelCapabilities } from './model-config'
 
-/**
- * Refresh facts from the local server without replacing user customization.
- * Unknown native capabilities preserve saved data.
- */
+/** Native display metadata stays provider-owned; capability refresh uses the common rule. */
 export function refreshOllamaModelCapabilities(
-  models: ProviderModelInfo[],
-  discoveredModels: ProviderModelInfo[]
+	models: ProviderModelInfo[],
+	discoveredModels: ProviderModelInfo[]
 ): ProviderModelInfo[] {
-  const discovered = new Map(discoveredModels.map((model) => [model.modelId, model]))
-  return models.map((model) => {
-    const fresh = discovered.get(model.modelId)
-    if (!fresh || (fresh.capabilities === undefined && fresh.ollamaDisplayMetadata === undefined)) return model
-    return {
-      ...model,
-      ...(fresh.capabilities !== undefined ? { capabilities: fresh.capabilities, type: fresh.type ?? model.type } : {}),
-      ...(fresh.ollamaDisplayMetadata !== undefined ? { ollamaDisplayMetadata: fresh.ollamaDisplayMetadata } : {}),
-    }
-  })
+	const discovered = new Map(discoveredModels.map((model) => [model.modelId, model]))
+	return refreshProviderModelCapabilities(models, discoveredModels).map((model) => {
+		const metadata = discovered.get(model.modelId)?.ollamaDisplayMetadata
+		return metadata === undefined ? model : { ...model, ollamaDisplayMetadata: metadata }
+	})
 }

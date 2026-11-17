@@ -143,32 +143,13 @@ const DEEPSEEK_EFFORT_BY_LEVEL: Record<ReasoningEffortLevel, DeepSeekReasoningEf
 }
 
 const GPT_VERSION_PATTERN = /(?:^|\/)gpt-(\d+)(?=[.-]|$)/i
-const GPT_EFFORT_MODELS = [/(?:^|\/)gpt-oss(?:[.-]|$)/i, /(?:^|\/)o[1-9](?:[.-]|$)/i]
 // o-series models do not accept minimal/none to disable thinking.
 const OPENAI_NO_DISABLE_MODELS = [/(?:^|\/)o[1-9](?:[.-]|$)/i]
-// Chat-tuned GPT variants are excluded from the generation-based effort fallback.
-const GPT_NON_REASONING_CHAT_MODELS = [/(?:^|\/)gpt-\d+[\w.-]*[.-]chat(?:[.-]|$)/i]
-// o1-preview and o1-mini predate the reasoning_effort parameter — the API rejects it
-// for them entirely, so they must not get effort controls at all.
-const OPENAI_NO_EFFORT_PARAM_MODELS = [/(?:^|\/)o1-(?:preview|mini)(?:[.-]|$)/i]
 // gpt-5.1 and later accept reasoning_effort: 'none'; the original gpt-5 only goes
 // down to 'minimal'. Match any dotted gpt-5.x so future versions default to 'none'.
 const OPENAI_NONE_EFFORT_MODELS = [/(?:^|\/)gpt-5\.[1-9]\d*(?:[.-]|$)/i]
 const CLAUDE_EFFORT_MODELS = [/(?:^|\/)claude-opus-4-5(?:[.-]|$)/i]
 const CLAUDE_ADAPTIVE_EFFORT_MODELS = [/(?:^|\/)claude-opus-4-(?:7|8)(?:[.-]|$)/i, /(?:^|\/)claude-opus-5(?:[.-]|$)/i]
-const CLAUDE_BUDGET_MODELS = [
-  /(?:^|\/)claude-3-7-sonnet/i,
-  /(?:^|\/)claude-sonnet-4/i,
-  /(?:^|\/)claude-haiku-4-5/i,
-  /(?:^|\/)claude-opus-4(?![.-]?5)(?![.-]?7)(?![.-]?8)/i,
-]
-const QWEN_THINKING_MODELS = [/^qwen3/i, /(?:^|\/)qwen3/i]
-const GROK_REASONING_EFFORT_MODELS = [
-  /(?:^|\/)grok-4\.3(?:-latest)?$/i,
-  /(?:^|\/)grok-4(?:-latest|-0709)?$/i,
-  /(?:^|\/)grok-4-fast(?:-reasoning)?(?:-latest)?$/i,
-  /(?:^|\/)grok-4-1-fast(?:-reasoning)?(?:-latest)?$/i,
-]
 
 function matchesAny(modelId: string, patterns: RegExp[]): boolean {
   return patterns.some((pattern) => pattern.test(modelId))
@@ -204,14 +185,6 @@ function supportsOpenAIThinkingDisable(modelId: string): boolean {
   // New GPT generations inherit effort controls, but an accepted off value must be
   // established separately before offering minimal/none in the UI or request options.
   return getGptMajorVersion(modelId) <= 5 && !matchesAny(modelId, OPENAI_NO_DISABLE_MODELS)
-}
-
-function isGptEffortModel(modelId: string): boolean {
-  return (
-    (getGptMajorVersion(modelId) >= 5 || matchesAny(modelId, GPT_EFFORT_MODELS)) &&
-    !matchesAny(modelId, GPT_NON_REASONING_CHAT_MODELS) &&
-    !matchesAny(modelId, OPENAI_NO_EFFORT_PARAM_MODELS)
-  )
 }
 
 /**
@@ -256,33 +229,26 @@ export function normalizeClaudeReasoningOptions(
 }
 
 /**
- * Whether a reasoning_effort value can be sent to the given OpenAI-style model:
- * o1-preview/o1-mini reject the parameter entirely, and the other o-series models
- * reject the minimal/none off values.
+ * Whether an effort value fits the selected OpenAI protocol specialization.
+ * Capability support itself is exclusively configured by the user.
  */
 export function isOpenAIReasoningEffortSupported(modelId: string, effort: string): boolean {
   // 'max' is a DeepSeek-only effort; OpenAI models reject it. The DeepSeek
   // Responses path branches off before this check, so it is never affected.
   if (effort === 'max') return false
-  if (matchesAny(modelId, OPENAI_NO_EFFORT_PARAM_MODELS)) return false
   if (!supportsOpenAIThinkingDisable(modelId) && (effort === 'minimal' || effort === 'none')) return false
   return true
 }
 
 /**
- * Drops OpenAI reasoning options the target model cannot accept (see
- * isOpenAIReasoningEffortSupported) — a stale off effort persisted under a GPT-5
- * session must not survive a switch to an o-series model. Returns undefined when the
- * options are invalid for the model, dropping the whole (reasoning-only) namespace.
+ * Normalizes OpenAI effort values for the target protocol generation.
+ * This does not decide whether the configured model supports reasoning.
  */
 export function normalizeOpenAIReasoningOptions(
   modelId: string,
   openai: ProviderOptions['openai']
 ): ProviderOptions['openai'] {
   if (!openai) return undefined
-  if (matchesAny(modelId, OPENAI_NO_EFFORT_PARAM_MODELS)) {
-    return undefined
-  }
   if (openai.reasoningEffort !== undefined && !isOpenAIReasoningEffortSupported(modelId, openai.reasoningEffort)) {
     return undefined
   }
@@ -338,6 +304,14 @@ function getEffectiveProvider(
   provider: ModelProvider | undefined,
   model?: ProviderModelInfo | null
 ): ModelProvider | undefined {
+  if (provider === ModelProviderEnum.Bedrock) return ModelProviderEnum.Claude
+  if (provider === ModelProviderEnum.VercelAIGateway) {
+    // Gateway ids select the upstream wire protocol, never whether a capability is enabled.
+    const upstream = model?.modelId.split('/')[0]
+    if (model?.apiStyle === 'anthropic' || upstream === 'anthropic') return ModelProviderEnum.Claude
+    if (model?.apiStyle === 'google' || upstream === 'google') return ModelProviderEnum.Gemini
+    return ModelProviderEnum.OpenAI
+  }
   if (!model?.apiStyle || !usesModelApiStyleForReasoning(provider)) {
     return provider
   }
@@ -353,7 +327,7 @@ function getEffectiveProvider(
 }
 
 // All built-in provider ids. Any id outside this set is a user-created custom provider,
-// whose reasoning support must be judged by its API style (provider type) + model id.
+// whose reasoning protocol is selected by its API style (provider type).
 const BUILTIN_PROVIDER_IDS = new Set<string>(Object.values(ModelProviderEnum))
 
 function isCustomProviderId(provider: ModelProvider | undefined): boolean {
@@ -609,20 +583,17 @@ export function getReasoningControlCapabilities(
   provider: ModelProvider | undefined,
   model?: ProviderModelInfo | null
 ): ReasoningControlCapabilities {
-  const modelId = model?.modelId
-  if (!provider || !modelId) {
+  if (!model?.capabilities?.includes('reasoning')) {
     return DEFAULT_CAPABILITIES
   }
 
-  const strategyCapabilities = model && getReasoningStrategy(provider, model)?.getCapabilities(model)
-  if (strategyCapabilities) return strategyCapabilities
+  // Capability is a saved user setting; names only select a protocol specialization.
+  const strategyCapabilities = getReasoningStrategy(provider, model)?.getCapabilities(model)
+  if (strategyCapabilities) return { ...strategyCapabilities, supported: true }
 
+  const modelId = model.modelId
   const effectiveProvider = getEffectiveProvider(provider, model)
   const isChatboxDeepSeek = isChatboxAIDeepSeekWithOfficialApiStyle(provider, model)
-  const disabledReason = getApiStyleDisabledReason(provider, effectiveProvider, model)
-  if (disabledReason) {
-    return { supported: false, kind: 'toggle', disabledReason }
-  }
 
   // ChatboxAI's server-selected API style may change independently of the client.
   // DeepSeek V4 officially supports effort controls in OpenAI Chat, Anthropic,
@@ -636,86 +607,32 @@ export function getReasoningControlCapabilities(
   if (effectiveProvider === ModelProviderEnum.Claude && matchesAny(modelId, CLAUDE_EFFORT_MODELS)) {
     return { supported: true, kind: 'anthropic-effort' }
   }
-  if (effectiveProvider === ModelProviderEnum.Claude && matchesAny(modelId, CLAUDE_BUDGET_MODELS)) {
+  if (effectiveProvider === ModelProviderEnum.Claude) {
     return { supported: true, kind: 'budget' }
   }
   if (effectiveProvider === ModelProviderEnum.Gemini) {
     const mode = getGoogleThinkingMode(modelId)
-    if (mode === 'budget') return { supported: true, kind: 'budget' }
-    if (mode === 'level') return { supported: true, kind: 'level' }
+    return { supported: true, kind: mode === 'level' ? 'level' : 'budget' }
   }
-  if (effectiveProvider === ModelProviderEnum.DeepSeek && isDeepSeekThinkingModel(model)) {
+  if (effectiveProvider === ModelProviderEnum.DeepSeek) {
     return { supported: true, kind: isDeepSeekReasoningEffortModel(modelId) ? 'deepseek-effort' : 'toggle' }
   }
-  if (model && isOpenAICompatibleApiStyle(provider, model) && isDeepSeekThinkingModel(model)) {
+  if (isOpenAICompatibleApiStyle(provider, model) && isDeepSeekThinkingModel(model)) {
     return { supported: true, kind: isDeepSeekReasoningEffortModel(modelId) ? 'deepseek-effort' : 'toggle' }
   }
-  if (isOpenAIStyleEffectiveProvider(effectiveProvider) && isGptEffortModel(modelId)) {
+  if (isOpenAIStyleEffectiveProvider(effectiveProvider)) {
     return { supported: true, kind: 'openai-effort' }
   }
-  if (effectiveProvider === ModelProviderEnum.XAI && matchesAny(modelId, GROK_REASONING_EFFORT_MODELS)) {
+  if (effectiveProvider === ModelProviderEnum.XAI) {
     return { supported: true, kind: 'xai-effort' }
   }
-  if (effectiveProvider === ModelProviderEnum.OpenRouter && isOpenRouterReasoningModel(model)) {
+  if (effectiveProvider === ModelProviderEnum.OpenRouter) {
     return { supported: true, kind: 'openrouter-reasoning' }
   }
 
-  return DEFAULT_CAPABILITIES
-}
-
-function getApiStyleDisabledReason(
-  provider: ModelProvider | undefined,
-  effectiveProvider: ModelProvider | undefined,
-  model: ProviderModelInfo
-): ReasoningControlDisabledReason | undefined {
-  if (effectiveProvider === ModelProviderEnum.OpenRouter) {
-    return undefined
-  }
-
-  const modelId = model.modelId
-  if (matchesAny(modelId, [...CLAUDE_ADAPTIVE_EFFORT_MODELS, ...CLAUDE_EFFORT_MODELS, ...CLAUDE_BUDGET_MODELS])) {
-    if (effectiveProvider !== ModelProviderEnum.Claude) {
-      return 'requires-anthropic-api-style'
-    }
-  }
-
-  if (getGoogleThinkingMode(modelId) !== 'none') {
-    if (effectiveProvider !== ModelProviderEnum.Gemini) {
-      return 'requires-google-api-style'
-    }
-  }
-
-  if (isGptEffortModel(modelId) && !isOpenAIStyleEffectiveProvider(effectiveProvider)) {
-    return 'requires-openai-api-style'
-  }
-
-  if (
-    isDeepSeekReasoningModel(modelId) &&
-    effectiveProvider !== ModelProviderEnum.DeepSeek &&
-    !isOpenAICompatibleApiStyle(provider, model) &&
-    !isChatboxAIDeepSeekWithOfficialApiStyle(provider, model)
-  ) {
-    return 'requires-deepseek-api-style'
-  }
-
-  if (
-    matchesAny(modelId, QWEN_THINKING_MODELS) &&
-    effectiveProvider !== ModelProviderEnum.Qwen &&
-    effectiveProvider !== ModelProviderEnum.QwenPortal &&
-    !isOpenCodeGatewayProvider(provider)
-  ) {
-    return 'requires-qwen-api-style'
-  }
-
-  if (
-    matchesAny(modelId, GROK_REASONING_EFFORT_MODELS) &&
-    effectiveProvider !== ModelProviderEnum.XAI &&
-    !isOpenCodeGatewayProvider(provider)
-  ) {
-    return 'requires-xai-api-style'
-  }
-
-  return undefined
+  // Reuse the existing compatible wire shape, rather than inventing native
+  // parameters for routes without a provider-specific control policy.
+  return { supported: true, kind: 'compatible-toggle' }
 }
 
 export function getReasoningControlLevel(
@@ -743,7 +660,7 @@ function deriveReasoningControlLevel(
   if (!capabilities.supported) return 'default'
 
   if (capabilities.kind === 'compatible-toggle') {
-    return getReasoningStrategy(provider, model)?.readLevel(providerOptions) ?? 'default'
+    return (getReasoningStrategy(provider, model) ?? compatibleBooleanReasoningStrategy).readLevel(providerOptions)
   }
 
   const effectiveProvider = getEffectiveProvider(provider, model)
@@ -824,8 +741,9 @@ export function getReasoningControlOptions(
   const capabilities = getReasoningControlCapabilities(provider, model)
   if (!capabilities.supported) return []
 
-  const strategy = getReasoningStrategy(provider, model)
-  if (model && strategy?.getCapabilities(model)?.supported) return strategy.getOptions()
+  if (capabilities.kind === 'compatible-toggle') {
+    return (getReasoningStrategy(provider, model) ?? compatibleBooleanReasoningStrategy).getOptions()
+  }
 
   const offOption: ReasoningControlOption[] = supportsExplicitDisable(
     capabilities.kind,
@@ -855,10 +773,10 @@ export function getReasoningProviderOptions(
   previous?: ProviderOptions
 ): ProviderOptions | undefined {
   const capabilities = getReasoningControlCapabilities(provider, model)
-  if (!capabilities.supported) return previous
+  if (!capabilities.supported) return stripReasoningProviderOptions(previous)
 
   if (capabilities.kind === 'compatible-toggle') {
-    return getReasoningStrategy(provider, model)?.writeOptions(level, previous)
+    return (getReasoningStrategy(provider, model) ?? compatibleBooleanReasoningStrategy).writeOptions(level, previous)
   }
 
   const effectiveProvider = getEffectiveProvider(provider, model)
@@ -939,11 +857,12 @@ export function getReasoningProviderOptions(
     // adding an OpenAI option here. OpenAI-only SDK flags must not leak to compatible APIs.
     next.openai = {
       reasoningEffort: getOpenAIReasoningEffort(model?.modelId || '', level),
+      // The saved capability also opts unknown model ids into the SDK's reasoning path.
+      forceReasoning: true,
       ...(effectiveProvider === ModelProviderEnum.OpenAIResponses
         ? {
             reasoningSummary: 'auto' as const,
             include: ['reasoning.encrypted_content'],
-            forceReasoning: true,
           }
         : {}),
     }
@@ -1031,22 +950,6 @@ function getGoogleOffThinkingConfig(modelId: string): NonNullable<ProviderOption
   }
 
   return { thinkingBudget: 0, includeThoughts: false }
-}
-
-function isOpenRouterReasoningModel(model: ProviderModelInfo | null | undefined): boolean {
-  if (!model?.modelId) return false
-  if (isDeepSeekReasoningModel(model.modelId)) return true
-  if (isGptEffortModel(model.modelId)) return true
-  return matchesAny(model.modelId, [
-    ...CLAUDE_ADAPTIVE_EFFORT_MODELS,
-    ...CLAUDE_EFFORT_MODELS,
-    ...CLAUDE_BUDGET_MODELS,
-    ...QWEN_THINKING_MODELS,
-    ...GROK_REASONING_EFFORT_MODELS,
-    // o1-preview/o1-mini reject the direct reasoning_effort param, but OpenRouter maps
-    // its own reasoning options per model, so they keep reasoning controls there.
-    ...OPENAI_NO_EFFORT_PARAM_MODELS,
-  ])
 }
 
 export function getOpenAIReasoningEffort(

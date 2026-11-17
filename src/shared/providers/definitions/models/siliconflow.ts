@@ -1,6 +1,4 @@
 import OpenAICompatible, { type OpenAICompatibleSettings } from '../../../models/openai-compatible'
-import type { ToolUseScope } from '../../../types'
-import { isDeepSeekWeakToolUse } from '../../../models/utils/deepseek'
 import type { ModelDependencies } from '../../../types/adapters'
 
 interface Options extends OpenAICompatibleSettings {}
@@ -26,10 +24,5 @@ export default class SiliconFlow extends OpenAICompatible {
       ...options,
       apiHost,
     }
-  }
-
-  isSupportToolUse(scope?: ToolUseScope) {
-    if (isDeepSeekWeakToolUse(this.options.model.modelId, scope)) return false
-    return super.isSupportToolUse()
   }
 }

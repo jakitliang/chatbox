@@ -1,4 +1,5 @@
 import { getProviderDefinition } from '../../../shared/providers'
+import { refreshProviderModelCapabilities } from '../../../shared/providers/model-config'
 import { refreshOllamaModelCapabilities } from '../../../shared/providers/ollama-capabilities'
 import {
   type ModelProvider,
@@ -73,11 +74,16 @@ export default abstract class BaseConfig implements ModelSettingUtil {
       }
     }
 
-    const remoteOptionGroups = [...safeRemoteModels, ...safeProviderModels]
+    // Provider metadata wins over catalog defaults; the registry only fills unknown discovery data.
+    const remoteOptionGroups = enrichModelsFromRegistry(
+      this.mergeOptionGroups(refreshProviderModelCapabilities(safeRemoteModels, safeProviderModels), safeProviderModels),
+      this.provider,
+      true
+    )
     const refreshedLocalModels =
       this.provider === ModelProviderEnum.Ollama
-        ? refreshOllamaModelCapabilities(localOptionGroups, safeProviderModels)
-        : localOptionGroups
+        ? refreshOllamaModelCapabilities(localOptionGroups, remoteOptionGroups)
+        : refreshProviderModelCapabilities(localOptionGroups, remoteOptionGroups)
     const mergedModels = this.mergeOptionGroups(refreshedLocalModels, remoteOptionGroups)
 
     // 使用 models.dev registry 丰富模型元数据（同步，无网络调用）

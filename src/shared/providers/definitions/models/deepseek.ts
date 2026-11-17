@@ -5,13 +5,9 @@ import AbstractAISDKModel, { type CallSettings } from '../../../models/abstract-
 import { ApiError } from '../../../models/errors'
 import { getOpenAICompatibleProviderOptionsKey } from '../../../models/openai-compatible'
 import type { CallChatCompletionOptions } from '../../../models/types'
-import {
-  isDeepSeekReasoningModel,
-  isDeepSeekWeakToolUse,
-  normalizeDeepSeekReasoningEffort,
-} from '../../../models/utils/deepseek'
+import { normalizeDeepSeekReasoningEffort } from '../../../models/utils/deepseek'
 import { createOpenAIChatCompletionSseFetch } from '../../../models/utils/openai-chat-sse-termination'
-import type { ProviderModelInfo, ToolUseScope } from '../../../types'
+import type { ProviderModelInfo } from '../../../types'
 import type { ModelDependencies } from '../../../types/adapters'
 
 interface Options {
@@ -116,15 +112,6 @@ export default class DeepSeek extends AbstractAISDKModel {
     }
 
     return settings
-  }
-
-  isSupportToolUse(scope?: ToolUseScope) {
-    if (isDeepSeekWeakToolUse(this.options.model.modelId, scope)) return false
-    return super.isSupportToolUse()
-  }
-
-  isSupportReasoning() {
-    return isDeepSeekReasoningModel(this.options.model.modelId)
   }
 
   async listModels(): Promise<ProviderModelInfo[]> {

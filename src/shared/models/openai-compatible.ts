@@ -1,12 +1,11 @@
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { extractReasoningMiddleware, wrapLanguageModel } from 'ai'
-import type { ProviderModelInfo, ToolUseScope } from '../types'
+import type { ProviderModelInfo } from '../types'
 import type { ModelDependencies } from '../types/adapters'
 import AbstractAISDKModel from './abstract-ai-sdk'
 import { ApiError } from './errors'
 import { compatibleBooleanReasoningStrategy, type ReasoningStrategy } from './reasoning-strategy'
 import type { CallChatCompletionOptions, ModelInterface } from './types'
-import { isDeepSeekWeakToolUse } from './utils/deepseek'
 import { createFetchWithProxy } from './utils/fetch-proxy'
 import { createOpenAIChatCompletionSseFetch } from './utils/openai-chat-sse-termination'
 
@@ -53,10 +52,6 @@ export default abstract class OpenAICompatible extends AbstractAISDKModel implem
 
   static isSupportTextEmbedding() {
     return true
-  }
-  isSupportToolUse(scope?: ToolUseScope) {
-    if (isDeepSeekWeakToolUse(this.options.model.modelId, scope)) return false
-    return super.isSupportToolUse()
   }
 
   protected getProvider() {
@@ -178,36 +173,33 @@ export async function fetchRemoteModels(
       modelInfo.contextWindow = item.context_length
     }
 
-    // Add capabilities based on architecture
-    if (item.architecture) {
-      const capabilities: ProviderModelInfo['capabilities'] = []
+    // Read each capability from its own metadata; parameter support does not require architecture.
+    const capabilities: NonNullable<ProviderModelInfo['capabilities']> = []
+    if (item.architecture?.input_modalities?.includes('image')) {
+      capabilities.push('vision')
+    }
+    if (item.pricing?.web_search && item.pricing.web_search !== '0') {
+      capabilities.push('web_search')
+    }
+    if (
+      (item.pricing?.internal_reasoning && item.pricing.internal_reasoning !== '0') ||
+      item.supported_parameters?.includes('reasoning') ||
+      item.supported_parameters?.includes('include_reasoning') ||
+      item.supported_parameters?.includes('reasoning_effort')
+    ) {
+      capabilities.push('reasoning')
+    }
+    if (item.supported_parameters?.includes('tools') || item.supported_parameters?.includes('tool_choice')) {
+      capabilities.push('tool_use')
+    }
 
-      // Check for vision capability
-      if (item.architecture.input_modalities?.includes('image')) {
-        capabilities.push('vision')
-      }
-
-      // Check for web search capability (OpenRouter specific)
-      if (item.pricing?.web_search && item.pricing.web_search !== '0') {
-        capabilities.push('web_search')
-      }
-
-      // Check for reasoning capability (OpenRouter specific)
-      if (
-        (item.pricing?.internal_reasoning && item.pricing.internal_reasoning !== '0') ||
-        item.supported_parameters?.includes('reasoning') ||
-        item.supported_parameters?.includes('include_reasoning') ||
-        item.supported_parameters?.includes('reasoning_effort')
-      ) {
-        capabilities.push('reasoning')
-      }
-
-      // Note: tool_use capability cannot be determined from OpenRouter response
-      // It would need to be added from local defaults
-
-      if (capabilities.length > 0) {
-        modelInfo.capabilities = capabilities
-      }
+    if (
+      capabilities.length > 0 ||
+      item.architecture !== undefined ||
+      item.supported_parameters !== undefined ||
+      item.pricing?.internal_reasoning !== undefined
+    ) {
+      modelInfo.capabilities = capabilities
     }
 
     return modelInfo

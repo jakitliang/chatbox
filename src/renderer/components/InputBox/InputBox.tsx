@@ -14,7 +14,6 @@ import {
   isSupportedFile,
 } from '@shared/file-extensions'
 import { KNOWLEDGE_BASE_MAX_FILE_SIZE, KNOWLEDGE_BASE_MAX_FILE_SIZE_LABEL } from '@shared/knowledge-base'
-import { isDeepSeekWeakToolUse } from '@shared/models/utils/deepseek'
 import { formatNumber } from '@shared/utils'
 import { resolveReasoningProviderOptions } from '@shared/utils/reasoning-control'
 import {
@@ -693,15 +692,12 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       (m: ProviderModelInfo) => {
         if (agentModeEntry.value !== 'on') return undefined
         if (!m.capabilities?.includes('tool_use')) return agentModeDisabledMessage
-        if (isDeepSeekWeakToolUse(m.modelId, 'agent')) return agentModeDisabledMessage
         return undefined
       },
       [agentModeDisabledMessage, agentModeEntry.value]
     )
 
-    // Check model tool use capabilities for agent mode and file handling.
-    // Uses 'agent' scope as the gate — models with weak function calling
-    // (e.g. DeepSeek V3/R1) return false, disabling agent mode entirely.
+    // Agent mode and file handling use the same configured tool capability.
     const {
       modelSupportToolUseForFile,
       modelSupportsAgentMode,

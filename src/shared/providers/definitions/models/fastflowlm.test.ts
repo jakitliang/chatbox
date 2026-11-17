@@ -65,6 +65,80 @@ describe('FastFlowLM independent keyless provider', () => {
     expect(apiRequest).toHaveBeenCalledWith(expect.objectContaining({ headers: { Authorization: 'Bearer fixture-key' } }))
   })
 
+  it('maps native metadata without treating configured windows or thinking toggles as capability limits', async () => {
+    const apiRequest = vi.fn<ModelDependencies['request']['apiRequest']>().mockImplementation(() => reply({
+      data: [
+        {
+          id: 'fixture-multimodal', type: 'audio', capabilities: ['transcription', 'vision', 'tools', 'thinking'],
+          thinking_toggleable: false, model_context_length: 262144, configured_context_length: 32768,
+          default_context_length: 16384, context_capacity: { max: 131072, request_parameter: 'num_ctx' },
+        },
+        { id: 'fixture-embedding', type: 'embedding', capabilities: ['embedding'] },
+        { id: 'fixture-embedding-native', capabilities: ['embedding'] },
+        { id: 'fixture-text', capabilities: ['completion'] },
+        { id: 'fixture-empty', capabilities: [] },
+        { id: 'fixture-unknown', capabilities: null },
+      ],
+    }))
+    const runtime = new FastFlowLM({ apiHost: 'http://flm.example:52625', model: { modelId: '' } }, dependencies(apiRequest))
+    expect(await runtime.listModels()).toEqual([
+      {
+        modelId: 'fixture-multimodal', type: 'chat', capabilities: ['vision', 'reasoning', 'tool_use'],
+        contextWindow: 262144,
+      },
+      { modelId: 'fixture-embedding', type: 'embedding', capabilities: [] },
+      { modelId: 'fixture-embedding-native', type: 'embedding', capabilities: [] },
+      { modelId: 'fixture-text', type: 'chat', capabilities: [] },
+      { modelId: 'fixture-empty', type: 'chat', capabilities: [] },
+      { modelId: 'fixture-unknown', type: 'chat' },
+    ])
+    expect(apiRequest).toHaveBeenCalledOnce()
+  })
+
+  it.each([
+    [{ model_context_length: 65536 }, 65536],
+    [{ model_info: { 'general.architecture': 'fixture_arch', 'fixture_arch.context_length': 131072 } }, 131072],
+    [{ context_capacity: { max: 262144, default: 8192 } }, 262144],
+    [{ configured_context_length: 32768, default_context_length: 16384 }, undefined],
+    [{ model_info: { 'other.context_length': 65536, 'fixture.rope.scaling.original_context_length': 8192 } }, undefined],
+    [{ model_context_length: '65536', context_capacity: { max: -1 } }, undefined],
+    [{ model_context_length: 0 }, undefined],
+    [{ model_context_length: 1.5 }, undefined],
+    [{ model_context_length: Number.MAX_SAFE_INTEGER + 1 }, undefined],
+    [{ model_context_length: -1, context_capacity: { max: 65536 } }, 65536],
+  ])('reads only validated server-reported model capacity (%j)', async (metadata, expected) => {
+    const apiRequest = vi.fn<ModelDependencies['request']['apiRequest']>().mockImplementation(() =>
+      reply({ data: [{ id: 'fixture-capacity', ...metadata }] })
+    )
+    const runtime = new FastFlowLM({ apiHost: 'http://flm.example:52625', model: { modelId: '' } }, dependencies(apiRequest))
+    const [model] = await runtime.listModels()
+    expect(model.contextWindow).toBe(expected)
+    expect(model).not.toHaveProperty('maxOutput')
+    expect(model).not.toHaveProperty('capabilities')
+  })
+
+  it('ignores malformed catalog entries without hiding valid models', async () => {
+    const apiRequest = vi.fn<ModelDependencies['request']['apiRequest']>().mockImplementation(() =>
+      reply({ data: [null, [], {}, { id: 1 }, { id: ' ' }, { id: 'fixture-valid' }] })
+    )
+    const runtime = new FastFlowLM({ apiHost: 'http://flm.example:52625', model: { modelId: '' } }, dependencies(apiRequest))
+    expect(await runtime.listModels()).toEqual([{ modelId: 'fixture-valid', type: 'chat' }])
+  })
+
+  it.each([null, {}, { data: {} }, { data: 'invalid' }])('rejects invalid catalog envelopes (%j)', async (payload) => {
+    const apiRequest = vi.fn<ModelDependencies['request']['apiRequest']>().mockImplementation(() => reply(payload))
+    const runtime = new FastFlowLM({ apiHost: 'http://flm.example:52625', model: { modelId: '' } }, dependencies(apiRequest))
+    await expect(runtime.listModels()).rejects.toThrow('Invalid FastFlowLM model catalog')
+  })
+
+  it('rejects HTTP errors instead of accepting an error response as a catalog', async () => {
+    const apiRequest = vi.fn<ModelDependencies['request']['apiRequest']>().mockImplementation(() =>
+      Promise.resolve(new Response(JSON.stringify({ data: [] }), { status: 503 }))
+    )
+    const runtime = new FastFlowLM({ apiHost: 'http://flm.example:52625', model: { modelId: '' } }, dependencies(apiRequest))
+    await expect(runtime.listModels()).rejects.toMatchObject({ statusCode: 503 })
+  })
+
   it('uses the independent runtime and user model metadata, ignoring stored keys', () => {
     const saved: ProviderModelInfo = {
       modelId: 'fixture-local', nickname: 'My FLM', type: 'chat',

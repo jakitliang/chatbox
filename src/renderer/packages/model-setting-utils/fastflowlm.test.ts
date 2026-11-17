@@ -41,4 +41,38 @@ describe('FastFlowLM manual model settings', () => {
     expect(settings.models).toEqual([saved])
     expect(await util.getCurrentModelDisplayName(saved.modelId, 'chat', settings)).toBe('FastFlowLM (My local model)')
   })
+
+  it('initializes new models and explicitly refreshes capabilities while preserving saved user limits', async () => {
+    const saved: ProviderModelInfo = {
+      modelId: 'fixture-saved', nickname: 'My FLM', type: 'chat',
+      capabilities: [], contextWindow: 8192, maxOutput: 512,
+    }
+    const apiRequest = vi.fn<ModelDependencies['request']['apiRequest']>().mockImplementation(() =>
+      Promise.resolve(new Response(JSON.stringify({ data: [
+        {
+          id: saved.modelId, capabilities: ['vision', 'tools', 'thinking'],
+          model_context_length: 131072, configured_context_length: 32768,
+        },
+        {
+          id: 'fixture-new-metadata', capabilities: ['thinking'], thinking_toggleable: false,
+          model_info: { 'general.architecture': 'fixture_arch', 'fixture_arch.context_length': 65536 },
+          configured_context_length: 16384,
+        },
+      ] })))
+    )
+    vi.mocked(createModelDependencies).mockResolvedValue({
+      request: { apiRequest, fetchWithOptions: vi.fn() },
+      storage: { saveImage: vi.fn(), getImage: vi.fn() },
+      sentry: { captureException: vi.fn(), withScope: vi.fn() },
+      getRemoteConfig: vi.fn(),
+    })
+    const util = new RegistrySettingUtil(ModelProviderEnum.FastFlowLM)
+    const catalog = await util.getMergeOptionGroups({ apiHost: 'http://flm.example:52625', models: [saved] })
+    expect(catalog).toEqual([
+      { ...saved, capabilities: ['vision', 'reasoning', 'tool_use'] },
+      { modelId: 'fixture-new-metadata', type: 'chat', capabilities: ['reasoning'], contextWindow: 65536 },
+    ])
+    expect(saved.capabilities).toEqual([])
+    expect(apiRequest).toHaveBeenCalledOnce()
+  })
 })

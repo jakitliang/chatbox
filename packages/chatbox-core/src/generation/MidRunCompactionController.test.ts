@@ -7,6 +7,31 @@ import { getCompactionBudget } from '../application/token-estimation/math'
 import { MidRunCompactionController, type MidRunCompactionOptions } from './MidRunCompactionController'
 import { collectToolCallIds, estimateModelMessagesTokens } from './mid-run-compaction'
 
+it('refreshes runtime budgets between provider steps', async () => {
+  let reads = 0
+  const h = harness(4096, undefined, {
+    getBudget: () => {
+      reads += 1
+      return getCompactionBudget(128000)
+    },
+  })
+  h.append('first')
+  await h.controller.prepareStep(h.source, 1)
+  h.append('second')
+  await h.controller.prepareStep(h.source, 2)
+  assert.equal(reads, 2)
+  assert.equal(h.compactions, 0)
+})
+
+it('stops waiting for a shared runtime budget when generation is cancelled', async () => {
+  const h = harness(4096, undefined, { getBudget: () => new Promise(() => {}) })
+  h.append('first')
+  const step = h.controller.prepareStep(h.source, 1)
+  h.abort.abort()
+  assert.deepEqual(await step, h.source)
+  assert.equal(h.compactions, 0)
+})
+
 function round(id: string, chars = 20_000): ModelMessage[] {
   return [
     { role: 'assistant', content: [{ type: 'tool-call', toolCallId: id, toolName: 'read_file', input: {} }] },

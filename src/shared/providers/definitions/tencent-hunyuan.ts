@@ -8,6 +8,7 @@ export const tencentHunyuanProvider = defineProvider({
   id: ModelProviderEnum.TencentHunyuan,
   name: 'Tencent Hunyuan',
   type: ModelProviderType.OpenAI,
+  reasoningStrategy: TencentHunyuan.reasoningStrategy,
   urls: {
     website: 'https://cloud.tencent.com/product/hunyuan',
     apiKey: 'https://console.cloud.tencent.com/hunyuan/api-key',

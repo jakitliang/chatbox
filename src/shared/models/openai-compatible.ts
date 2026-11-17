@@ -4,6 +4,7 @@ import type { ProviderModelInfo, ToolUseScope } from '../types'
 import type { ModelDependencies } from '../types/adapters'
 import AbstractAISDKModel from './abstract-ai-sdk'
 import { ApiError } from './errors'
+import { compatibleBooleanReasoningStrategy, type ReasoningStrategy } from './reasoning-strategy'
 import type { CallChatCompletionOptions, ModelInterface } from './types'
 import { isDeepSeekWeakToolUse } from './utils/deepseek'
 import { createFetchWithProxy } from './utils/fetch-proxy'
@@ -23,6 +24,7 @@ export interface OpenAICompatibleSettings {
 }
 
 export default abstract class OpenAICompatible extends AbstractAISDKModel implements ModelInterface {
+  public static reasoningStrategy: ReasoningStrategy = compatibleBooleanReasoningStrategy
   public name = 'OpenAI Compatible'
 
   constructor(

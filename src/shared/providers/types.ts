@@ -1,3 +1,4 @@
+import type { ReasoningStrategy } from '../models/reasoning-strategy'
 import type { ModelInterface } from '../models/types'
 import type { PlatformType } from '../platform'
 import type { Config, ProviderModelInfo, ProviderSettings, SessionSettings, SessionType, Settings } from '../types'
@@ -34,6 +35,10 @@ export interface CreateModelConfig {
  * This consolidates all provider-related information in one place.
  */
 export interface ProviderDefinition {
+  /** Opt-in runtime window source. Absence preserves configured/registry window resolution. */
+  contextWindowDelegate?: ContextWindowDelegate
+  /** Shared with the concrete model class; absent keeps native protocol controls. */
+  reasoningStrategy?: ReasoningStrategy
   /** Unique identifier for the provider (matches ModelProviderEnum value) */
   id: string
   /** Display name for the provider */
@@ -96,4 +101,14 @@ export interface ProviderDefinition {
  */
 export type ProviderDefinitionInput = Omit<ProviderDefinition, 'id'> & {
   id: string
+}
+
+export interface ContextWindowDelegate {
+  getCacheKey(settings: ProviderSettings): string
+  resolve(
+    settings: ProviderSettings,
+    modelId: string,
+    request: (url: string, options: { useProxy?: boolean; signal: AbortSignal }) => Promise<Response>,
+    signal: AbortSignal
+  ): Promise<number | undefined>
 }

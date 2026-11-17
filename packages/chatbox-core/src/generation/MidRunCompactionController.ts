@@ -21,6 +21,8 @@ import {
 export interface MidRunCompactionOptions {
   /** Null disables this run's automatic compaction. */
   budget: CompactionBudget | null
+  /** Refresh runtime limits at each provider step without discarding rewrite state. */
+  getBudget?(): CompactionBudget | null | Promise<CompactionBudget | null>
   /** Counts one request message with the request's tokenizer. */
   countMessageTokens?(message: ModelMessage): number
   /** Request tokens sent outside the messages, such as tool definitions. Read once per run. */
@@ -64,6 +66,25 @@ export class MidRunCompactionController {
     return this.requestOverhead
   }
 
+  private async readBudget(): Promise<CompactionBudget | null> {
+    if (!this.options.getBudget) return this.options.budget
+    const { signal } = this.options
+    if (signal.aborted) return null
+    let onAbort: () => void = () => {}
+    try {
+      return await Promise.race([
+        this.options.getBudget(),
+        new Promise<null>((resolve) => {
+          onAbort = () => resolve(null)
+          signal.addEventListener('abort', onAbort, { once: true })
+          if (signal.aborted) resolve(null)
+        }),
+      ])
+    } finally {
+      signal.removeEventListener('abort', onAbort)
+    }
+  }
+
   async prepareStep(source: ModelMessage[], stepNumber: number): Promise<ModelMessage[]> {
     let effective = source
     let previousStart = -1
@@ -78,8 +99,10 @@ export class MidRunCompactionController {
       effective = rewriteModelMessagesWithSummary(source, this.rewrite.summary, previousStart, this.options.language)
     }
 
-    const { budget, signal } = this.options
-    if (this.failed || signal.aborted || stepNumber <= 0 || !budget) return effective
+    const { signal } = this.options
+    if (this.failed || signal.aborted || stepNumber <= 0) return effective
+    const budget = await this.readBudget()
+    if (!budget || signal.aborted) return effective
     const overhead = await this.readRequestOverhead()
     const tokens = estimateModelMessagesTokens(effective, this.countMessage) + overhead
     if (signal.aborted || !shouldCompactAtTokens(budget, tokens, this.compactedTokens)) return effective

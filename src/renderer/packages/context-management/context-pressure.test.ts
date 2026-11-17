@@ -1,5 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { getConfiguredContextWindow, getEffectiveMaxOutputTokens } from './context-pressure'
+
+vi.mock('@/utils/request', () => ({ apiRequest: { get: vi.fn() } }))
 
 describe('getConfiguredContextWindow', () => {
   it('reads the matching provider model window', () => {

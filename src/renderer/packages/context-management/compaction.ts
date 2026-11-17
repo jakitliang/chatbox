@@ -22,7 +22,7 @@ import { rendererTokenEstimation } from '../token-estimation/row-history-service
 import { resolveTokenEstimationPolicy } from '../token-estimation/policy'
 import { getCompactionContext } from './compaction-context'
 import { resolveCompactionBudget } from './compaction-detector'
-import { getConfiguredContextWindow, getEffectiveMaxOutputTokens } from './context-pressure'
+import { getEffectiveMaxOutputTokens, resolveConfiguredContextWindow } from './context-pressure'
 import { generateSummaryWithStream } from './summary-generator'
 const log = getLogger('compaction')
 
@@ -59,7 +59,7 @@ const compactionService = new CompactionService({
         const budget = resolveCompactionBudget(
           modelId,
           { compactionThreshold: globalSettings.compactionThreshold },
-          getConfiguredContextWindow(globalSettings, providerId, modelId),
+          await resolveConfiguredContextWindow(globalSettings, providerId, modelId),
           getEffectiveMaxOutputTokens(globalSettings, providerId, modelId, sessionSettings.maxTokens)
         )
         // The estimate counts the history only; tools and every extra instruction sit outside it.

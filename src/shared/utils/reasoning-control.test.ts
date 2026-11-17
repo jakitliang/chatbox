@@ -1,6 +1,8 @@
-import { describe, expect, it } from 'vitest'
+import '../providers/builtin-registration'
+import { describe, expect, it, vi } from 'vitest'
 import { isDeepSeekReasoningModel } from '../models/utils/deepseek'
-import { ModelProviderEnum, type ProviderModelInfo } from '../types'
+import * as providerRegistry from '../providers/registry'
+import { ModelProviderEnum, ModelProviderType, type ProviderModelInfo } from '../types'
 import {
   getLegacyOpenAICompatibleThinkingType,
   getOpenAIReasoningEffort,
@@ -164,7 +166,7 @@ describe('reasoning-control', () => {
     ).toBeUndefined()
   })
 
-  it('maps DeepSeek effort levels and Qwen budget reasoning', () => {
+  it('maps DeepSeek effort levels and Qwen boolean reasoning', () => {
     const deepseek = getReasoningProviderOptions(ModelProviderEnum.DeepSeek, model('deepseek-reasoner'), 'low')
     const deepseekV4 = getReasoningProviderOptions(ModelProviderEnum.DeepSeek, model('deepseek-v4-pro'), 'medium')
     const deepseekV32 = getReasoningProviderOptions(ModelProviderEnum.DeepSeek, model('deepseek-v3.2-thinking'), 'high')
@@ -176,7 +178,117 @@ describe('reasoning-control', () => {
     expect(getReasoningControlLevel(ModelProviderEnum.DeepSeek, model('deepseek-v3.2-thinking'), deepseekV32)).toBe(
       'high'
     )
-    expect(qwen?.openaiCompatible).toEqual({ enable_thinking: true, thinking_budget: 8192 })
+    expect(qwen?.openaiCompatible).toEqual({ enable_thinking: true })
+  })
+
+  it.each([
+    ModelProviderEnum.Qwen,
+    ModelProviderEnum.QwenPortal,
+    ModelProviderEnum.SiliconFlow,
+    ModelProviderEnum.LMStudio,
+    ModelProviderEnum.GLM,
+    ModelProviderEnum.Groq,
+    ModelProviderEnum.Ollama,
+    ModelProviderEnum.FastFlowLM,
+    ModelProviderEnum.TencentHunyuan,
+    ModelProviderEnum.XiaomiMiMo,
+    ModelProviderEnum.LongCat,
+    ModelProviderEnum.ZhipuGLMCodingPlan,
+    ModelProviderEnum.Custom,
+    'my-compatible-provider',
+  ])('uses metadata-driven boolean thinking through %s', (provider) => {
+    const info: ProviderModelInfo = { modelId: 'any-reasoning-model', apiStyle: 'openai', capabilities: ['reasoning'] }
+    expect(getReasoningControlCapabilities(provider, info)).toEqual({ supported: true, kind: 'compatible-toggle' })
+    expect(getReasoningControlOptions(provider, info)).toEqual([
+      { level: 'default', label: 'default' },
+      { level: 'off', label: 'off' },
+      { level: 'high', label: 'on' },
+    ])
+    const stale = { openaiCompatible: { enable_thinking: true, thinking_budget: 8192 } }
+    expect(getReasoningProviderOptions(provider, info, 'default', stale)).toBeUndefined()
+    for (const [level, enabled] of [
+      ['off', false],
+      ['high', true],
+    ] as const) {
+      const options = getReasoningProviderOptions(provider, info, level, stale)
+      expect(options).toEqual({ openaiCompatible: { enable_thinking: enabled } })
+      expect(getReasoningControlLevel(provider, info, options)).toBe(level)
+    }
+    expect(getReasoningControlLevel(provider, info, stale)).toBe('high')
+    expect(getReasoningControlOptions(provider, { ...info, capabilities: [] })).toEqual([])
+    expect(getReasoningControlOptions(provider, { ...info, modelId: 'qwen3.7-max', capabilities: [] })).toEqual([])
+  })
+
+  it('keeps native protocols separate from compatible boolean thinking', () => {
+    const info: ProviderModelInfo = { modelId: 'gpt-5.1', capabilities: ['reasoning'] }
+    expect(getReasoningControlCapabilities(ModelProviderEnum.OpenAI, info).kind).toBe('openai-effort')
+    expect(getReasoningControlCapabilities('custom-openai', { ...info, apiStyle: 'openai-responses' }).kind).toBe(
+      'openai-effort'
+    )
+    expect(getReasoningControlCapabilities('custom-openai', { ...info, apiStyle: 'openai' }).kind).toBe(
+      'compatible-toggle'
+    )
+  })
+
+  it('keeps Copilot Chat on its declared native effort controls', () => {
+    const info: ProviderModelInfo = { modelId: 'gpt-5.1', apiStyle: 'openai', capabilities: ['reasoning'] }
+    expect(getReasoningControlCapabilities('github-copilot', info)).toEqual({
+      supported: true,
+      kind: 'openai-effort',
+    })
+    expect(getReasoningProviderOptions('github-copilot', info, 'high')).toEqual({
+      openai: { reasoningEffort: 'high' },
+    })
+    expect(getReasoningProviderOptions('github-copilot', info, 'off')).toEqual({
+      openai: { reasoningEffort: 'none', forceReasoning: true },
+    })
+  })
+
+  it('does not classify registered providers outside the enum as custom compatible routes', () => {
+    const getDefinition = providerRegistry.getProviderDefinition
+    const registered = vi.spyOn(providerRegistry, 'getProviderDefinition').mockImplementation((id) =>
+      id === 'registered-native-provider'
+        ? {
+            id,
+            name: 'Native test provider',
+            type: ModelProviderType.OpenAI,
+            createModel: () => {
+              throw new Error('Not used')
+            },
+          }
+        : getDefinition(id)
+    )
+    try {
+      const info: ProviderModelInfo = { modelId: 'gpt-5.1', apiStyle: 'openai', capabilities: ['reasoning'] }
+      expect(getReasoningControlCapabilities('registered-native-provider', info).kind).toBe('openai-effort')
+      expect(getReasoningProviderOptions('registered-native-provider', info, 'high')).toEqual({
+        openai: { reasoningEffort: 'high' },
+      })
+      // Registered compatible built-ins remain explicitly opted in.
+      expect(getReasoningControlCapabilities(ModelProviderEnum.Qwen, info).kind).toBe('compatible-toggle')
+    } finally {
+      registered.mockRestore()
+    }
+  })
+
+  it.each([
+    [ModelProviderEnum.OpenAI, 'gpt-5.1', 'openai'],
+    [ModelProviderEnum.OpenAIResponses, 'gpt-5.1', 'openai-responses'],
+    [ModelProviderEnum.Azure, 'gpt-5.1', 'openai'],
+    [ModelProviderEnum.Claude, 'claude-sonnet-4-5', 'anthropic'],
+    [ModelProviderEnum.Gemini, 'gemini-2.5-flash', 'google'],
+    [ModelProviderEnum.DeepSeek, 'deepseek-v4-pro', 'openai'],
+    [ModelProviderEnum.OpenRouter, 'openai/gpt-5.1', 'openai'],
+    [ModelProviderEnum.OpenCodeGo, 'gpt-5.1', 'openai'],
+    [ModelProviderEnum.OpenCodeZen, 'gpt-5.1', 'openai'],
+    [ModelProviderEnum.VolcEngine, 'qwen3.7-max', 'openai'],
+    ['custom-native', 'claude-sonnet-4-5', 'anthropic'],
+    ['custom-native', 'gemini-2.5-flash', 'google'],
+    ['custom-native', 'gpt-5.1', 'openai-responses'],
+  ] as const)('does not enable the boolean toggle for %s / %s / %s', (provider, modelId, apiStyle) => {
+    const info: ProviderModelInfo = { modelId, apiStyle, capabilities: ['reasoning'] }
+    expect(getReasoningControlCapabilities(provider, info).kind).not.toBe('compatible-toggle')
+    expect(getReasoningProviderOptions(provider, info, 'high')?.openaiCompatible?.enable_thinking).toBeUndefined()
   })
 
   it('adapts selectable levels to the model thinking format', () => {

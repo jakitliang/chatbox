@@ -1,6 +1,12 @@
 import { pickPersistableProviderMetadata } from '../models/provider-part-metadata'
+import {
+  compatibleBooleanReasoningStrategy,
+  type ReasoningStrategy,
+  stripReasoningProviderOptions,
+} from '../models/reasoning-strategy'
 import { isDeepSeekReasoningEffortModel, isDeepSeekReasoningModel } from '../models/utils/deepseek'
 import { usesBedrockConverseProtocol } from '../providers/api-style'
+import { getProviderDefinition } from '../providers/registry'
 import type { MessageContentParts, ModelProvider, ProviderModelInfo, ProviderOptions } from '../types'
 import { ModelProviderEnum } from '../types'
 import {
@@ -84,6 +90,7 @@ export interface ReasoningControlCapabilities {
     | 'anthropic-adaptive-effort'
     | 'anthropic-effort'
     | 'budget'
+    | 'compatible-toggle'
     | 'deepseek-effort'
     | 'level'
     | 'openai-effort'
@@ -133,12 +140,6 @@ const DEEPSEEK_EFFORT_BY_LEVEL: Record<ReasoningEffortLevel, DeepSeekReasoningEf
   low: 'low',
   medium: 'high',
   high: 'max',
-}
-
-const QWEN_THINKING_BUDGET_BY_LEVEL: Record<ReasoningEffortLevel, number> = {
-  low: 1024,
-  medium: 4096,
-  high: 8192,
 }
 
 const GPT_VERSION_PATTERN = /(?:^|\/)gpt-(\d+)(?=[.-]|$)/i
@@ -300,6 +301,10 @@ export function pickOpenAICompatibleReasoningOptions(
   modelId: string,
   providerOptions: ProviderOptions | undefined
 ): ProviderOptions['openaiCompatible'] {
+  const enableThinking = providerOptions?.openaiCompatible?.enable_thinking
+  if (enableThinking !== undefined && providerOptions?.openai?.reasoningEffort === undefined) {
+    return { enable_thinking: enableThinking }
+  }
   const reasoningEffort = providerOptions?.openai?.reasoningEffort ?? providerOptions?.openaiCompatible?.reasoningEffort
   if (reasoningEffort === undefined) return undefined
   if (!isOpenAIReasoningEffortSupported(modelId, reasoningEffort)) return undefined
@@ -353,6 +358,20 @@ const BUILTIN_PROVIDER_IDS = new Set<string>(Object.values(ModelProviderEnum))
 
 function isCustomProviderId(provider: ModelProvider | undefined): boolean {
   return !!provider && !BUILTIN_PROVIDER_IDS.has(provider)
+}
+
+function getReasoningStrategy(
+  provider: ModelProvider | undefined,
+  model: ProviderModelInfo | null | undefined
+): ReasoningStrategy | undefined {
+  if (!provider || !model || (model.apiStyle && model.apiStyle !== 'openai')) return undefined
+  const definition = getProviderDefinition(provider)
+  if (definition) return definition.reasoningStrategy
+  // Unregistered IDs are resolved by createCustomProviderModel; its OpenAI
+  // branch uses the same policy as CustomOpenAI, without constructing a model.
+  return provider === ModelProviderEnum.Custom || isCustomProviderId(provider)
+    ? compatibleBooleanReasoningStrategy
+    : undefined
 }
 
 function isOpenCodeGatewayProvider(provider: ModelProvider | undefined): boolean {
@@ -595,6 +614,9 @@ export function getReasoningControlCapabilities(
     return DEFAULT_CAPABILITIES
   }
 
+  const strategyCapabilities = model && getReasoningStrategy(provider, model)?.getCapabilities(model)
+  if (strategyCapabilities) return strategyCapabilities
+
   const effectiveProvider = getEffectiveProvider(provider, model)
   const isChatboxDeepSeek = isChatboxAIDeepSeekWithOfficialApiStyle(provider, model)
   const disabledReason = getApiStyleDisabledReason(provider, effectiveProvider, model)
@@ -630,12 +652,6 @@ export function getReasoningControlCapabilities(
   }
   if (isOpenAIStyleEffectiveProvider(effectiveProvider) && isGptEffortModel(modelId)) {
     return { supported: true, kind: 'openai-effort' }
-  }
-  if (
-    (effectiveProvider === ModelProviderEnum.Qwen || effectiveProvider === ModelProviderEnum.QwenPortal) &&
-    matchesAny(modelId, QWEN_THINKING_MODELS)
-  ) {
-    return { supported: true, kind: 'budget' }
   }
   if (effectiveProvider === ModelProviderEnum.XAI && matchesAny(modelId, GROK_REASONING_EFFORT_MODELS)) {
     return { supported: true, kind: 'xai-effort' }
@@ -713,6 +729,7 @@ export function getReasoningControlLevel(
   // 'off' on a model that no longer offers an off option; report them as 'default' so
   // the displayed level always exists in getReasoningControlOptions.
   const capabilities = getReasoningControlCapabilities(provider, model)
+  if (capabilities.kind === 'compatible-toggle') return 'off'
   const effectiveProvider = getEffectiveProvider(provider, model)
   return supportsExplicitDisable(capabilities.kind, effectiveProvider, model?.modelId || '') ? 'off' : 'default'
 }
@@ -724,6 +741,10 @@ function deriveReasoningControlLevel(
 ): ReasoningControlLevel {
   const capabilities = getReasoningControlCapabilities(provider, model)
   if (!capabilities.supported) return 'default'
+
+  if (capabilities.kind === 'compatible-toggle') {
+    return getReasoningStrategy(provider, model)?.readLevel(providerOptions) ?? 'default'
+  }
 
   const effectiveProvider = getEffectiveProvider(provider, model)
   if (isChatboxAIDeepSeekWithOfficialApiStyle(provider, model)) {
@@ -793,15 +814,6 @@ function deriveReasoningControlLevel(
       providerOptions?.deepseek?.reasoningEffort
     )
   }
-  if (effectiveProvider === ModelProviderEnum.Qwen || effectiveProvider === ModelProviderEnum.QwenPortal) {
-    const openaiCompatible = providerOptions?.openaiCompatible
-    if (openaiCompatible?.enable_thinking === false) return 'off'
-    if (openaiCompatible?.enable_thinking !== true) return 'default'
-    const budget = openaiCompatible.thinking_budget
-    if (budget !== undefined && budget >= QWEN_THINKING_BUDGET_BY_LEVEL.high) return 'high'
-    if (budget !== undefined && budget >= QWEN_THINKING_BUDGET_BY_LEVEL.medium) return 'medium'
-    return 'low'
-  }
   return 'default'
 }
 
@@ -811,6 +823,9 @@ export function getReasoningControlOptions(
 ): ReasoningControlOption[] {
   const capabilities = getReasoningControlCapabilities(provider, model)
   if (!capabilities.supported) return []
+
+  const strategy = getReasoningStrategy(provider, model)
+  if (model && strategy?.getCapabilities(model)?.supported) return strategy.getOptions()
 
   const offOption: ReasoningControlOption[] = supportsExplicitDisable(
     capabilities.kind,
@@ -841,6 +856,10 @@ export function getReasoningProviderOptions(
 ): ProviderOptions | undefined {
   const capabilities = getReasoningControlCapabilities(provider, model)
   if (!capabilities.supported) return previous
+
+  if (capabilities.kind === 'compatible-toggle') {
+    return getReasoningStrategy(provider, model)?.writeOptions(level, previous)
+  }
 
   const effectiveProvider = getEffectiveProvider(provider, model)
 
@@ -889,8 +908,6 @@ export function getReasoningProviderOptions(
       next.google = { thinkingConfig: getGoogleOffThinkingConfig(model?.modelId || '') }
     } else if (effectiveProvider === ModelProviderEnum.DeepSeek) {
       next.deepseek = { thinking: { type: 'disabled' } }
-    } else if (effectiveProvider === ModelProviderEnum.Qwen || effectiveProvider === ModelProviderEnum.QwenPortal) {
-      next.openaiCompatible = { enable_thinking: false }
     }
     return compactProviderOptions(next)
   }
@@ -955,11 +972,6 @@ export function getReasoningProviderOptions(
       ...(isDeepSeekReasoningEffortModel(model?.modelId || '')
         ? { reasoningEffort: DEEPSEEK_EFFORT_BY_LEVEL[level] }
         : {}),
-    }
-  } else if (effectiveProvider === ModelProviderEnum.Qwen || effectiveProvider === ModelProviderEnum.QwenPortal) {
-    next.openaiCompatible = {
-      enable_thinking: true,
-      thinking_budget: QWEN_THINKING_BUDGET_BY_LEVEL[level],
     }
   }
 
@@ -1065,37 +1077,4 @@ function compactProviderOptions(options: ProviderOptions): ProviderOptions | und
   return Object.keys(next).length > 0 ? next : undefined
 }
 
-// Provider option namespaces that exclusively carry reasoning/thinking configuration.
-// Keep this in sync with ProviderOptionsSchema in shared/types/settings.ts.
-const REASONING_PROVIDER_OPTION_KEYS = [
-  'claude',
-  'openai',
-  'google',
-  'deepseek',
-  'openaiCompatible',
-  'openrouter',
-] as const satisfies readonly (keyof ProviderOptions)[]
-
-/**
- * Removes reasoning/thinking provider options so they are never sent to a model
- * that does not support reasoning control. This guards against stale options
- * persisted on a session (e.g. set on a reasoning-capable model, then carried
- * over after switching to a model without reasoning support). It also implements
- * the 'default' reasoning level (send no reasoning parameters) and the fallback
- * when 'off' is requested for a model whose thinking cannot be force-disabled.
- */
-export function stripReasoningProviderOptions(
-  providerOptions: ProviderOptions | undefined
-): ProviderOptions | undefined {
-  if (!providerOptions) return providerOptions
-  const next: ProviderOptions = { ...providerOptions }
-  let changed = false
-  for (const key of REASONING_PROVIDER_OPTION_KEYS) {
-    if (next[key] !== undefined) {
-      delete next[key]
-      changed = true
-    }
-  }
-  if (!changed) return providerOptions
-  return Object.keys(next).length > 0 ? next : undefined
-}
+export { stripReasoningProviderOptions } from '../models/reasoning-strategy'

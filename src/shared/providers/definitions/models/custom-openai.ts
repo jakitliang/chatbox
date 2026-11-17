@@ -2,6 +2,7 @@ import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { extractReasoningMiddleware, wrapLanguageModel } from 'ai'
 import AbstractAISDKModel from '../../../models/abstract-ai-sdk'
 import { fetchRemoteModels, getOpenAICompatibleProviderOptionsKey } from '../../../models/openai-compatible'
+import { compatibleBooleanReasoningStrategy, type ReasoningStrategy } from '../../../models/reasoning-strategy'
 import type { CallChatCompletionOptions } from '../../../models/types'
 import { createFetchWithProxy } from '../../../models/utils/fetch-proxy'
 import { createOpenAIChatCompletionSseFetch } from '../../../models/utils/openai-chat-sse-termination'
@@ -30,6 +31,7 @@ interface Options {
 type FetchFunction = typeof globalThis.fetch
 
 export default class CustomOpenAI extends AbstractAISDKModel {
+  public static reasoningStrategy: ReasoningStrategy = compatibleBooleanReasoningStrategy
   public name = 'Custom OpenAI'
 
   constructor(

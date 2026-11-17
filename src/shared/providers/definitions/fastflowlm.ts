@@ -6,6 +6,7 @@ export const fastFlowLMProvider = defineProvider({
   id: ModelProviderEnum.FastFlowLM,
   name: 'FastFlowLM',
   type: ModelProviderType.OpenAI,
+  reasoningStrategy: FastFlowLM.reasoningStrategy,
   urls: {
     website: 'https://fastflowlm.com',
   },

@@ -6,6 +6,7 @@ export const siliconFlowProvider = defineProvider({
   id: ModelProviderEnum.SiliconFlow,
   name: 'SiliconFlow',
   type: ModelProviderType.OpenAI,
+  reasoningStrategy: SiliconFlow.reasoningStrategy,
   modelsDevProviderId: 'siliconflow',
   curatedModelIds: [
     'deepseek-ai/DeepSeek-V4-Pro',

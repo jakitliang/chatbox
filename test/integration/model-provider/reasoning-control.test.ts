@@ -273,12 +273,12 @@ const CALL_CASES: ThinkingCallCase[] = [
     expectNoReasoning: true,
   },
   {
-    name: 'Qwen qwen3.7 low maps to thinking_budget',
+    name: 'Qwen qwen3.7 on enables thinking without a budget',
     provider: ModelProviderEnum.Qwen,
     apiKeyEnv: 'QWEN_API_KEY',
     modelId: 'qwen3.7-max',
-    level: 'low',
-    expectedProviderOptions: { openaiCompatible: { enable_thinking: true, thinking_budget: 1024 } },
+    level: 'high',
+    expectedProviderOptions: { openaiCompatible: { enable_thinking: true } },
     maxTokens: 2048,
   },
   {

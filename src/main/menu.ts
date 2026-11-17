@@ -227,7 +227,7 @@ export default class MenuBuilder {
         {
           label: 'Github Repo',
           click() {
-            shell.openExternal('https://github.com/chatboxai/chatbox')
+            shell.openExternal('https://github.com/jakitliang/chatbox')
           },
         },
       ],
@@ -306,7 +306,7 @@ export default class MenuBuilder {
           {
             label: 'Github Repo',
             click() {
-              shell.openExternal('https://github.com/chatboxai/chatbox')
+              shell.openExternal('https://github.com/jakitliang/chatbox')
             },
           },
         ],

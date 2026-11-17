@@ -288,7 +288,10 @@ export interface GenerationSteeringPort {
 
 export interface GenerationCompactionPort {
   /** Null disables mid-run compaction for the run. */
-  getBudget(sessionSettings: SessionSettings, globalSettings: Settings): CompactionBudget | null
+  getBudget(
+    sessionSettings: SessionSettings,
+    globalSettings: Settings
+  ): CompactionBudget | null | Promise<CompactionBudget | null>
   /** Request tokens outside the conversation history, measured on this run's request. */
   recordRequestOverhead?(sessionId: string, overhead: RequestOverheadTokens): void
   compact(
@@ -870,10 +873,11 @@ export class GenerationService<TContext> {
       }
       const midRunCompaction = compaction
         ? new MidRunCompactionController({
-            budget:
+            budget: null,
+            getBudget:
               Object.keys(prepared.tools).length > 0 && isAutoCompactionEnabled(settings, globalSettings)
-                ? compaction.getBudget(settings, globalSettings)
-                : null,
+                ? () => compaction.getBudget(settings, globalSettings)
+                : undefined,
             countMessageTokens,
             // Step messages already carry the full system instructions; only tool definitions sit outside them.
             getRequestOverheadTokens: () => readRequestOverhead().then((overhead) => overhead.toolTokens),

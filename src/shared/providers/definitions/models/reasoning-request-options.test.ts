@@ -1,9 +1,12 @@
+import '../../builtin-registration'
 import type { LanguageModelV4CallOptions } from '@ai-sdk/provider'
 import type { CallChatCompletionOptions } from '@shared/models/types'
 import type { ProviderModelInfo } from '@shared/types'
 import type { ModelDependencies } from '@shared/types/adapters'
+import { getReasoningProviderOptions } from '@shared/utils/reasoning-control'
 import type { SentryScope } from '@shared/utils/sentry_adapter'
 import { describe, expect, it, vi } from 'vitest'
+import * as providerRegistry from '../../registry'
 import Claude from './claude'
 import CustomOpenAI from './custom-openai'
 import DeepSeek from './deepseek'
@@ -37,6 +40,12 @@ class TestOpenRouter extends OpenRouter {
 class TestQwen extends Qwen {
   public exposeCallSettings(options: CallChatCompletionOptions) {
     return this.getCallSettings(options)
+  }
+}
+
+class TestCustomOpenAI extends CustomOpenAI {
+  public exposeChatModel(fetch: typeof globalThis.fetch) {
+    return this.getProvider({}, fetch).chatModel(this.options.model.modelId)
   }
 }
 
@@ -83,25 +92,95 @@ const reasoningModel = (modelId: string): ProviderModelInfo => ({
   capabilities: ['reasoning'],
 })
 
-// A Qwen model id that is NOT in the hard-coded reasoning list (does not match /^qwen3/),
-// so reasoning control reports it as unsupported regardless of capability metadata.
+// Explicit metadata takes precedence over model-family inference.
 const nonReasoningQwenModel = (modelId: string): ProviderModelInfo => ({
   modelId,
   type: 'chat',
-  capabilities: ['reasoning'], // capability flag is intentionally unreliable; the gate must ignore it
+  capabilities: [],
   providerId: 'qwen',
 })
 
-// A Qwen model id that IS in the hard-coded reasoning list (matches /^qwen3/), so reasoning
-// control reports it as supported even though the registry metadata lacks the flag.
+// Metadata can enable thinking without a Qwen model-id whitelist.
 const supportedQwenModel = (modelId: string): ProviderModelInfo => ({
   modelId,
   type: 'chat',
-  capabilities: [], // no 'reasoning' flag, yet reasoning control supports it by provider + id
+  capabilities: ['reasoning'],
   providerId: 'qwen',
 })
 
 describe('reasoning request options', () => {
+  it('uses the inherited request strategy without provider registration', () => {
+    const registration = vi.spyOn(providerRegistry, 'getProviderDefinition').mockReturnValue(undefined)
+    try {
+      const instance = new TestQwen(
+        {
+          name: 'Qwen',
+          apiHost: 'https://example.com/v1',
+          model: supportedQwenModel('generic-reasoner'),
+          apiKey: 'test',
+        },
+        createDependencies()
+      )
+      const settings = (instance as unknown as ResolveCallSettingsHarness).resolveCallSettings({
+        providerOptions: { openaiCompatible: { enable_thinking: false, thinking_budget: 8192 } },
+      })
+      expect(settings.providerOptions).toMatchObject({ openaiCompatible: { enable_thinking: false } })
+      expect(settings.providerOptions).not.toHaveProperty('openaiCompatible.thinking_budget')
+    } finally {
+      registration.mockRestore()
+    }
+  })
+
+  it.each([
+    ['default', undefined],
+    ['off', false],
+    ['high', true],
+  ] as const)('serializes generic compatible thinking %s without an effort or budget', async (level, enabled) => {
+    const model: ProviderModelInfo = {
+      modelId: 'generic-reasoner',
+      providerId: 'custom-thinking-provider',
+      apiStyle: 'openai',
+      capabilities: ['reasoning'],
+    }
+    let body: Record<string, unknown> | undefined
+    const fetch: typeof globalThis.fetch = (_input, init) => {
+      body = JSON.parse(String(init?.body))
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            id: 'test',
+            object: 'chat.completion',
+            created: 0,
+            model: model.modelId,
+            choices: [{ index: 0, message: { role: 'assistant', content: 'ok' }, finish_reason: 'stop' }],
+            usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+          }),
+          { headers: { 'content-type': 'application/json' } }
+        )
+      )
+    }
+    const custom = new TestCustomOpenAI(
+      {
+        apiKey: 'test-key',
+        apiHost: 'https://example.com/v1',
+        apiPath: '/chat/completions',
+        model,
+      },
+      createDependencies()
+    )
+    const settings = (custom as unknown as ResolveCallSettingsHarness).resolveCallSettings({
+      providerOptions: getReasoningProviderOptions(model.providerId, model, level),
+    })
+    await custom.exposeChatModel(fetch).doGenerate({
+      prompt: [{ role: 'user', content: [{ type: 'text', text: 'Hello' }] }],
+      providerOptions: settings.providerOptions as LanguageModelV4CallOptions['providerOptions'],
+    })
+    if (enabled === undefined) expect(body).not.toHaveProperty('enable_thinking')
+    else expect(body).toHaveProperty('enable_thinking', enabled)
+    expect(body).not.toHaveProperty('reasoning_effort')
+    expect(body).not.toHaveProperty('thinking_budget')
+  })
+
   it('adds summarized display to Claude thinking requests before fetch', async () => {
     let requestBody: unknown
     const baseFetch: typeof globalThis.fetch = (_input, init) => {
@@ -375,8 +454,7 @@ describe('reasoning request options', () => {
   })
 
   it('strips reasoning provider options when reasoning control does not support the model', () => {
-    // qwen-max is not in the hard-coded reasoning list, even though the model carries a
-    // (stale/unreliable) 'reasoning' capability flag. The gate must rely on provider + id.
+    // Explicitly unsupported models must not receive stale reasoning parameters.
     const qwen = new TestQwen(
       {
         name: 'Qwen',
@@ -399,8 +477,7 @@ describe('reasoning request options', () => {
     expect(settings.providerOptions).toBeUndefined()
   })
 
-  it('keeps reasoning provider options for models supported by provider + model-id', () => {
-    // qwen3.7-max matches the hard-coded reasoning list despite lacking the capability flag.
+  it('keeps only boolean thinking for models supported by metadata', () => {
     const qwen = new TestQwen(
       {
         name: 'Qwen',
@@ -423,11 +500,9 @@ describe('reasoning request options', () => {
     expect(settings.providerOptions).toEqual({
       openaiCompatible: {
         enable_thinking: true,
-        thinking_budget: 8192,
       },
       Qwen: {
         enable_thinking: true,
-        thinking_budget: 8192,
       },
     })
   })
@@ -497,6 +572,31 @@ describe('reasoning request options', () => {
         reasoningEffort: 'medium',
       },
     })
+  })
+
+  it('preserves Copilot Chat effort at the request edge instead of rewriting it as a boolean', () => {
+    const model: ProviderModelInfo = {
+      modelId: 'gpt-5.1',
+      providerId: 'github-copilot',
+      apiStyle: 'openai',
+      capabilities: ['reasoning'],
+    }
+    const copilot = new OpenAI(
+      {
+        apiKey: 'test-key',
+        apiHost: 'https://api.githubcopilot.com',
+        skipHostNormalization: true,
+        model,
+        dalleStyle: 'vivid',
+        injectDefaultMetadata: false,
+        useProxy: false,
+      },
+      createDependencies()
+    )
+    const settings = (copilot as unknown as ResolveCallSettingsHarness).resolveCallSettings({
+      providerOptions: getReasoningProviderOptions(model.providerId, model, 'high'),
+    })
+    expect(settings.providerOptions).toEqual({ openai: { reasoningEffort: 'high' } })
   })
 
   it('forwards only wire-compatible reasoning options for custom OpenAI providers', () => {

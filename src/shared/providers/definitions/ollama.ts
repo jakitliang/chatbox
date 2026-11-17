@@ -1,11 +1,14 @@
 import { ModelProviderEnum, ModelProviderType } from '../../types'
 import { defineProvider } from '../registry'
 import Ollama from './models/ollama'
+import { ollamaContextWindowDelegate } from './ollama-context-window'
 
 export const ollamaProvider = defineProvider({
   id: ModelProviderEnum.Ollama,
   name: 'Ollama',
   type: ModelProviderType.OpenAI,
+  reasoningStrategy: Ollama.reasoningStrategy,
+  contextWindowDelegate: ollamaContextWindowDelegate,
   defaultSettings: {
     apiHost: 'http://127.0.0.1:11434',
   },

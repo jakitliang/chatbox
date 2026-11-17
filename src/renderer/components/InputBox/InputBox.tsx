@@ -65,6 +65,8 @@ import { useSessionControls } from '@/hooks/useSessionLockState'
 import { useSessionPresentation } from '@/hooks/useSessionPresentation'
 import { cn } from '@/lib/utils'
 import { isAutoCompactionEnabled, isCompactionInProgress, useContextTokens } from '@/packages/context-management'
+import { hasRuntimeContextWindow } from '@/packages/context-management/runtime-context-window'
+import { useRuntimeContextWindow } from '@/packages/context-management/useRuntimeContextWindow'
 import { trackingEvent } from '@/packages/event'
 import {
   isLocalWorkAttachment,
@@ -824,16 +826,30 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       return isAutoCompactionEnabled(sessionHeader.settings, settingsStore.getState())
     }, [sessionHeader, globalAutoCompaction])
 
+    const activeProviderSettings = useSettingsStore((state) =>
+      model?.provider ? state.providers?.[model.provider] : undefined
+    )
+    const runtimeContextWindow = useRuntimeContextWindow(
+      model?.provider,
+      model?.modelId,
+      activeProviderSettings,
+      generating
+    )
+
     const contextWindowKnown = useMemo(() => {
       if (!model?.modelId) return false
+      if (model.provider && hasRuntimeContextWindow(model.provider)) return runtimeContextWindow !== undefined
       if (modelInfo?.contextWindow) return true
       if (model?.provider && getProviderModelContextWindowSync(model.provider, model.modelId) !== null) return true
       // Fallback: provider-agnostic lookup (same as compaction detector)
       return getModelContextWindowSync(model.modelId) !== null
-    }, [model?.modelId, model?.provider, modelInfo?.contextWindow, modelRegistryVersion])
+    }, [model?.modelId, model?.provider, modelInfo?.contextWindow, modelRegistryVersion, runtimeContextWindow])
 
     // Use model setting contextWindow if available, otherwise fallback to models.dev data
     const effectiveContextWindow = useMemo(() => {
+      if (model?.provider && hasRuntimeContextWindow(model.provider)) {
+        return runtimeContextWindow ?? null
+      }
       if (modelInfo?.contextWindow) return modelInfo.contextWindow
       if (model?.provider && model?.modelId) {
         const providerWindow = getProviderModelContextWindowSync(model.provider, model.modelId)
@@ -842,7 +858,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       // Fallback: provider-agnostic lookup (same as compaction detector)
       if (model?.modelId) return getModelContextWindowSync(model.modelId)
       return null
-    }, [modelInfo?.contextWindow, model?.modelId, model?.provider, modelRegistryVersion])
+    }, [modelInfo?.contextWindow, model?.modelId, model?.provider, modelRegistryVersion, runtimeContextWindow])
 
     // Calculate token usage percentage
     const tokenPercentage = useMemo(() => {

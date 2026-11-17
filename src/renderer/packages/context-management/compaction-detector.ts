@@ -69,9 +69,11 @@ export function isOverflow(options: OverflowCheckOptions): boolean {
 export function resolveCompactionBudget(
   modelId: string,
   settings?: Partial<Pick<Settings, 'compactionThreshold'>>,
-  providedContextWindow?: number,
+  providedContextWindow?: number | null,
   maxOutputTokens?: number
 ): CompactionBudget | null {
+  // An opted-in runtime delegate reported unknown; do not substitute a theoretical window.
+  if (providedContextWindow === null) return null
   const contextWindow = providedContextWindow ?? getModelContextWindowSync(modelId) ?? FALLBACK_CONTEXT_WINDOW_TOKENS
   return getCompactionBudget(contextWindow, { compactionThreshold: settings?.compactionThreshold, maxOutputTokens })
 }

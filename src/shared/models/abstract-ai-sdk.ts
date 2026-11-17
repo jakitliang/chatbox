@@ -48,6 +48,7 @@ import { wrapOpenAICompatibleNonStreamingModel } from './openai-compatible-non-s
 import { openAIResponsesToolStrictMiddleware } from './openai-responses-tool-strict'
 import { stopWhenPersistentToolCallPause } from './persistent-tool-call-pause'
 import { bindReplaySource } from './provider-part-metadata'
+import type { ReasoningStrategy } from './reasoning-strategy'
 import { createRetryableChatModel } from './retryable-chat-model'
 import { simulateStreamingWithTextReplayMetadataMiddleware, textReplayMetadataMiddleware } from './text-replay-metadata'
 import { repairToolCallJson } from './tool-call-json-repair'
@@ -129,6 +130,7 @@ interface ToolExecutionResult {
 }
 
 export default abstract class AbstractAISDKModel implements ModelInterface {
+  public static reasoningStrategy: ReasoningStrategy | undefined
   public name = 'AI SDK Model'
   public injectDefaultMetadata = true
   public modelId = ''
@@ -257,9 +259,8 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
   // Resolves call settings while ensuring reasoning provider options are never sent
   // to a model that does not support reasoning control. Stale options can linger on a
   // session after switching from a reasoning-capable model, so we strip them at the
-  // request edge using the same provider + hard-coded model-id logic as the UI control
-  // (the generic `reasoning` capability flag is unreliable — some reasoning models, e.g.
-  // qwen3.x, ship without it in their registry metadata). When the provider is unknown we
+  // request edge using the same capability metadata and protocol/model-family rules
+  // as the UI control. When the provider is unknown we
   // leave options untouched to avoid stripping anything we cannot positively classify.
   //
   // Kimi K2/K3 families pin temperature and top_p. Moonshot rejects any other
@@ -268,13 +269,19 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
   // request shape.
   private resolveCallSettings(options: CallChatCompletionOptions): CallSettings {
     const providerId = this.options.model.providerId
-    const shouldStrip =
-      !!providerId &&
-      !!options.providerOptions &&
-      !getReasoningControlCapabilities(providerId, this.options.model).supported
-    const sanitizedOptions = shouldStrip
+    const strategy = (this.constructor as typeof AbstractAISDKModel).reasoningStrategy
+    const strategyCapabilities = strategy?.getCapabilities(this.options.model)
+    const capabilities = strategyCapabilities ?? getReasoningControlCapabilities(providerId, this.options.model)
+    const shouldStrip = !!providerId && !!options.providerOptions && !capabilities.supported
+    let sanitizedOptions = shouldStrip
       ? { ...options, providerOptions: stripReasoningProviderOptions(options.providerOptions) }
       : options
+    if (strategy && strategyCapabilities?.supported) {
+      sanitizedOptions = {
+        ...sanitizedOptions,
+        providerOptions: strategy.normalizeOptions(sanitizedOptions.providerOptions),
+      }
+    }
     const settings = this.getCallSettings(sanitizedOptions)
     if (!isKimiFixedSamplingModel(this.options.model.modelId, providerId)) {
       return sanitizeCallSettings(settings)

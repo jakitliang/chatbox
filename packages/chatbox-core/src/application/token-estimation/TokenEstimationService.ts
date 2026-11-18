@@ -6,7 +6,7 @@ import {
 } from '../../ports/session-token-cache'
 import { getContextProjectionText, injectAttachments, selectContextMessages } from '@shared/context'
 import { estimateMessageToolCallTokens } from '@shared/context/tool-tokens'
-import { getRegistryModelMeta, getUnambiguousRegistryModelContextWindow } from '@shared/model-registry'
+import { getContextWindow, validContextWindow } from '@shared/providers/context-window'
 import { analyzeAttachmentTokens, estimateImageTokens } from '@shared/token-estimation/attachments'
 import {
   estimateTokensForTokenizerType,
@@ -46,7 +46,9 @@ export {
 export interface TokenEstimationModel {
   provider: string
   modelId: string
-  contextWindow?: number
+  /** null is an explicitly resolved unknown; it must not restart catalog fallback. */
+  contextWindow?: number | null
+  maxContextWindow?: number
 }
 
 export interface TokenBreakdown {
@@ -196,11 +198,20 @@ export function selectTokenEstimationContext(
 }
 
 export function resolveModelContextWindow(model: TokenEstimationModel | undefined): number | null {
+  const capacity = resolveModelCapacity(model)
+  return !capacity || capacity.source === 'fallback' ? null : capacity.tokens
+}
+
+function resolveModelCapacity(model: TokenEstimationModel | undefined) {
   if (!model?.modelId) return null
-  if (model.contextWindow && model.contextWindow > 0) return model.contextWindow
-  const providerMatch = getRegistryModelMeta(model.provider, model.modelId)
-  if (providerMatch?.contextWindow && providerMatch.contextWindow > 0) return providerMatch.contextWindow
-  return getUnambiguousRegistryModelContextWindow(model.modelId) ?? null
+  if (model.contextWindow === null) return { tokens: null, source: 'unknown' }
+  const resolved = validContextWindow(model.contextWindow)
+  if (resolved !== undefined) return { tokens: resolved, source: 'configuration' }
+  return getContextWindow({
+    providerId: model.provider,
+    modelId: model.modelId,
+    model: { modelId: model.modelId, maxContextWindow: model.maxContextWindow },
+  })
 }
 
 export function getCompactionBudgetForModel(options: {
@@ -208,7 +219,8 @@ export function getCompactionBudgetForModel(options: {
   compactionThreshold?: Settings['compactionThreshold']
   maxOutputTokens?: number
 }): CompactionBudget | null {
-  const contextWindow = resolveModelContextWindow(options.model) ?? FALLBACK_CONTEXT_WINDOW_TOKENS
+  const contextWindow = resolveModelCapacity(options.model)?.tokens ?? null
+  if (contextWindow === null) return null
   return getCompactionBudget(contextWindow, {
     compactionThreshold: options.compactionThreshold,
     maxOutputTokens: options.maxOutputTokens,

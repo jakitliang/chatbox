@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ProviderModelInfo } from '../types'
-import { mergeProviderModelCapabilities } from './model-config'
+import { mergeProviderModelCapabilities, refreshProviderModelCapabilities } from './model-config'
 
 describe('mergeProviderModelCapabilities', () => {
   const defaultModel: ProviderModelInfo = {
@@ -11,7 +11,7 @@ describe('mergeProviderModelCapabilities', () => {
     maxOutput: 384_000,
   }
 
-  it('fills capability metadata missing from an older persisted model record', () => {
+  it('does not silently restore capabilities missing from a persisted model record', () => {
     expect(
       mergeProviderModelCapabilities(
         {
@@ -24,7 +24,6 @@ describe('mergeProviderModelCapabilities', () => {
     ).toEqual({
       modelId: 'deepseek-v4-flash',
       type: 'chat',
-      capabilities: ['reasoning', 'tool_use'],
       contextWindow: 128_000,
     })
   })
@@ -43,5 +42,13 @@ describe('mergeProviderModelCapabilities', () => {
     const customModel: ProviderModelInfo = { modelId: 'custom-model', capabilities: ['tool_use'] }
 
     expect(mergeProviderModelCapabilities(customModel, undefined)).toBe(customModel)
+  })
+
+  it('refreshes a published maximum independently without overwriting the budget window', () => {
+    const saved: ProviderModelInfo = { modelId: 'local', contextWindow: 8192, capabilities: ['vision'] }
+    expect(refreshProviderModelCapabilities([saved], [{ modelId: 'local', maxContextWindow: 131072 }])).toEqual([
+      { ...saved, maxContextWindow: 131072 },
+    ])
+    expect(saved.maxContextWindow).toBeUndefined()
   })
 })

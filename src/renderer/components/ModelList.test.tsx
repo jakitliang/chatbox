@@ -1,24 +1,54 @@
 import { MantineProvider } from '@mantine/core'
 import type { ProviderModelInfo } from '../../shared/types'
+import { setRuntimeRegistry } from '@shared/model-registry/enrich'
+import type { ModelMetadata } from '@shared/model-registry/types'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 import { ModelList } from './ModelList'
 
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
 vi.mock('@/components/ui/tooltip', () => ({
-  AppTooltip: ({ children, label }: { children: React.ReactNode; label: string }) => <span title={label}>{children}</span>,
+  AppTooltip: ({ children, label }: { children: React.ReactNode; label: string }) => (
+    <span title={label}>{children}</span>
+  ),
 }))
 
-function render(model: ProviderModelInfo) {
+function render(model: ProviderModelInfo, providerId?: string) {
   return renderToStaticMarkup(
-    <MantineProvider><ModelList models={[model]} showSearch={false} showActions={false} /></MantineProvider>
+    <MantineProvider>
+      <ModelList providerId={providerId} models={[model]} showSearch={false} showActions={false} />
+    </MantineProvider>
   )
 }
 
 describe('Ollama informational model display', () => {
+  it('resolves a catalog-only maximum using the enclosing provider identity', () => {
+    setRuntimeRegistry({
+      'model-list-fixture': {
+        'catalog-only': {
+          modelId: 'catalog-only',
+          name: 'Catalog only',
+          type: 'chat',
+          capabilities: [],
+          contextWindow: 65536,
+          maxOutput: 0,
+        } satisfies ModelMetadata,
+      },
+    })
+    try {
+      expect(render({ modelId: 'catalog-only', type: 'chat' }, 'model-list-fixture')).toContain('66K')
+    } finally {
+      setRuntimeRegistry(null)
+    }
+  })
+
+  it('displays the explicit maximum rather than the smaller budget window', () => {
+    expect(render({ modelId: 'private', type: 'chat', contextWindow: 8192, maxContextWindow: 65536 })).toContain('66K')
+  })
   it('renders persisted metadata without fetching or exposing a fake output limit', () => {
     const model: ProviderModelInfo = {
-      modelId: 'llama:local', type: 'chat',
+      modelId: 'llama:local',
+      type: 'chat',
       ollamaDisplayMetadata: { contextLength: 131072, configuredContextLength: 32768 },
     }
     const html = render(JSON.parse(JSON.stringify(model)))

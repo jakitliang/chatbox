@@ -80,7 +80,7 @@ export function estimateTokensBySampling(text: string, tokenizerType: TokenizerT
 
 /** Largest reply reservation; reasoning models on large windows can use all of it. */
 export const OUTPUT_RESERVE_TOKENS = 32_000
-export const FALLBACK_CONTEXT_WINDOW_TOKENS = 128_000
+export { FALLBACK_CONTEXT_WINDOW_TOKENS } from '@shared/providers/context-window'
 /** A reply never claims more than this share of the context window. */
 export const MAX_OUTPUT_RESERVE_RATIO = 0.25
 /** Default trigger, as a share of the window left after the reply reservation. */

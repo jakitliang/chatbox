@@ -22,7 +22,10 @@ export type DocumentParserType = 'none' | 'local' | 'chatbox-ai' | 'mineru'
 
 export const DocumentParserConfigSchema = z.object({
   // Accept the historical value on import, but never execute cloud fallback.
-  type: z.preprocess((type) => type === 'chatbox-ai' ? 'local' : type, z.enum(['none', 'local', 'chatbox-ai', 'mineru'])),
+  type: z.preprocess(
+    (type) => (type === 'chatbox-ai' ? 'local' : type),
+    z.enum(['none', 'local', 'chatbox-ai', 'mineru'])
+  ),
   mineru: z
     .object({
       apiToken: z.string(),
@@ -57,6 +60,8 @@ export const ProviderModelInfoSchema = z.object({
     .optional()
     .catch([]),
   contextWindow: z.number().optional().catch(undefined),
+  // Published model capacity; distinct from the effective/configured budget window and maxOutput.
+  maxContextWindow: z.number().optional().catch(undefined),
   maxOutput: z.number().optional().catch(undefined),
   // Informational only: never use these values for generation or compaction budgets.
   ollamaDisplayMetadata: z
@@ -353,7 +358,7 @@ const ExtensionSettingsSchema = z.object({
   webSearch: z.object({
     // Old paid search selections migrate to Bing. Search still requires explicit enablement.
     provider: z.preprocess(
-      (provider) => provider === 'build-in' ? 'bing' : provider,
+      (provider) => (provider === 'build-in' ? 'bing' : provider),
       z.enum(['build-in', 'bing', 'tavily', 'bocha', 'querit', 'searxng']).catch('bing')
     ),
     tavilyApiKey: z.string().optional(),

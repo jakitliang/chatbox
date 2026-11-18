@@ -46,45 +46,62 @@ describe('FastFlowLM independent keyless provider', () => {
     ['http://localhost:52625/v1/', 'http://localhost:52625/v1'],
     ['https://flm.example/proxy/v1/chat/completions', 'https://flm.example/proxy/v1'],
   ])('fetches the model catalog without authentication or native show calls (%s)', async (apiHost, baseURL) => {
-    const apiRequest = vi.fn<ModelDependencies['request']['apiRequest']>().mockImplementation(() =>
-      reply({ object: 'list', data: [{ id: 'fixture-text' }, { id: 'fixture-vision' }] })
-    )
+    const apiRequest = vi
+      .fn<ModelDependencies['request']['apiRequest']>()
+      .mockImplementation(() => reply({ object: 'list', data: [{ id: 'fixture-text' }, { id: 'fixture-vision' }] }))
     const model = new FastFlowLM({ apiHost, model: { modelId: '' }, useProxy: true }, dependencies(apiRequest))
     expect(await model.listModels()).toEqual([
       { modelId: 'fixture-text', type: 'chat' },
       { modelId: 'fixture-vision', type: 'chat' },
     ])
     expect(apiRequest).toHaveBeenCalledExactlyOnceWith({
-      url: `${baseURL}/models`, method: 'GET', headers: {}, useProxy: true,
+      url: `${baseURL}/models`,
+      method: 'GET',
+      headers: {},
+      useProxy: true,
     })
   })
 
   it('keeps keyed OpenAI-compatible discovery authenticated', async () => {
     const apiRequest = vi.fn<ModelDependencies['request']['apiRequest']>().mockImplementation(() => reply({ data: [] }))
     await fetchRemoteModels({ apiHost: 'https://example.test/v1', apiKey: 'fixture-key' }, dependencies(apiRequest))
-    expect(apiRequest).toHaveBeenCalledWith(expect.objectContaining({ headers: { Authorization: 'Bearer fixture-key' } }))
+    expect(apiRequest).toHaveBeenCalledWith(
+      expect.objectContaining({ headers: { Authorization: 'Bearer fixture-key' } })
+    )
   })
 
   it('maps native metadata without treating configured windows or thinking toggles as capability limits', async () => {
-    const apiRequest = vi.fn<ModelDependencies['request']['apiRequest']>().mockImplementation(() => reply({
-      data: [
-        {
-          id: 'fixture-multimodal', type: 'audio', capabilities: ['transcription', 'vision', 'tools', 'thinking'],
-          thinking_toggleable: false, model_context_length: 262144, configured_context_length: 32768,
-          default_context_length: 16384, context_capacity: { max: 131072, request_parameter: 'num_ctx' },
-        },
-        { id: 'fixture-embedding', type: 'embedding', capabilities: ['embedding'] },
-        { id: 'fixture-embedding-native', capabilities: ['embedding'] },
-        { id: 'fixture-text', capabilities: ['completion'] },
-        { id: 'fixture-empty', capabilities: [] },
-        { id: 'fixture-unknown', capabilities: null },
-      ],
-    }))
-    const runtime = new FastFlowLM({ apiHost: 'http://flm.example:52625', model: { modelId: '' } }, dependencies(apiRequest))
+    const apiRequest = vi.fn<ModelDependencies['request']['apiRequest']>().mockImplementation(() =>
+      reply({
+        data: [
+          {
+            id: 'fixture-multimodal',
+            type: 'audio',
+            capabilities: ['transcription', 'vision', 'tools', 'thinking'],
+            thinking_toggleable: false,
+            model_context_length: 262144,
+            configured_context_length: 32768,
+            default_context_length: 16384,
+            context_capacity: { max: 131072, request_parameter: 'num_ctx' },
+          },
+          { id: 'fixture-embedding', type: 'embedding', capabilities: ['embedding'] },
+          { id: 'fixture-embedding-native', capabilities: ['embedding'] },
+          { id: 'fixture-text', capabilities: ['completion'] },
+          { id: 'fixture-empty', capabilities: [] },
+          { id: 'fixture-unknown', capabilities: null },
+        ],
+      })
+    )
+    const runtime = new FastFlowLM(
+      { apiHost: 'http://flm.example:52625', model: { modelId: '' } },
+      dependencies(apiRequest)
+    )
     expect(await runtime.listModels()).toEqual([
       {
-        modelId: 'fixture-multimodal', type: 'chat', capabilities: ['vision', 'reasoning', 'tool_use'],
-        contextWindow: 262144,
+        modelId: 'fixture-multimodal',
+        type: 'chat',
+        capabilities: ['vision', 'reasoning', 'tool_use'],
+        maxContextWindow: 262144,
       },
       { modelId: 'fixture-embedding', type: 'embedding', capabilities: [] },
       { modelId: 'fixture-embedding-native', type: 'embedding', capabilities: [] },
@@ -100,53 +117,75 @@ describe('FastFlowLM independent keyless provider', () => {
     [{ model_info: { 'general.architecture': 'fixture_arch', 'fixture_arch.context_length': 131072 } }, 131072],
     [{ context_capacity: { max: 262144, default: 8192 } }, 262144],
     [{ configured_context_length: 32768, default_context_length: 16384 }, undefined],
-    [{ model_info: { 'other.context_length': 65536, 'fixture.rope.scaling.original_context_length': 8192 } }, undefined],
+    [
+      { model_info: { 'other.context_length': 65536, 'fixture.rope.scaling.original_context_length': 8192 } },
+      undefined,
+    ],
     [{ model_context_length: '65536', context_capacity: { max: -1 } }, undefined],
     [{ model_context_length: 0 }, undefined],
     [{ model_context_length: 1.5 }, undefined],
     [{ model_context_length: Number.MAX_SAFE_INTEGER + 1 }, undefined],
     [{ model_context_length: -1, context_capacity: { max: 65536 } }, 65536],
   ])('reads only validated server-reported model capacity (%j)', async (metadata, expected) => {
-    const apiRequest = vi.fn<ModelDependencies['request']['apiRequest']>().mockImplementation(() =>
-      reply({ data: [{ id: 'fixture-capacity', ...metadata }] })
+    const apiRequest = vi
+      .fn<ModelDependencies['request']['apiRequest']>()
+      .mockImplementation(() => reply({ data: [{ id: 'fixture-capacity', ...metadata }] }))
+    const runtime = new FastFlowLM(
+      { apiHost: 'http://flm.example:52625', model: { modelId: '' } },
+      dependencies(apiRequest)
     )
-    const runtime = new FastFlowLM({ apiHost: 'http://flm.example:52625', model: { modelId: '' } }, dependencies(apiRequest))
     const [model] = await runtime.listModels()
-    expect(model.contextWindow).toBe(expected)
+    expect(model.maxContextWindow).toBe(expected)
+    expect(model.contextWindow).toBeUndefined()
     expect(model).not.toHaveProperty('maxOutput')
     expect(model).not.toHaveProperty('capabilities')
   })
 
   it('ignores malformed catalog entries without hiding valid models', async () => {
-    const apiRequest = vi.fn<ModelDependencies['request']['apiRequest']>().mockImplementation(() =>
-      reply({ data: [null, [], {}, { id: 1 }, { id: ' ' }, { id: 'fixture-valid' }] })
+    const apiRequest = vi
+      .fn<ModelDependencies['request']['apiRequest']>()
+      .mockImplementation(() => reply({ data: [null, [], {}, { id: 1 }, { id: ' ' }, { id: 'fixture-valid' }] }))
+    const runtime = new FastFlowLM(
+      { apiHost: 'http://flm.example:52625', model: { modelId: '' } },
+      dependencies(apiRequest)
     )
-    const runtime = new FastFlowLM({ apiHost: 'http://flm.example:52625', model: { modelId: '' } }, dependencies(apiRequest))
     expect(await runtime.listModels()).toEqual([{ modelId: 'fixture-valid', type: 'chat' }])
   })
 
   it.each([null, {}, { data: {} }, { data: 'invalid' }])('rejects invalid catalog envelopes (%j)', async (payload) => {
     const apiRequest = vi.fn<ModelDependencies['request']['apiRequest']>().mockImplementation(() => reply(payload))
-    const runtime = new FastFlowLM({ apiHost: 'http://flm.example:52625', model: { modelId: '' } }, dependencies(apiRequest))
+    const runtime = new FastFlowLM(
+      { apiHost: 'http://flm.example:52625', model: { modelId: '' } },
+      dependencies(apiRequest)
+    )
     await expect(runtime.listModels()).rejects.toThrow('Invalid FastFlowLM model catalog')
   })
 
   it('rejects HTTP errors instead of accepting an error response as a catalog', async () => {
-    const apiRequest = vi.fn<ModelDependencies['request']['apiRequest']>().mockImplementation(() =>
-      Promise.resolve(new Response(JSON.stringify({ data: [] }), { status: 503 }))
+    const apiRequest = vi
+      .fn<ModelDependencies['request']['apiRequest']>()
+      .mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ data: [] }), { status: 503 })))
+    const runtime = new FastFlowLM(
+      { apiHost: 'http://flm.example:52625', model: { modelId: '' } },
+      dependencies(apiRequest)
     )
-    const runtime = new FastFlowLM({ apiHost: 'http://flm.example:52625', model: { modelId: '' } }, dependencies(apiRequest))
     await expect(runtime.listModels()).rejects.toMatchObject({ statusCode: 503 })
   })
 
   it('uses the independent runtime and user model metadata, ignoring stored keys', () => {
     const saved: ProviderModelInfo = {
-      modelId: 'fixture-local', nickname: 'My FLM', type: 'chat',
-      capabilities: ['vision', 'reasoning', 'tool_use'], contextWindow: 8192, maxOutput: 512,
+      modelId: 'fixture-local',
+      nickname: 'My FLM',
+      type: 'chat',
+      capabilities: ['vision', 'reasoning', 'tool_use'],
+      contextWindow: 8192,
+      maxOutput: 512,
     }
     const runtime = getModel(
       { provider: ModelProviderEnum.FastFlowLM, modelId: saved.modelId },
-      { providers: { fastflowlm: { apiHost: 'http://localhost:52625', apiKey: 'must-not-send', models: [saved] } } } as unknown as Settings,
+      {
+        providers: { fastflowlm: { apiHost: 'http://localhost:52625', apiKey: 'must-not-send', models: [saved] } },
+      } as unknown as Settings,
       { uuid: '' } as Config,
       dependencies()
     ) as FastFlowLM
@@ -159,12 +198,20 @@ describe('FastFlowLM independent keyless provider', () => {
   })
 
   it('sends chat completions without authentication', async () => {
-    const apiRequest = vi.fn<ModelDependencies['request']['apiRequest']>().mockImplementation(() => reply({
-      id: 'fixture', object: 'chat.completion', created: 0, model: 'fixture-local',
-      choices: [{ index: 0, message: { role: 'assistant', content: 'Hello' }, finish_reason: 'stop' }],
-      usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
-    }))
-    const runtime = new FastFlowLM({ apiHost: 'http://localhost:52625', model: { modelId: 'fixture-local' } }, dependencies(apiRequest))
+    const apiRequest = vi.fn<ModelDependencies['request']['apiRequest']>().mockImplementation(() =>
+      reply({
+        id: 'fixture',
+        object: 'chat.completion',
+        created: 0,
+        model: 'fixture-local',
+        choices: [{ index: 0, message: { role: 'assistant', content: 'Hello' }, finish_reason: 'stop' }],
+        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+      })
+    )
+    const runtime = new FastFlowLM(
+      { apiHost: 'http://localhost:52625', model: { modelId: 'fixture-local' } },
+      dependencies(apiRequest)
+    )
     const result = await chatModel(runtime).doGenerate(prompt)
     expect(result.content).toContainEqual({ type: 'text', text: 'Hello' })
     expect(apiRequest).toHaveBeenCalledOnce()
@@ -179,17 +226,25 @@ describe('FastFlowLM independent keyless provider', () => {
     { maxOutput: 512, maxTokens: undefined },
     { maxOutput: undefined, maxTokens: 128 },
   ])('serializes only the explicit generation budget (%j)', async ({ maxOutput, maxTokens }) => {
-    const apiRequest = vi.fn<ModelDependencies['request']['apiRequest']>().mockResolvedValue(new Response(
-      'data: {"choices":[{"index":0,"delta":{"content":"Hello"},"finish_reason":null}]}\n\n' +
-      'data: {"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n',
-      { headers: { 'content-type': 'text/event-stream' } }
-    ))
+    const apiRequest = vi
+      .fn<ModelDependencies['request']['apiRequest']>()
+      .mockResolvedValue(
+        new Response(
+          'data: {"choices":[{"index":0,"delta":{"content":"Hello"},"finish_reason":null}]}\n\n' +
+            'data: {"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n',
+          { headers: { 'content-type': 'text/event-stream' } }
+        )
+      )
     const runtime = getModel(
       { provider: ModelProviderEnum.FastFlowLM, modelId: 'fixture-local', maxTokens },
-      { providers: { fastflowlm: {
-        apiHost: 'http://localhost:52625',
-        models: [{ modelId: 'fixture-local', contextWindow: 8192, maxOutput }],
-      } } } as unknown as Settings,
+      {
+        providers: {
+          fastflowlm: {
+            apiHost: 'http://localhost:52625',
+            models: [{ modelId: 'fixture-local', contextWindow: 8192, maxOutput }],
+          },
+        },
+      } as unknown as Settings,
       { uuid: '' } as Config,
       dependencies(apiRequest)
     ) as FastFlowLM
@@ -216,11 +271,17 @@ describe('FastFlowLM independent keyless provider', () => {
       { choices: [{ index: 0, delta: { content: null }, finish_reason: 'stop' }] },
       { choices: [], usage: { prompt_tokens: 1, completion_tokens: 2, total_tokens: 3 } },
     ]
-    const apiRequest = vi.fn<ModelDependencies['request']['apiRequest']>().mockResolvedValue(new Response(
-      `${chunks.map((chunk) => `data: ${JSON.stringify(chunk)}\n\n`).join('')}data: [DONE]\n\n`,
-      { headers: { 'content-type': 'text/event-stream' } }
-    ))
-    const runtime = new FastFlowLM({ apiHost: 'http://localhost:52625', model: { modelId: 'fixture-local' } }, dependencies(apiRequest))
+    const apiRequest = vi
+      .fn<ModelDependencies['request']['apiRequest']>()
+      .mockResolvedValue(
+        new Response(`${chunks.map((chunk) => `data: ${JSON.stringify(chunk)}\n\n`).join('')}data: [DONE]\n\n`, {
+          headers: { 'content-type': 'text/event-stream' },
+        })
+      )
+    const runtime = new FastFlowLM(
+      { apiHost: 'http://localhost:52625', model: { modelId: 'fixture-local' } },
+      dependencies(apiRequest)
+    )
     const { stream } = await chatModel(runtime).doStream(prompt)
     const parts = []
     const reader = stream.getReader()

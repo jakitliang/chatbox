@@ -35,8 +35,10 @@ export interface CreateModelConfig {
  * This consolidates all provider-related information in one place.
  */
 export interface ProviderDefinition {
-  /** Opt-in runtime window source. Absence preserves configured/registry window resolution. */
+  /** Effective budget window policy; absent uses the shared configured/catalog policy. */
   contextWindowDelegate?: ContextWindowDelegate
+  /** Model specification, independent of the currently loaded window. */
+  maxContextWindowDelegate?: MaxContextWindowDelegate
   /** Shared with the concrete model class; absent keeps native protocol controls. */
   reasoningStrategy?: ReasoningStrategy
   /** Unique identifier for the provider (matches ModelProviderEnum value) */
@@ -103,7 +105,28 @@ export type ProviderDefinitionInput = Omit<ProviderDefinition, 'id'> & {
   id: string
 }
 
+export interface ContextWindowInput {
+  providerId: string
+  modelId: string
+  model?: ProviderModelInfo
+  runtimeContextWindow?: number
+}
+
+export interface ContextWindowValue {
+  tokens: number | null
+  source: 'runtime' | 'configuration' | 'catalog' | 'fallback' | 'unknown'
+}
+
+export interface MaxContextWindowDelegate {
+  getMaxContextWindow(input: ContextWindowInput): number | undefined
+}
+
 export interface ContextWindowDelegate {
+  getContextWindow(input: ContextWindowInput): ContextWindowValue
+  runtime?: RuntimeContextWindowSource
+}
+
+export interface RuntimeContextWindowSource {
   getCacheKey(settings: ProviderSettings): string
   resolve(
     settings: ProviderSettings,

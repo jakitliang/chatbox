@@ -8,11 +8,11 @@ export function refreshProviderModelCapabilities(
   const discovered = new Map(discoveredModels.map((model) => [model.modelId, model]))
   return models.map((model) => {
     const fresh = discovered.get(model.modelId)
-    if (!fresh || fresh.capabilities === undefined) return model
+    if (!fresh || (fresh.capabilities === undefined && fresh.maxContextWindow === undefined)) return model
     return {
       ...model,
-      capabilities: fresh.capabilities,
-      type: fresh.type ?? model.type,
+      ...(fresh.capabilities !== undefined ? { capabilities: fresh.capabilities, type: fresh.type ?? model.type } : {}),
+      ...(fresh.maxContextWindow !== undefined ? { maxContextWindow: fresh.maxContextWindow } : {}),
     }
   })
 }

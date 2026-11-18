@@ -33,7 +33,8 @@ export function enrichModelsFromRegistry(
     return {
       ...model,
       ...(initializeCapabilities && model.capabilities === undefined ? { capabilities: meta.capabilities } : {}),
-      contextWindow: meta.contextWindow > 0 ? meta.contextWindow : model.contextWindow,
+      contextWindow: model.contextWindow || (meta.contextWindow > 0 ? meta.contextWindow : undefined),
+      maxContextWindow: meta.contextWindow > 0 ? meta.contextWindow : model.maxContextWindow,
       maxOutput: meta.maxOutput > 0 ? meta.maxOutput : model.maxOutput,
       nickname: model.nickname || meta.name,
       type: model.type || meta.type,
@@ -110,6 +111,7 @@ function metadataToProviderModelInfo(meta: ModelMetadata): ProviderModelInfo {
     nickname: meta.name,
     capabilities: [...meta.capabilities],
     contextWindow: meta.contextWindow,
+    maxContextWindow: meta.contextWindow,
     maxOutput: meta.maxOutput,
   }
 }

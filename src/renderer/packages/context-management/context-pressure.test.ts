@@ -20,8 +20,8 @@ describe('getConfiguredContextWindow', () => {
     ).toBe(128_000)
   })
 
-  it('returns undefined when the model is missing', () => {
-    expect(getConfiguredContextWindow({}, 'openai', 'gpt-4o')).toBeUndefined()
+  it('resolves a missing saved model through the shared policy', () => {
+    expect(getConfiguredContextWindow({}, 'openai', 'gpt-4o')).toBeGreaterThan(0)
     expect(getConfiguredContextWindow({}, undefined, undefined)).toBeUndefined()
   })
 })

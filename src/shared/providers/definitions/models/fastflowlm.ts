@@ -64,7 +64,7 @@ export default class FastFlowLM extends OpenAICompatible {
         positiveInteger(item.model_context_length) ??
         (typeof architecture === 'string' ? positiveInteger(info?.[`${architecture}.context_length`]) : undefined) ??
         positiveInteger(capacity?.max)
-      if (contextWindow !== undefined) model.contextWindow = contextWindow
+      if (contextWindow !== undefined) model.maxContextWindow = contextWindow
       models.push(model)
     }
     return models

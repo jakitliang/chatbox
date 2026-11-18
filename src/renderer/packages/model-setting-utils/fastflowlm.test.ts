@@ -25,9 +25,9 @@ describe('FastFlowLM manual model settings', () => {
       maxOutput: 512,
     }
     const settings = { apiHost: 'http://localhost:52625', models: [saved] }
-    const apiRequest = vi.fn<ModelDependencies['request']['apiRequest']>().mockResolvedValue(
-      new Response(JSON.stringify({ data: [{ id: saved.modelId }, { id: 'fixture-new' }] }))
-    )
+    const apiRequest = vi
+      .fn<ModelDependencies['request']['apiRequest']>()
+      .mockResolvedValue(new Response(JSON.stringify({ data: [{ id: saved.modelId }, { id: 'fixture-new' }] })))
     vi.mocked(createModelDependencies).mockResolvedValue({
       request: { apiRequest, fetchWithOptions: vi.fn() },
       storage: { saveImage: vi.fn(), getImage: vi.fn() },
@@ -44,21 +44,35 @@ describe('FastFlowLM manual model settings', () => {
 
   it('initializes new models and explicitly refreshes capabilities while preserving saved user limits', async () => {
     const saved: ProviderModelInfo = {
-      modelId: 'fixture-saved', nickname: 'My FLM', type: 'chat',
-      capabilities: [], contextWindow: 8192, maxOutput: 512,
+      modelId: 'fixture-saved',
+      nickname: 'My FLM',
+      type: 'chat',
+      capabilities: [],
+      contextWindow: 8192,
+      maxOutput: 512,
     }
     const apiRequest = vi.fn<ModelDependencies['request']['apiRequest']>().mockImplementation(() =>
-      Promise.resolve(new Response(JSON.stringify({ data: [
-        {
-          id: saved.modelId, capabilities: ['vision', 'tools', 'thinking'],
-          model_context_length: 131072, configured_context_length: 32768,
-        },
-        {
-          id: 'fixture-new-metadata', capabilities: ['thinking'], thinking_toggleable: false,
-          model_info: { 'general.architecture': 'fixture_arch', 'fixture_arch.context_length': 65536 },
-          configured_context_length: 16384,
-        },
-      ] })))
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            data: [
+              {
+                id: saved.modelId,
+                capabilities: ['vision', 'tools', 'thinking'],
+                model_context_length: 131072,
+                configured_context_length: 32768,
+              },
+              {
+                id: 'fixture-new-metadata',
+                capabilities: ['thinking'],
+                thinking_toggleable: false,
+                model_info: { 'general.architecture': 'fixture_arch', 'fixture_arch.context_length': 65536 },
+                configured_context_length: 16384,
+              },
+            ],
+          })
+        )
+      )
     )
     vi.mocked(createModelDependencies).mockResolvedValue({
       request: { apiRequest, fetchWithOptions: vi.fn() },
@@ -69,8 +83,8 @@ describe('FastFlowLM manual model settings', () => {
     const util = new RegistrySettingUtil(ModelProviderEnum.FastFlowLM)
     const catalog = await util.getMergeOptionGroups({ apiHost: 'http://flm.example:52625', models: [saved] })
     expect(catalog).toEqual([
-      { ...saved, capabilities: ['vision', 'reasoning', 'tool_use'] },
-      { modelId: 'fixture-new-metadata', type: 'chat', capabilities: ['reasoning'], contextWindow: 65536 },
+      { ...saved, capabilities: ['vision', 'reasoning', 'tool_use'], maxContextWindow: 131072 },
+      { modelId: 'fixture-new-metadata', type: 'chat', capabilities: ['reasoning'], maxContextWindow: 65536 },
     ])
     expect(saved.capabilities).toEqual([])
     expect(apiRequest).toHaveBeenCalledOnce()

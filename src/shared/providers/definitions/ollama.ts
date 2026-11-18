@@ -1,5 +1,6 @@
 import { ModelProviderEnum, ModelProviderType } from '../../types'
 import { defineProvider } from '../registry'
+import { defaultMaxContextWindowDelegate, validContextWindow } from '../context-window'
 import Ollama from './models/ollama'
 import { ollamaContextWindowDelegate } from './ollama-context-window'
 
@@ -9,6 +10,12 @@ export const ollamaProvider = defineProvider({
   type: ModelProviderType.OpenAI,
   reasoningStrategy: Ollama.reasoningStrategy,
   contextWindowDelegate: ollamaContextWindowDelegate,
+  maxContextWindowDelegate: {
+    getMaxContextWindow: (input) =>
+      validContextWindow(input.model?.maxContextWindow) ??
+      validContextWindow(input.model?.ollamaDisplayMetadata?.contextLength) ??
+      defaultMaxContextWindowDelegate.getMaxContextWindow(input),
+  },
   defaultSettings: {
     apiHost: 'http://127.0.0.1:11434',
   },

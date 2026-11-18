@@ -13,8 +13,9 @@ function usableWindow(contextWindow: number): number {
   return contextWindow - Math.min(OUTPUT_RESERVE_TOKENS, Math.floor(contextWindow * 0.25))
 }
 
-vi.mock('../model-registry', () => ({
-  getModelContextWindowSync: vi.fn((modelId: string) => {
+vi.mock('@shared/providers/context-window', () => ({
+  FALLBACK_CONTEXT_WINDOW_TOKENS: 128_000,
+  getContextWindow: vi.fn(({ modelId }: { modelId: string }) => {
     const contextWindows: Record<string, number> = {
       'gpt-4o': 128_000,
       'gpt-4o-mini': 128_000,
@@ -24,7 +25,7 @@ vi.mock('../model-registry', () => ({
       'deepseek-chat': 64_000,
       'small-model': 40_000,
     }
-    return contextWindows[modelId] ?? null
+    return { tokens: contextWindows[modelId] ?? 128_000, source: 'catalog' }
   }),
 }))
 

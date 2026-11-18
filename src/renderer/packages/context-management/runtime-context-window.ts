@@ -7,12 +7,12 @@ const pending = new Map<string, Promise<void>>()
 const listeners = new Set<() => void>()
 
 function source(providerId: string, modelId: string, settings: ProviderSettings) {
-  const delegate = getProviderDefinition(providerId)?.contextWindowDelegate
+  const delegate = getProviderDefinition(providerId)?.contextWindowDelegate?.runtime
   return delegate && { delegate, key: JSON.stringify([providerId, delegate.getCacheKey(settings), modelId]) }
 }
 
 export function hasRuntimeContextWindow(providerId: string): boolean {
-  return !!getProviderDefinition(providerId)?.contextWindowDelegate
+  return !!getProviderDefinition(providerId)?.contextWindowDelegate?.runtime
 }
 
 export function subscribeRuntimeContextWindow(listener: () => void): () => void {

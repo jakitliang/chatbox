@@ -118,7 +118,7 @@ describe('Ollama loaded context window', () => {
         modelId
       )
     ).toBe(window)
-    expect(await resolveConfiguredContextWindow({}, providerId, modelId)).toBeUndefined()
+    expect(await resolveConfiguredContextWindow({}, providerId, modelId)).toBeGreaterThan(0)
     expect(apiRequest.get).not.toHaveBeenCalled()
   })
 

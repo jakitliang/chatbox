@@ -1,6 +1,6 @@
 # Chatbox Community Edition 技术设计文档
 
-> Last updated: 2026-10
+> Last updated: 2026-11
 
 本目录包含 Chatbox Community Edition 的系统设计与技术决策文档，面向工程师和技术负责人。
 
@@ -9,6 +9,7 @@
 | 文档 | 描述 |
 |------|------|
 | [AI 供应商系统](./ai-providers.md) | 模型供应商注册表、OAuth 登录集成、模型类层级、能力声明、自建供应商 |
+| [上下文容量接口](./context-capacity.md) | 有效容量与最大容量双接口、provider delegate、运行时查询和预算消费边界 |
 | [Provider 网络兼容性请求](./provider-networking.md) | 改善网络兼容性的跨平台传输矩阵、Desktop 主进程直连、relay 与取消边界 |
 | [Cursor / OpenCode 订阅登录](./subscription-oauth-research.md) | 两个订阅产品的官方登录机制、Cursor 无私有 API 接入、OpenCode Zen / Go API Key 网关 |
 | [思考控制（Reasoning Control）](./reasoning-control.md) | 思考控制支持条件判定（provider + 写死 model id）、effectiveProvider/apiStyle 映射、参数流转与请求侧兜底 |

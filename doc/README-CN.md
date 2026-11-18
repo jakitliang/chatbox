@@ -3,6 +3,12 @@
   <a href="README-CN.md">简体中文</a>
 </p>
 
+> **个人定制分支，非官方发行。** 本仓库由 Jakit Liang（jakitliang@gmail.com）
+> 维护，基于上游 Chatbox 进行个人定制，不代表上游作者或官方团队。
+> 禁止将本仓库及其工作区包发布到 npm 等包注册表，禁止使用上游发布凭据或发布目标。
+> 不得移除或绕过 `private` 防误发布设置。个人维护不意味着拥有上游代码版权；
+> 原有版权声明、作者署名及 GPLv3 义务继续有效。详见[个人分支维护约定](PERSONAL-FORK.md)。
+
 这里是 Chatbox 社区版的代码仓库，以 GPLv3 许可证开源。
 
 [Chatbox 再次开源！](https://github.com/chatboxai/chatbox/issues/2266)

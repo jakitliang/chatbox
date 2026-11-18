@@ -3,6 +3,16 @@
   <a href="./doc/README-CN.md">简体中文</a>
 </p>
 
+> **Personal fork — not an official release.** This repository is maintained by
+> Jakit Liang (<jakitliang@gmail.com>) for personal customization of upstream
+> [Chatbox](https://github.com/chatboxai/chatbox). It is not affiliated with or
+> endorsed by the upstream authors. Do not publish this repository or its workspace
+> packages to npm or other package registries, and do not use upstream publishing
+> credentials or release destinations. Keep publishable metadata marked `private`
+> and do not bypass that safeguard. Personal maintenance does not transfer ownership
+> of upstream code; existing copyright notices, attribution, and GPLv3 obligations
+> remain in effect. See [the personal-fork policy](doc/PERSONAL-FORK.md).
+
 <h1 align="center">
 <img src='./doc/statics/icon.png' width='30'>
 <span>

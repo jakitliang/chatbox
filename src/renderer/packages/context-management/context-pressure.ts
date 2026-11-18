@@ -1,20 +1,49 @@
 import { enrichModelFromRegistry } from '@shared/model-registry/enrich'
 import { mergeProviderModelCapabilities } from '@shared/providers/model-config'
 import { getProviderDefinition, getSystemProviders } from '@shared/providers/registry'
+import { getContextWindow, getMaxContextWindow } from '@shared/providers/context-window'
+import type { ContextWindowValue } from '@shared/providers/types'
+import { getCompactionBudget, type CompactionBudget } from '@chatbox/core/application/token-estimation/math'
 import type { Settings } from '@shared/types'
-import { getRuntimeContextWindow, hasRuntimeContextWindow, refreshRuntimeContextWindow } from './runtime-context-window'
+import { getRuntimeContextWindow, refreshRuntimeContextWindow } from './runtime-context-window'
 
-/** Resolve a model's configured context window from provider settings, if any. */
+/** Synchronous policy result shared by UI and send-time consumers. */
+export function getContextWindowSnapshot(
+  settings: Pick<Settings, 'providers'>,
+  providerId: string | undefined,
+  modelId: string | undefined
+): ContextWindowValue {
+  if (!modelId) return { tokens: null, source: 'unknown' }
+  const providerSettings = providerId ? settings.providers?.[providerId] : undefined
+  return getContextWindow({
+    providerId: providerId ?? '',
+    modelId,
+    model: providerSettings?.models?.find((model) => model.modelId === modelId),
+    runtimeContextWindow: providerId ? getRuntimeContextWindow(providerId, modelId, providerSettings ?? {}) : undefined,
+  })
+}
+
+/** Model specification lookup is independent of runtime probing. */
+export function getMaximumContextWindow(
+  settings: Pick<Settings, 'providers'>,
+  providerId: string,
+  modelId: string
+): number | undefined {
+  return getMaxContextWindow({
+    providerId,
+    modelId,
+    model: settings.providers?.[providerId]?.models?.find((model) => model.modelId === modelId),
+  })
+}
+
+/** Compatibility entry point; all selection and fallback decisions belong to the policy. */
 export function getConfiguredContextWindow(
   settings: Pick<Settings, 'providers'>,
   providerId: string | undefined,
   modelId: string | undefined
 ): number | null | undefined {
   if (!providerId || !modelId) return undefined
-  if (hasRuntimeContextWindow(providerId)) {
-    return getRuntimeContextWindow(providerId, modelId, settings.providers?.[providerId] ?? {}) ?? null
-  }
-  return settings.providers?.[providerId]?.models?.find((model) => model.modelId === modelId)?.contextWindow
+  return getContextWindowSnapshot(settings, providerId, modelId).tokens
 }
 
 /** Send-time budgets must read the server's currently loaded window, not discovery metadata. */
@@ -25,7 +54,22 @@ export async function resolveConfiguredContextWindow(
 ): Promise<number | null | undefined> {
   if (providerId && modelId)
     await refreshRuntimeContextWindow(providerId, modelId, settings.providers?.[providerId] ?? {})
-  return getConfiguredContextWindow(settings, providerId, modelId)
+  return getContextWindowSnapshot(settings, providerId, modelId).tokens
+}
+
+/** Resolve once, then do budget arithmetic without any downstream capacity lookup. */
+export async function resolveModelCompactionBudget(
+  settings: Pick<Settings, 'providers' | 'compactionThreshold'>,
+  providerId: string | undefined,
+  modelId: string,
+  sessionMaxTokens?: number
+): Promise<CompactionBudget | null> {
+  const contextWindow = await resolveConfiguredContextWindow(settings, providerId, modelId)
+  if (contextWindow == null) return null
+  return getCompactionBudget(contextWindow, {
+    compactionThreshold: settings.compactionThreshold,
+    maxOutputTokens: getEffectiveMaxOutputTokens(settings, providerId, modelId, sessionMaxTokens),
+  })
 }
 
 /** The reply limit a request runs with: the session's max tokens, else the model's max output. */

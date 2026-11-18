@@ -1037,6 +1037,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
       >
         <ModelList
           models={displayModels}
+          providerId={baseInfo.id}
           showActions={!isSystemManagedModelList}
           showSearch={false}
           onEditModel={editModel}
@@ -1054,6 +1055,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
         centered={true}
       >
         <ModelList
+          providerId={baseInfo.id}
           models={fetchedModels || []}
           showActions={true}
           showSearch={true}

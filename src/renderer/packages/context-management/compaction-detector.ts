@@ -1,5 +1,5 @@
 import type { Settings } from '@shared/types'
-import { getModelContextWindowSync } from '../model-registry'
+import { getContextWindow } from '@shared/providers/context-window'
 
 import {
   type CompactionBudget,
@@ -18,7 +18,7 @@ export interface OverflowCheckOptions {
    * auto-detected value from the model registry (models.dev snapshot/cache).
    * Use this when provider returns a specific contextWindow for the model.
    */
-  contextWindow?: number
+  contextWindow?: number | null
   /** The reply limit the request runs with; sizes the output reservation. */
   maxOutputTokens?: number
 }
@@ -42,11 +42,8 @@ export function checkOverflow(options: OverflowCheckOptions): OverflowCheckResul
     return { isOverflow: false, contextWindow: null, thresholdTokens: null, currentTokens: tokens }
   }
 
-  const contextWindow = providedContextWindow ?? getModelContextWindowSync(modelId) ?? FALLBACK_CONTEXT_WINDOW_TOKENS
-  const budget = getCompactionBudget(contextWindow, {
-    compactionThreshold: settings?.compactionThreshold,
-    maxOutputTokens: options.maxOutputTokens,
-  })
+  const budget = resolveCompactionBudget(modelId, settings, providedContextWindow, options.maxOutputTokens)
+  const contextWindow = budget?.contextWindow ?? null
 
   if (!budget) {
     return { isOverflow: false, contextWindow, thresholdTokens: null, currentTokens: tokens }
@@ -74,7 +71,8 @@ export function resolveCompactionBudget(
 ): CompactionBudget | null {
   // An opted-in runtime delegate reported unknown; do not substitute a theoretical window.
   if (providedContextWindow === null) return null
-  const contextWindow = providedContextWindow ?? getModelContextWindowSync(modelId) ?? FALLBACK_CONTEXT_WINDOW_TOKENS
+  const contextWindow = providedContextWindow ?? getContextWindow({ providerId: '', modelId }).tokens
+  if (contextWindow === null) return null
   return getCompactionBudget(contextWindow, { compactionThreshold: settings?.compactionThreshold, maxOutputTokens })
 }
 

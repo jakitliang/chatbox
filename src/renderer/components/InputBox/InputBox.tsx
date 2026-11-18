@@ -64,7 +64,7 @@ import { useSessionControls } from '@/hooks/useSessionLockState'
 import { useSessionPresentation } from '@/hooks/useSessionPresentation'
 import { cn } from '@/lib/utils'
 import { isAutoCompactionEnabled, isCompactionInProgress, useContextTokens } from '@/packages/context-management'
-import { hasRuntimeContextWindow } from '@/packages/context-management/runtime-context-window'
+import { getContextWindowSnapshot } from '@/packages/context-management/context-pressure'
 import { useRuntimeContextWindow } from '@/packages/context-management/useRuntimeContextWindow'
 import { trackingEvent } from '@/packages/event'
 import {
@@ -72,11 +72,7 @@ import {
   LOCAL_WORK_ATTACHMENT_ACCEPT,
   LOCAL_WORK_ATTACHMENT_MAX_BYTES,
 } from '@/packages/mobile-work-mode/attachments'
-import {
-  getModelContextWindowSync,
-  getProviderModelContextWindowSync,
-  useModelRegistryVersion,
-} from '@/packages/model-registry'
+import { useModelRegistryVersion } from '@/packages/model-registry'
 import * as picUtils from '@/packages/pic_utils'
 import { skillsController, subscribeSkillsChanged } from '@/packages/skills/controller'
 import { seedExactDraftTokens } from '@/packages/token-estimation'
@@ -225,7 +221,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     },
     ref
   ) => {
-    const modelRegistryVersion = useModelRegistryVersion()
+    useModelRegistryVersion()
 
     const { t } = useTranslation()
     const navigate = useNavigate()
@@ -825,36 +821,16 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const activeProviderSettings = useSettingsStore((state) =>
       model?.provider ? state.providers?.[model.provider] : undefined
     )
-    const runtimeContextWindow = useRuntimeContextWindow(
+    useRuntimeContextWindow(model?.provider, model?.modelId, activeProviderSettings, generating)
+
+    // Registry/runtime subscriptions trigger a fresh read of the same policy used at send time.
+    const contextCapacity = getContextWindowSnapshot(
+      { providers: model?.provider ? { [model.provider]: activeProviderSettings ?? {} } : {} },
       model?.provider,
-      model?.modelId,
-      activeProviderSettings,
-      generating
+      model?.modelId
     )
-
-    const contextWindowKnown = useMemo(() => {
-      if (!model?.modelId) return false
-      if (model.provider && hasRuntimeContextWindow(model.provider)) return runtimeContextWindow !== undefined
-      if (modelInfo?.contextWindow) return true
-      if (model?.provider && getProviderModelContextWindowSync(model.provider, model.modelId) !== null) return true
-      // Fallback: provider-agnostic lookup (same as compaction detector)
-      return getModelContextWindowSync(model.modelId) !== null
-    }, [model?.modelId, model?.provider, modelInfo?.contextWindow, modelRegistryVersion, runtimeContextWindow])
-
-    // Use model setting contextWindow if available, otherwise fallback to models.dev data
-    const effectiveContextWindow = useMemo(() => {
-      if (model?.provider && hasRuntimeContextWindow(model.provider)) {
-        return runtimeContextWindow ?? null
-      }
-      if (modelInfo?.contextWindow) return modelInfo.contextWindow
-      if (model?.provider && model?.modelId) {
-        const providerWindow = getProviderModelContextWindowSync(model.provider, model.modelId)
-        if (providerWindow !== null) return providerWindow
-      }
-      // Fallback: provider-agnostic lookup (same as compaction detector)
-      if (model?.modelId) return getModelContextWindowSync(model.modelId)
-      return null
-    }, [modelInfo?.contextWindow, model?.modelId, model?.provider, modelRegistryVersion, runtimeContextWindow])
+    const contextWindowKnown = contextCapacity.tokens !== null && contextCapacity.source !== 'fallback'
+    const effectiveContextWindow = contextWindowKnown ? contextCapacity.tokens : null
 
     // Calculate token usage percentage
     const tokenPercentage = useMemo(() => {

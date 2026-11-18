@@ -23,11 +23,7 @@ import { getLogger } from '@/lib/utils'
 import { captureAgentModeException } from '@/observability/agent-mode'
 import * as appleAppStore from '@/packages/apple_app_store'
 import { wakeBackgroundTaskFollowUps } from '@/packages/chatbox-cli/background-follow-up'
-import { resolveCompactionBudget } from '@/packages/context-management/compaction-detector'
-import {
-  getEffectiveMaxOutputTokens,
-  resolveConfiguredContextWindow,
-} from '@/packages/context-management/context-pressure'
+import { resolveModelCompactionBudget } from '@/packages/context-management/context-pressure'
 import { prepareMobileMCPTools } from '@/packages/mcp/mobile-tools'
 import { buildPausedAgentMemoryTools } from '@/packages/model-calls/toolsets/agent-memory'
 import platform from '@/platform'
@@ -328,12 +324,7 @@ const dependencies: GenerationServiceDependencies<ModelDependencies> = {
       const providerId = sessionSettings.provider ?? globalSettings.defaultChatModel?.provider
       const modelId = sessionSettings.modelId ?? globalSettings.defaultChatModel?.model
       if (!modelId) return null
-      return resolveCompactionBudget(
-        modelId,
-        { compactionThreshold: globalSettings.compactionThreshold },
-        await resolveConfiguredContextWindow(globalSettings, providerId, modelId),
-        getEffectiveMaxOutputTokens(globalSettings, providerId, modelId, sessionSettings.maxTokens)
-      )
+      return resolveModelCompactionBudget(globalSettings, providerId, modelId, sessionSettings.maxTokens)
     },
     recordRequestOverhead(sessionId, overhead) {
       void import('@/packages/context-management/compaction').then(({ recordRequestOverhead }) =>

@@ -23,6 +23,7 @@ export type MessageErrorPresentation = MessageErrorDetails &
       }
     | { kind: 'agent-mode-reward' }
     | { kind: 'context-limit' }
+    | { kind: 'context-window-control-unsupported' }
     | { kind: 'ocr-failed'; provider: string }
     | { kind: 'api'; providerId?: string; httpStatusCode?: number }
     | { kind: 'network'; host: string }
@@ -140,6 +141,9 @@ export function resolveMessageErrorPresentation(
 
   if (msg.errorCode === MESSAGE_ERROR_CODES.CHATBOX_AI_FREE_AGENT_MODE_QUOTA_EXHAUSTED) {
     return { ...details, kind: 'agent-mode-reward' }
+  }
+  if (msg.errorCode === MESSAGE_ERROR_CODES.CONTEXT_WINDOW_CONTROL_UNSUPPORTED) {
+    return { ...details, kind: 'context-window-control-unsupported' }
   }
   if (isContextLengthError(msg.error) || isContextLengthError(details.errorMessage)) {
     return { ...details, kind: 'context-limit' }

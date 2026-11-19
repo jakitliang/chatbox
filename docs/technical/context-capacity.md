@@ -16,7 +16,11 @@ The default budget policy uses a valid saved `contextWindow`, otherwise the maxi
 
 The default maximum query uses explicit `maxContextWindow`, provider registry metadata, built-in model limits, an unambiguous cross-provider registry match, and finally the legacy saved `contextWindow`. Cross-provider disagreement does not silently select whichever registry entry was visited last.
 
-Ollama and FastFlowLM own their runtime sources. Their budget delegates use the loaded model's `/api/ps` window. A failed query, invalid window or unloaded model is unknown; their policies do not replace it with a catalog capacity or the compatibility estimate. Ollama's native maximum metadata and FastFlowLM's catalog capacity remain separate from this runtime result. `num_ctx` stays informational and is not sent as a new request option.
+Ollama and FastFlowLM own their runtime sources. Their default budget delegates use the loaded model's `/api/ps` window. A failed query, invalid window or unloaded model is unknown; their policies do not replace it with a catalog capacity or the compatibility estimate. Ollama's native maximum metadata and FastFlowLM's catalog capacity remain separate from this runtime result.
+
+Providers can opt into `contextWindowDelegate.control`. The token usage popup offers Default, ¼, ½, ¾ and Maximum when that control and a model maximum are available. The conversation stores only the selected tier, not a token count. Switching to a provider without control hides the selector and uses its default without clearing the conversation's preference. An explicit selection snapshots one target at submission for both compaction and transport; the actual loaded window is still shown separately from `/api/ps`. A queued override starts a separate turn rather than interjecting into a request that already has a window. Queue snapshots live only in memory; restored queue items use the conversation's stored tier. Other providers and the Default tier send no override.
+
+On explicit selection, Ollama uses native `/api/chat` with `options.num_ctx` because its OpenAI-compatible endpoint does not accept a context override. FastFlowLM sends top-level `num_ctx` on its existing `/v1/chat/completions` path, after checking support for the requested model in the capability catalog. If the catalog does not advertise support, Chatbox does not send the chat request and displays a localized prompt to select Default. Neither changes the output token limit.
 
 ## Host orchestration and consumers
 

@@ -1,5 +1,9 @@
 import { type AttachmentPolicy, withRequestAttachmentState } from '@shared/context/attachments'
 import type { ChatStreamOptions, ModelInterface, ModelStreamPart } from '@shared/models/types'
+import {
+  type ContextWindowOverride,
+  resolveSessionContextWindowOverride,
+} from '@shared/providers/context-window-control'
 import type {
   AgentModeLockReason,
   AgentModeValue,
@@ -132,6 +136,7 @@ export type GenerationOperationType = 'send_message' | 'regenerate'
 export type GenerationAgentModeEntrySource = 'suggestion_accept' | 'locked_session' | 'manual' | 'none'
 
 export interface GenerationOptions {
+  contextWindowOverride?: ContextWindowOverride | null
   /** User send action time, before preflight, persistence and the session lock. */
   submittedAt?: number
   operationType?: GenerationOperationType
@@ -290,7 +295,8 @@ export interface GenerationCompactionPort {
   /** Null disables mid-run compaction for the run. */
   getBudget(
     sessionSettings: SessionSettings,
-    globalSettings: Settings
+    globalSettings: Settings,
+    contextWindowOverride?: ContextWindowOverride
   ): CompactionBudget | null | Promise<CompactionBudget | null>
   /** Request tokens outside the conversation history, measured on this run's request. */
   recordRequestOverhead?(sessionId: string, overhead: RequestOverheadTokens): void
@@ -765,7 +771,12 @@ export class GenerationService<TContext> {
         infoParts.push(...prepared.infoParts)
       }
 
-      const chatOptions = { ...prepared.chatOptions }
+      const contextWindowOverride = resolveSessionContextWindowOverride(
+        settings,
+        globalSettings,
+        options?.contextWindowOverride
+      )
+      const chatOptions = { ...prepared.chatOptions, ...(contextWindowOverride && { contextWindowOverride }) }
       let segmentStartedAt = startedAt
       // When the current segment has produced no output yet, the steered user
       // belongs before it — anchored at the target's predecessor.
@@ -876,7 +887,10 @@ export class GenerationService<TContext> {
             budget: null,
             getBudget:
               Object.keys(prepared.tools).length > 0 && isAutoCompactionEnabled(settings, globalSettings)
-                ? () => compaction.getBudget(settings, globalSettings)
+                ? () =>
+                    contextWindowOverride
+                      ? compaction.getBudget(settings, globalSettings, contextWindowOverride)
+                      : compaction.getBudget(settings, globalSettings)
                 : undefined,
             countMessageTokens,
             // Step messages already carry the full system instructions; only tool definitions sit outside them.

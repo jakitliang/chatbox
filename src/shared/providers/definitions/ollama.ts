@@ -22,6 +22,7 @@ export const ollamaProvider = defineProvider({
         maxOutputTokens: config.settings.maxTokens,
         stream: config.settings.stream,
         useProxy: config.providerSetting.useProxy,
+        contextWindowControl: ollamaContextWindowDelegate.control,
       },
       config.dependencies
     )

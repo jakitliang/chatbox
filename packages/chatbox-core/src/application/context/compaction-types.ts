@@ -9,7 +9,11 @@ export interface GenerationCompactionRequest {
 }
 
 export type CompactionRequest =
-  | { kind: 'automatic'; pendingMessage?: Message }
+  | {
+      kind: 'automatic'
+      pendingMessage?: Message
+      contextWindowOverride?: import('@shared/providers/context-window-control').ContextWindowOverride
+    }
   | { kind: 'manual' }
   | GenerationCompactionRequest
 

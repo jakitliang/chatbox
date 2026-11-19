@@ -35,7 +35,15 @@ const compactionService = new CompactionService({
   },
   settings: settingsService,
   policy: {
-    async measure({ sessionId, header: session, sessionSettings, globalSettings, pendingMessage, requestOverhead }) {
+    async measure({
+      sessionId,
+      header: session,
+      sessionSettings,
+      globalSettings,
+      pendingMessage,
+      requestOverhead,
+      contextWindowOverride,
+    }) {
       const providerId = session.settings?.provider ?? globalSettings.defaultChatModel?.provider
       const modelId = session.settings?.modelId ?? globalSettings.defaultChatModel?.model
       if (!modelId) return null
@@ -59,7 +67,8 @@ const compactionService = new CompactionService({
           globalSettings,
           providerId,
           modelId,
-          sessionSettings.maxTokens
+          sessionSettings.maxTokens,
+          contextWindowOverride
         )
         // The estimate counts the history only; tools and every extra instruction sit outside it.
         return budget ? { tokens: estimate.totalTokens + getRequestOverheadBeyond(requestOverhead), budget } : null

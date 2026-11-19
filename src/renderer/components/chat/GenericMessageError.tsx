@@ -107,6 +107,8 @@ function getProviderName(providerId?: string): string {
 
 function ErrorTip({ presentation, model }: { presentation: GenericPresentation; model?: string }) {
   switch (presentation.kind) {
+    case 'context-window-control-unsupported':
+      return <Trans i18nKey="This FastFlowLM server or model does not support a custom context window. Select Default." />
     case 'context-limit':
       return (
         <Trans i18nKey="Your conversation has exceeded the model's context limit. Try compressing the conversation, starting a new chat, or reducing the number of context messages in settings." />
@@ -238,7 +240,8 @@ export function GenericMessageError(props: {
   const { copied, copy } = useCopied(displayedErrorMessage)
   const isTruncated = shouldTruncate(presentation.errorMessage)
   const showTranslateButton = language !== 'en' && presentation.errorMessage.length > 0
-  const onlyShowTips = presentation.kind === 'known-chatbox-api'
+  const onlyShowTips =
+    presentation.kind === 'known-chatbox-api' || presentation.kind === 'context-window-control-unsupported'
 
   const handleTranslate = useCallback(async () => {
     if (translatedText) {

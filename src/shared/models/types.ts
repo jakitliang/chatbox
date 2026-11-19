@@ -74,6 +74,7 @@ export const CallChatCompletionOptionsSchema = z.object({
 })
 
 export interface CallChatCompletionOptions<Tools extends ToolSet = ToolSet> {
+  contextWindowOverride?: import('../providers/context-window-control').ContextWindowOverride
   sessionId?: string
   /** Whether Agent/Work Mode capabilities are active for this request. */
   agentMode?: boolean
@@ -100,6 +101,7 @@ export type OnStatusChange = (status: MessageStatus | null) => void
 
 // New types for chatStream() API
 export interface ChatStreamOptions {
+  contextWindowOverride?: import('../providers/context-window-control').ContextWindowOverride
   sessionId?: string
   /** Whether Agent/Work Mode capabilities are active for this request. */
   agentMode?: boolean

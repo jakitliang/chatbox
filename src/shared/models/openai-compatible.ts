@@ -1,5 +1,6 @@
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { extractReasoningMiddleware, wrapLanguageModel } from 'ai'
+import type { ContextWindowControl } from '../providers/context-window-control'
 import type { ProviderModelInfo } from '../types'
 import type { ModelDependencies } from '../types/adapters'
 import AbstractAISDKModel from './abstract-ai-sdk'
@@ -21,6 +22,7 @@ export interface OpenAICompatibleSettings {
   maxOutputTokens?: number
   stream?: boolean
   customFetch?: typeof globalThis.fetch
+  contextWindowControl?: ContextWindowControl
   listModelsFallback?: ProviderModelInfo[]
 }
 
@@ -64,8 +66,11 @@ export default abstract class OpenAICompatible extends AbstractAISDKModel implem
     return true
   }
 
-  protected getProvider() {
-    const fetch = this.options.customFetch || createFetchWithProxy(this.options.useProxy, this.dependencies)
+  protected getProvider(options?: CallChatCompletionOptions) {
+    let fetch = this.options.customFetch || createFetchWithProxy(this.options.useProxy, this.dependencies)
+    if (options?.contextWindowOverride && this.options.contextWindowControl) {
+      fetch = this.options.contextWindowControl.wrapFetch(fetch, options.contextWindowOverride.tokens)
+    }
     return createOpenAICompatible({
       name: this.name,
       apiKey: this.options.apiKey,
@@ -74,8 +79,8 @@ export default abstract class OpenAICompatible extends AbstractAISDKModel implem
     })
   }
 
-  protected getChatModel() {
-    const provider = this.getProvider()
+  protected getChatModel(options?: CallChatCompletionOptions) {
+    const provider = this.getProvider(options)
     return wrapLanguageModel({
       model: provider.languageModel(this.options.model.modelId),
       middleware: extractReasoningMiddleware({ tagName: 'think' }),

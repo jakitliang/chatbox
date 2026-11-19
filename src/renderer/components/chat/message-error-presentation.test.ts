@@ -14,6 +14,12 @@ function message(overrides: Partial<Message>): Message {
 }
 
 describe('resolveMessageErrorPresentation', () => {
+  it('routes unsupported context controls to the localized Default guidance', () => {
+    expect(
+      resolveMessageErrorPresentation(message({ errorCode: MESSAGE_ERROR_CODES.CONTEXT_WINDOW_CONTROL_UNSUPPORTED }))
+    ).toMatchObject({ kind: 'context-window-control-unsupported' })
+  })
+
   it.each([
     [MESSAGE_ERROR_CODES.CHATBOX_AI_QUOTA_EXHAUSTED, 'quota-exhausted'],
     [MESSAGE_ERROR_CODES.CHATBOX_AI_FREE_QUOTA_EXHAUSTED, 'free-quota-exhausted'],

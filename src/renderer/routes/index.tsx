@@ -365,13 +365,20 @@ function Index() {
   )
 
   const handleSubmit = useCallback(
-    async ({ constructedMessage, needGenerating = true, onUserMessageReady, settingsPatch }: InputBoxPayload) => {
+    async ({
+      constructedMessage,
+      needGenerating = true,
+      onUserMessageReady,
+      settingsPatch,
+      contextWindowOverride,
+    }: InputBoxPayload) => {
       const newSession = await createPersistedChatSession({ settingsPatch })
 
       void submitNewUserMessage(newSession.id, {
         newUserMsg: constructedMessage,
         needGenerating,
         onUserMessageReady,
+        ...(contextWindowOverride !== undefined && { contextWindowOverride }),
       })
     },
     [createPersistedChatSession]

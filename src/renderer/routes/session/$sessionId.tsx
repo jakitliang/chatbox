@@ -202,7 +202,12 @@ function RouteComponent() {
   }, [currentSession])
 
   const onSubmit = useCallback(
-    async ({ constructedMessage, needGenerating = true, onUserMessageReady }: InputBoxPayload) => {
+    async ({
+      constructedMessage,
+      needGenerating = true,
+      onUserMessageReady,
+      contextWindowOverride,
+    }: InputBoxPayload) => {
       const submittedList = messageListRef.current
       submittedList?.setIsNewMessage(autoScrollNewMessagesToTop)
       // Read the intent before any await: sending while reading history keeps the reading position, while sending
@@ -227,6 +232,7 @@ function RouteComponent() {
       await submitNewUserMessage(currentSession.id, {
         newUserMsg: constructedMessage,
         needGenerating,
+        ...(contextWindowOverride !== undefined && { contextWindowOverride }),
         onUserMessageReady: () => {
           onUserMessageReady?.()
           if (stillFollowing && messageListRef.current === submittedList) {

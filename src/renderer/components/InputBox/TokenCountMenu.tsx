@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { AppTooltip as Tooltip } from '@/components/ui/tooltip'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { ScalableIcon } from '../common/ScalableIcon'
+import { ContextWindowPreview, type ContextWindowSelection } from './ContextWindowPreview'
 
 type Props = {
   currentInputTokens: number
@@ -21,6 +22,7 @@ type Props = {
   pendingContextMessages?: number
   totalContextMessages?: number
   contextWindow?: number
+  contextWindowControl?: ContextWindowSelection & { scope: string; maxTokens: number }
   currentMessageCount?: number
   maxContextMessageCount?: number
   children?: React.ReactNode
@@ -45,6 +47,7 @@ const TokenCountMenu: FC<Props> = ({
   pendingContextMessages,
   totalContextMessages,
   contextWindow,
+  contextWindowControl,
   currentMessageCount,
   maxContextMessageCount,
   children,
@@ -56,6 +59,7 @@ const TokenCountMenu: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const isSmallScreen = useIsSmallScreen()
+  const modelLimit = contextWindowControl?.maxTokens ?? contextWindow
 
   const autoCompactionToggle = onAutoCompactionChange !== undefined && (
     <Menu.Item closeMenuOnClick={false} style={{ cursor: 'default' }}>
@@ -96,7 +100,7 @@ const TokenCountMenu: FC<Props> = ({
 
   return (
     <Menu
-      trigger={isSmallScreen ? 'click' : 'hover'}
+      trigger={isSmallScreen || contextWindowControl ? 'click' : 'hover'}
       openDelay={100}
       closeDelay={100}
       position="top"
@@ -182,15 +186,32 @@ const TokenCountMenu: FC<Props> = ({
           </Flex>
         </Menu.Item>
 
-        {contextWindow && (
+        {modelLimit && (
           <Menu.Item disabled style={{ cursor: 'default' }}>
             <Flex justify="space-between" align="center" gap="xs">
               <Text size="sm">{t('Model limit')}:</Text>
               <Text size="sm" fw={500}>
-                {formatNumber(contextWindow)}
+                {formatNumber(modelLimit)}
               </Text>
             </Flex>
           </Menu.Item>
+        )}
+
+        {contextWindowControl && (
+          <>
+            {contextWindow !== undefined && (
+              <Menu.Item disabled style={{ cursor: 'default' }}>
+                <Flex justify="space-between" align="center" gap="xs">
+                  <Text size="sm">{t('Loaded context window')}:</Text>
+                  <Text size="sm" fw={500}>
+                    {formatNumber(contextWindow)}
+                  </Text>
+                </Flex>
+              </Menu.Item>
+            )}
+            <Menu.Divider />
+            <ContextWindowPreview key={contextWindowControl.scope} {...contextWindowControl} />
+          </>
         )}
 
         {autoCompactionToggle && (

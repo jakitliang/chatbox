@@ -11,6 +11,7 @@ export const MESSAGE_ERROR_CODES = {
   CHATBOX_AI_QUOTA_EXHAUSTED: 10004,
   OCR_FAILED: 10006,
   MODEL_PROVIDER_NOT_FOUND: 10007,
+  CONTEXT_WINDOW_CONTROL_UNSUPPORTED: 10008,
   CHATBOX_AI_FREE_QUOTA_EXHAUSTED: 20039,
   CHATBOX_AI_FREE_AGENT_MODE_QUOTA_EXHAUSTED: 20040,
   FILE_PREPROCESS_FAILED: 20041,
@@ -73,6 +74,13 @@ export class ModelProviderNotFoundError extends BaseError {
   constructor(providerId: string) {
     super(`Model provider ${providerId} is no longer available. Please select another model.`)
     this.providerId = providerId
+  }
+}
+
+export class ContextWindowControlUnsupportedError extends BaseError {
+  public code = MESSAGE_ERROR_CODES.CONTEXT_WINDOW_CONTROL_UNSUPPORTED
+  constructor() {
+    super('This FastFlowLM server or model does not support a custom context window. Select Default.')
   }
 }
 

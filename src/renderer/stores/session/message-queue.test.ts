@@ -159,6 +159,18 @@ describe('message queue', () => {
     expect(getQueueIds()).toEqual([])
   })
 
+  it('passes the captured context override to a queued turn without persisting it', async () => {
+    const override = { providerId: 'ollama', modelId: 'qwen', tokens: 8192 }
+    const saved = vi.spyOn(localStorage, 'setItem')
+    expect(enqueueUserMessage('session-1', userMessage('m1'), undefined, override)).toBe('queued')
+    await flushMessageQueueForTests()
+
+    expect(submitMock).toHaveBeenCalledWith('session-1', expect.objectContaining({ contextWindowOverride: override }))
+    expect(saved).toHaveBeenCalled()
+    expect(saved.mock.calls.every(([, value]) => !value.includes('contextWindowOverride'))).toBe(true)
+    saved.mockRestore()
+  })
+
   it('defers while a cancellable generating assistant message exists', async () => {
     generationRuntimeStore.start('session-1', 'active')
     currentSession.messages.push({

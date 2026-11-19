@@ -1,4 +1,5 @@
 import { LOCAL_WORK_CAPABILITY_IDS } from '@shared/mobile-work/capabilities'
+import { contextWindowTiers } from '@shared/providers/context-window-tier'
 import { z } from 'zod'
 import { DEFAULT_INTERFACE_COLORS, getDefaultInterfaceColors } from '../../theme-colors'
 import { MEMORY_STATE_TOKEN_MAX_CHARS, SessionPromptContextSnapshotSchema } from '../../types/agent-persona'
@@ -213,6 +214,7 @@ export const GlobalSessionSettingsSchema = z.object({
 export const SessionSettingsSchema = GlobalSessionSettingsSchema.extend({
   provider: z.string().optional().catch(undefined),
   modelId: z.string().optional().catch(undefined),
+  contextWindowTier: z.enum(contextWindowTiers).optional().catch(undefined),
   // Claude prompt caching uses the provider default when omitted. Persist only
   // explicit overrides here so reasoning option updates cannot clear them.
   claudePromptCacheTTL: z.enum(['5m', '1h']).optional().catch(undefined),

@@ -320,11 +320,17 @@ const dependencies: GenerationServiceDependencies<ModelDependencies> = {
     wake: (sessionId) => wakeQueuedUserMessages(sessionId),
   },
   compaction: {
-    async getBudget(sessionSettings, globalSettings) {
+    async getBudget(sessionSettings, globalSettings, contextWindowOverride) {
       const providerId = sessionSettings.provider ?? globalSettings.defaultChatModel?.provider
       const modelId = sessionSettings.modelId ?? globalSettings.defaultChatModel?.model
       if (!modelId) return null
-      return resolveModelCompactionBudget(globalSettings, providerId, modelId, sessionSettings.maxTokens)
+      return resolveModelCompactionBudget(
+        globalSettings,
+        providerId,
+        modelId,
+        sessionSettings.maxTokens,
+        contextWindowOverride
+      )
     },
     recordRequestOverhead(sessionId, overhead) {
       void import('@/packages/context-management/compaction').then(({ recordRequestOverhead }) =>

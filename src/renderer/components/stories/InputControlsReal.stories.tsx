@@ -1,4 +1,6 @@
-import { ActionIcon, Box, Button, Group, Paper, Stack, Text } from '@mantine/core'
+import '@mantine/core/styles.css'
+import { ActionIcon, Box, Button, Group, MantineProvider, Paper, Stack, Text } from '@mantine/core'
+import { getQuarterContextTarget } from '@shared/providers/context-window-control'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { IconFileZip } from '@tabler/icons-react'
 import { useRef, useState } from 'react'
@@ -7,14 +9,19 @@ import { ImageUploadInput } from '../InputBox/ImageUploadInput'
 import { SessionSettingsButton } from '../InputBox/SessionSettingsButton'
 import TokenCountMenu from '../InputBox/TokenCountMenu'
 import { WebBrowsingButton } from '../InputBox/WebBrowsingButton'
+import { TooltipProvider } from '../ui/tooltip'
 
 const meta: Meta = {
   title: 'Real Components/Input Controls',
   decorators: [
     (Story) => (
-      <Box p="lg" bg="var(--chatbox-background-primary)" style={{ maxWidth: 720, minHeight: 320 }}>
-        <Story />
-      </Box>
+      <MantineProvider>
+        <TooltipProvider>
+          <Box p="lg" bg="var(--chatbox-background-primary)" style={{ maxWidth: 720, minHeight: 320 }}>
+            <Story />
+          </Box>
+        </TooltipProvider>
+      </MantineProvider>
     ),
   ],
 }
@@ -120,7 +127,12 @@ export const TokenCountMenuStates: StoryObj = {
           currentInputTokens={128}
           contextTokens={43_200}
           totalTokens={43_328}
-          contextWindow={128_000}
+          contextWindow={32_000}
+          contextWindowControl={{
+            scope: 'storybook-local-model',
+            maxTokens: 128_000,
+            getTarget: (tier) => getQuarterContextTarget(128_000, tier),
+          }}
           currentMessageCount={22}
           maxContextMessageCount={50}
           onCompressClick={() => undefined}

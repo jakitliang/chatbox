@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 import { MantineProvider } from '@mantine/core'
-import { cleanup, render, screen } from '@testing-library/react'
+import { getQuarterContextTarget } from '@shared/providers/context-window-control'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import TokenCountMenu from './TokenCountMenu'
 
@@ -113,5 +114,38 @@ describe('TokenCountMenu', () => {
     expect(getMenuRow('Context').textContent).not.toContain('~')
     expect(getMenuRow('Total').textContent).toContain('Total:~1K')
     expect(getMenuRow('Total').querySelector('.mantine-Loader-root')).toBeNull()
+  })
+
+  it('previews five discrete tiers without changing the maximum or loaded window', () => {
+    renderMenu({
+      contextWindow: 16_000,
+      contextWindowControl: {
+        scope: 'local',
+        maxTokens: 128_000,
+        getTarget: (tier) => getQuarterContextTarget(128_000, tier),
+      },
+    })
+
+    const slider = screen.getByRole('slider', { hidden: true })
+    const preview = slider.closest('.mantine-Slider-root')?.parentElement
+    expect(preview?.previousElementSibling?.classList.contains('mantine-Menu-divider')).toBe(true)
+    expect(screen.getByText('Requested context window: Default')).not.toBeNull()
+    for (const [index, label] of ['32K', '64K', '96K', '128K'].entries()) {
+      fireEvent.keyDown(slider, { key: 'ArrowRight' })
+      expect(slider.getAttribute('aria-valuenow')).toBe(String(index + 1))
+      expect(screen.getByText(`Requested context window: ${label}`)).not.toBeNull()
+    }
+    fireEvent.keyDown(slider, { key: 'ArrowRight' })
+    expect(slider.getAttribute('aria-valuenow')).toBe('4')
+    expect(getMenuRow('Model limit').textContent).toBe('Model limit:128K')
+    expect(getMenuRow('Loaded context window').textContent).toBe('Loaded context window:16K')
+    fireEvent.keyDown(slider, { key: 'Home' })
+    expect(screen.getByText('Requested context window: Default')).not.toBeNull()
+  })
+
+  it('leaves the existing model limit alone without a preview', () => {
+    renderMenu({ contextWindow: 16_000 })
+    expect(screen.queryByRole('slider', { hidden: true })).toBeNull()
+    expect(getMenuRow('Model limit').textContent).toBe('Model limit:16K')
   })
 })

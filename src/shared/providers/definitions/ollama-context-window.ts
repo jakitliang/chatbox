@@ -1,7 +1,9 @@
 import type { ProviderSettings } from '../../types'
 import { normalizeOpenAIApiHostAndPath } from '../../utils/llm_utils'
 import { getRuntimeContextWindowValue } from '../context-window'
+import { getQuarterContextTarget } from '../context-window-control'
 import type { ContextWindowDelegate } from '../types'
+import { createOllamaContextFetch } from './ollama-context-transport'
 
 function nativeHost(settings: ProviderSettings): string {
   return normalizeOpenAIApiHostAndPath({
@@ -16,6 +18,7 @@ function canonicalName(name: string): string {
 /** Only this provider knows about Ollama's loaded-model API. Missing facts remain unknown. */
 export const ollamaContextWindowDelegate: ContextWindowDelegate = {
   getContextWindow: getRuntimeContextWindowValue,
+  control: { getTarget: getQuarterContextTarget, wrapFetch: createOllamaContextFetch },
   runtime: {
     getCacheKey: (settings) => JSON.stringify([nativeHost(settings), !!settings.useProxy]),
     async resolve(settings, modelId, request, signal) {

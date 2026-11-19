@@ -14,6 +14,10 @@ import { withSessionGenerationLock } from '@chatbox/core/generation'
 import { isExpectedGenerationError } from '@shared/models/error-classification'
 import { BaseError, ChatboxAIAPIError } from '@shared/models/errors'
 import { extractStreamErrorMessage } from '@shared/models/utils/stream-error-message'
+import {
+  type ContextWindowOverride,
+  resolveSessionContextWindowOverride,
+} from '@shared/providers/context-window-control'
 import { supportsSessionGeneration } from '@shared/session/capabilities'
 import { cleanupSessionAttachments } from './attachment-cleanup'
 import { createMessage, type Message } from '@shared/types'
@@ -287,10 +291,14 @@ export async function removeMessage(sessionId: string, messageId: string) {
  * 在会话中发送新用户消息，并根据需要生成回复
  * @param params
  */
-export async function submitNewUserMessage(
-  sessionId: string,
-  params: { newUserMsg: Message; needGenerating: boolean; onUserMessageReady?: () => void }
-) {
+interface SubmitNewUserMessageParams {
+  newUserMsg: Message
+  needGenerating: boolean
+  onUserMessageReady?: () => void
+  contextWindowOverride?: ContextWindowOverride | null
+}
+
+export async function submitNewUserMessage(sessionId: string, params: SubmitNewUserMessageParams) {
   // The gate runs inside the session lock so it reads the freshest state:
   // lock-free alternative replies can start streaming between a pre-lock
   // check and lock acquisition.
@@ -305,10 +313,7 @@ export async function submitNewUserMessage(
   })
 }
 
-export async function submitNewUserMessageUnlocked(
-  sessionId: string,
-  params: { newUserMsg: Message; needGenerating: boolean; onUserMessageReady?: () => void }
-) {
+export async function submitNewUserMessageUnlocked(sessionId: string, params: SubmitNewUserMessageParams) {
   // Import the unlocked generation helper lazily to avoid a circular dependency and
   // avoid reacquiring the session lock already held by submitNewUserMessage().
   const { _generateWithoutSessionLock } = await import('./generation.js')
@@ -342,12 +347,18 @@ export async function submitNewUserMessageUnlocked(
     }
   }
 
+  const globalSettings = settingsStore.getState().getSettings()
+  const contextWindowOverride = params.needGenerating
+    ? resolveSessionContextWindowOverride(settings, globalSettings, params.contextWindowOverride)
+    : undefined
+
   // Run compaction check before sending message (blocking)
   // Only for chat sessions with auto-compaction enabled
   if (session.type === 'chat' || session.type === undefined) {
     const compactionResult = await runCompactionWithUIState(sessionId, {
       kind: 'automatic',
       pendingMessage: params.newUserMsg,
+      ...(contextWindowOverride && { contextWindowOverride }),
     })
     if (compactionResult.status === 'failed') {
       throw compactionFailureError(compactionResult.failure)
@@ -367,7 +378,6 @@ export async function submitNewUserMessageUnlocked(
     newUserMsg = await attachLargeFileRagMetadata(sessionId, newUserMsg)
   }
 
-  const globalSettings = settingsStore.getState().getSettings()
   const isPro = settingActions.isPro()
   const remoteConfig = await settingActions.getRemoteConfig()
 
@@ -468,6 +478,9 @@ export async function submitNewUserMessageUnlocked(
   }
   // 根据需要，生成这条回复消息
   if (needGenerating) {
-    return _generateWithoutSessionLock(sessionId, newAssistantMsg, { operationType: 'send_message' })
+    return _generateWithoutSessionLock(sessionId, newAssistantMsg, {
+      operationType: 'send_message',
+      contextWindowOverride: contextWindowOverride ?? null,
+    })
   }
 }

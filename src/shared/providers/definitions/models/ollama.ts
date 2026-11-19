@@ -4,6 +4,7 @@ import {
   type ReasoningStrategy,
   stripReasoningProviderOptions,
 } from '../../../models/reasoning-strategy'
+import type { CallChatCompletionOptions } from '../../../models/types'
 import type { ProviderModelInfo, ProviderOptions } from '../../../types'
 import type { ModelDependencies } from '../../../types/adapters'
 import { normalizeOpenAIApiHostAndPath } from '../../../utils/llm_utils'
@@ -52,6 +53,23 @@ function applyThinkingMetadata(model: ProviderModelInfo, thinking: { values?: un
 export default class Ollama extends OpenAICompatible {
   protected usesFixedSampling() {
     return false
+  }
+
+  protected getCallSettings(options: CallChatCompletionOptions) {
+    const compatible = options.providerOptions?.openaiCompatible
+    if (
+      options.contextWindowOverride &&
+      this.options.contextWindowControl &&
+      !this.options.model.reasoningEffortLevels?.length &&
+      compatible?.reasoningEffort === 'high'
+    ) {
+      const { reasoningEffort: _, ...rest } = compatible
+      return super.getCallSettings({
+        ...options,
+        providerOptions: { ...options.providerOptions, openaiCompatible: { ...rest, enable_thinking: true } },
+      })
+    }
+    return super.getCallSettings(options)
   }
 
   protected getReasoningStrategy(): ReasoningStrategy {

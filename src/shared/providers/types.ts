@@ -121,6 +121,7 @@ export interface MaxContextWindowDelegate {
 export interface ContextWindowDelegate {
   getContextWindow(input: ContextWindowInput): ContextWindowValue
   runtime?: RuntimeContextWindowSource
+  control?: import('./context-window-control').ContextWindowControl
 }
 
 export interface RuntimeContextWindowSource {

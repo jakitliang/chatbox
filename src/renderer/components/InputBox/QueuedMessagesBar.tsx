@@ -19,7 +19,7 @@ import { cn } from '@/lib/utils'
 import { useSessionAgentMode } from '@/stores/session/agent-mode'
 import {
   clearPendingQueuedMessages,
-  isSteerableQueuedMessage,
+  canSteerQueuedMessage,
   MAX_QUEUED_MESSAGES,
   messageQueueStore,
   type QueuedCompactionRequest,
@@ -80,7 +80,7 @@ function QueuedItemRow({ sessionId, item, order, paused, steeringEnabled }: Queu
   const editorRef = useRef<HTMLDivElement>(null)
 
   const attachmentCount = countQueuedAttachments(item.message)
-  const steerable = steeringEnabled && isSteerableQueuedMessage(item.message) && !paused && !item.steerRequested
+  const steerable = steeringEnabled && canSteerQueuedMessage(item) && !paused && !item.steerRequested
 
   // The editor is much taller than the collapsed row, so it can extend past
   // the bottom of the scroll area it expands inside.
@@ -183,7 +183,7 @@ function QueuedItemRow({ sessionId, item, order, paused, steeringEnabled }: Queu
           <Text size="xs" c="chatbox-brand" fw={600} className="animate-pulse px-1">
             {t('Interjecting…')}
           </Text>
-        ) : steeringEnabled ? (
+        ) : steeringEnabled && !item.contextWindowOverride ? (
           <Tooltip
             label={
               steerable

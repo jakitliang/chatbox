@@ -1,4 +1,5 @@
 import { withSessionGenerationLock } from '@chatbox/core/generation'
+import type { ContextWindowOverride } from '@shared/providers/context-window-control'
 import { createMessage, type Message } from '@shared/types'
 import { v4 as uuidv4 } from 'uuid'
 import { createStore } from 'zustand'
@@ -16,6 +17,7 @@ export type QueuePausedReason = 'stopped' | 'error' | 'agent-mode-suggested' | '
 
 export interface QueuedUserMessage {
   kind: 'message'
+  contextWindowOverride?: ContextWindowOverride | null
   id: string
   message: Message
   createdAt: number
@@ -123,7 +125,10 @@ function persistState(state: MessageQueueState): void {
     if (Object.keys(state.queues).length === 0 && Object.keys(state.paused).length === 0) {
       localStorage.removeItem(PERSIST_KEY)
     } else {
-      localStorage.setItem(PERSIST_KEY, JSON.stringify(state))
+      localStorage.setItem(
+        PERSIST_KEY,
+        JSON.stringify(state, (key, value: unknown) => (key === 'contextWindowOverride' ? undefined : value))
+      )
     }
     lastPersistFailed = false
   } catch (error) {
@@ -291,7 +296,10 @@ function deliverQueuedMessage(sessionId: string, item: QueuedUserMessage): Promi
             assistantMessage = { ...createMessage('assistant', ''), generating: true }
             await insertMessage(sessionId, assistantMessage)
           }
-          await _generateWithoutSessionLock(sessionId, assistantMessage, { operationType: 'send_message' })
+          await _generateWithoutSessionLock(sessionId, assistantMessage, {
+            operationType: 'send_message',
+            ...(item.contextWindowOverride !== undefined && { contextWindowOverride: item.contextWindowOverride }),
+          })
         } catch (error) {
           setItemInFlight(sessionId, item.id, false)
           throw error
@@ -316,7 +324,11 @@ function deliverQueuedMessage(sessionId: string, item: QueuedUserMessage): Promi
     try {
       // Lazy import to avoid a circular dependency (messages.ts -> generation.ts -> orchestration.ts -> this file).
       const { submitNewUserMessageUnlocked } = await import('./messages')
-      await submitNewUserMessageUnlocked(sessionId, { newUserMsg: item.message, needGenerating: true })
+      await submitNewUserMessageUnlocked(sessionId, {
+        newUserMsg: item.message,
+        needGenerating: true,
+        ...(item.contextWindowOverride !== undefined && { contextWindowOverride: item.contextWindowOverride }),
+      })
     } catch (error) {
       setItemInFlight(sessionId, item.id, false)
       throw error
@@ -440,12 +452,17 @@ async function drainQueue(sessionId: string): Promise<void> {
 export type EnqueueResult = 'queued' | 'full' | 'persist-failed'
 
 /** Anything but 'queued' means the message was NOT enqueued and the caller must keep the draft. */
-export function enqueueUserMessage(sessionId: string, message: Message, conversationAnchorId?: string): EnqueueResult {
+export function enqueueUserMessage(
+  sessionId: string,
+  message: Message,
+  conversationAnchorId?: string,
+  contextWindowOverride?: ContextWindowOverride | null
+): EnqueueResult {
   const queue = getQueue(sessionId)
   if (queue.length >= MAX_QUEUED_MESSAGES) return 'full'
   setQueue(sessionId, [
     ...queue,
-    { kind: 'message', id: message.id, message, createdAt: Date.now(), conversationAnchorId },
+    { kind: 'message', id: message.id, message, createdAt: Date.now(), conversationAnchorId, contextWindowOverride },
   ])
   // The write-through runs synchronously in the store subscription. If it failed,
   // the enqueue is not durable: undo it so the caller keeps the persisted draft
@@ -635,7 +652,7 @@ export function resumeQueueAndDrain(sessionId: string): void {
 export function requestSteerQueuedMessage(sessionId: string, itemId: string): boolean {
   if (getQueuePausedReason(sessionId)) return false
   const item = getQueue(sessionId).find((queued) => queued.id === itemId)
-  if (!item || !isQueuedMessage(item) || item.inFlight || !isSteerableQueuedMessage(item.message)) return false
+  if (!item || !isQueuedMessage(item) || item.inFlight || !canSteerQueuedMessage(item)) return false
   setQueue(
     sessionId,
     getQueue(sessionId).map((queued) => (queued.id === itemId ? { ...queued, steerRequested: true } : queued))
@@ -652,8 +669,7 @@ export function requestSteerQueuedMessage(sessionId: string, itemId: string): bo
  */
 export function requestSteerFirstQueuedMessage(sessionId: string): boolean {
   const candidate = getQueue(sessionId).find(
-    (item): item is QueuedUserMessage =>
-      isQueuedMessage(item) && !item.inFlight && isSteerableQueuedMessage(item.message)
+    (item): item is QueuedUserMessage => isQueuedMessage(item) && !item.inFlight && canSteerQueuedMessage(item)
   )
   return candidate ? requestSteerQueuedMessage(sessionId, candidate.id) : false
 }
@@ -722,11 +738,12 @@ export function peekRequestedSteerableMessage(sessionId: string): QueuedUserMess
   if (getQueuePausedReason(sessionId)) return undefined
   return getQueue(sessionId).find(
     (queued): queued is QueuedUserMessage =>
-      isQueuedMessage(queued) &&
-      queued.steerRequested === true &&
-      !queued.inFlight &&
-      isSteerableQueuedMessage(queued.message)
+      isQueuedMessage(queued) && queued.steerRequested === true && !queued.inFlight && canSteerQueuedMessage(queued)
   )
+}
+
+export function canSteerQueuedMessage(item: QueuedUserMessage): boolean {
+  return !item.contextWindowOverride && isSteerableQueuedMessage(item.message)
 }
 
 /**

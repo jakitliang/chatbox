@@ -2,6 +2,7 @@ import { enrichModelFromRegistry } from '@shared/model-registry/enrich'
 import { mergeProviderModelCapabilities } from '@shared/providers/model-config'
 import { getProviderDefinition, getSystemProviders } from '@shared/providers/registry'
 import { getContextWindow, getMaxContextWindow } from '@shared/providers/context-window'
+import { type ContextWindowOverride, matchContextWindowOverride } from '@shared/providers/context-window-control'
 import type { ContextWindowValue } from '@shared/providers/types'
 import { getCompactionBudget, type CompactionBudget } from '@chatbox/core/application/token-estimation/math'
 import type { Settings } from '@shared/types'
@@ -62,9 +63,12 @@ export async function resolveModelCompactionBudget(
   settings: Pick<Settings, 'providers' | 'compactionThreshold'>,
   providerId: string | undefined,
   modelId: string,
-  sessionMaxTokens?: number
+  sessionMaxTokens?: number,
+  contextWindowOverride?: ContextWindowOverride
 ): Promise<CompactionBudget | null> {
-  const contextWindow = await resolveConfiguredContextWindow(settings, providerId, modelId)
+  const contextWindow =
+    matchContextWindowOverride(contextWindowOverride, providerId, modelId)?.tokens ??
+    (await resolveConfiguredContextWindow(settings, providerId, modelId))
   if (contextWindow == null) return null
   return getCompactionBudget(contextWindow, {
     compactionThreshold: settings.compactionThreshold,

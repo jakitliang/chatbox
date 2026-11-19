@@ -2,6 +2,7 @@ import { ModelProviderEnum, ModelProviderType, type ProviderSettings } from '../
 import { normalizeOpenAIApiHostAndPath } from '../../utils/llm_utils'
 import { getRuntimeContextWindowValue } from '../context-window'
 import { defineProvider } from '../registry'
+import { fastFlowLMContextControl } from './fastflowlm-context-transport'
 import FastFlowLM from './models/fastflowlm'
 
 function runtimeHost(settings: ProviderSettings): string | undefined {
@@ -16,6 +17,7 @@ export const fastFlowLMProvider = defineProvider({
   modelListSource: 'provider-only',
   contextWindowDelegate: {
     getContextWindow: getRuntimeContextWindowValue,
+    control: fastFlowLMContextControl,
     runtime: {
       getCacheKey: (settings) => JSON.stringify([runtimeHost(settings), !!settings.useProxy]),
       async resolve(settings, modelId, request, signal) {
@@ -55,6 +57,7 @@ export const fastFlowLMProvider = defineProvider({
         maxOutputTokens: config.settings.maxTokens,
         stream: config.settings.stream,
         useProxy: config.providerSetting.useProxy,
+        contextWindowControl: fastFlowLMContextControl,
       },
       config.dependencies,
       config.providerSetting.models

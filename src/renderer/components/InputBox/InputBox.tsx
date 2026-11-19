@@ -14,6 +14,7 @@ import {
   isSupportedFile,
 } from '@shared/file-extensions'
 import { KNOWLEDGE_BASE_MAX_FILE_SIZE, KNOWLEDGE_BASE_MAX_FILE_SIZE_LABEL } from '@shared/knowledge-base'
+import { getContextWindowSelection, type ContextWindowOverride } from '@shared/providers/context-window-control'
 import { formatNumber } from '@shared/utils'
 import { resolveReasoningProviderOptions } from '@shared/utils/reasoning-control'
 import {
@@ -140,6 +141,7 @@ import { getComposerPlaceholder, getSubmitAction, getSubmitControl } from './sub
 import TokenCountMenu from './TokenCountMenu'
 import { useModelToolCapabilities } from './useModelToolCapabilities'
 import { useReasoningControlState } from './useReasoningControlState'
+import { useSessionContextWindowTier } from './useSessionContextWindowTier'
 import { useThreadCreation } from './useThreadCreation'
 import { WebSearchUnavailableBanner } from './WebSearchUnavailableBanner'
 import WorkModeStatusRow from './WorkModeStatusRow'
@@ -149,6 +151,7 @@ export type InputBoxPayload = {
   needGenerating?: boolean
   onUserMessageReady?: () => void
   settingsPatch?: Partial<SessionSettings>
+  contextWindowOverride?: ContextWindowOverride | null
 }
 
 export type InputBoxRef = {
@@ -823,13 +826,35 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     useRuntimeContextWindow(model?.provider, model?.modelId, activeProviderSettings, generating)
 
     // Registry/runtime subscriptions trigger a fresh read of the same policy used at send time.
-    const contextCapacity = getContextWindowSnapshot(
-      { providers: model?.provider ? { [model.provider]: activeProviderSettings ?? {} } : {} },
-      model?.provider,
-      model?.modelId
-    )
+    const contextSettings = { providers: model?.provider ? { [model.provider]: activeProviderSettings ?? {} } : {} }
+    const contextCapacity = getContextWindowSnapshot(contextSettings, model?.provider, model?.modelId)
     const contextWindowKnown = contextCapacity.tokens !== null && contextCapacity.source !== 'fallback'
     const effectiveContextWindow = contextWindowKnown ? contextCapacity.tokens : null
+    const contextSelection =
+      model?.provider && model.modelId
+        ? getContextWindowSelection({
+            providerId: model.provider,
+            modelId: model.modelId,
+            model: activeProviderSettings?.models?.find((item) => item.modelId === model.modelId),
+          })
+        : undefined
+    const sessionContext = useSessionContextWindowTier(
+      currentSessionId,
+      currentSessionMergedSettings?.contextWindowTier
+    )
+    const contextWindowControl = contextSelection
+      ? {
+          ...contextSelection,
+          scope: JSON.stringify([sessionId, model?.provider, model?.modelId]),
+          tier: sessionContext.tier,
+          onChange: (tier: typeof sessionContext.tier) => {
+            void sessionContext.changeTier(tier).catch((error: unknown) => {
+              console.error('Failed to save the session context window tier', error)
+              toastActions.add(t('Failed to save settings'))
+            })
+          },
+        }
+      : undefined
 
     // Calculate token usage percentage
     const tokenPercentage = useMemo(() => {
@@ -907,6 +932,13 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const insertFilesRef = useRef<(files: File[], options?: InsertFilesOptions) => void>(() => {})
 
     const handleSubmit = async (needGenerating = true, options: SubmitOptions = {}) => {
+      const contextTarget = needGenerating ? contextWindowControl?.getTarget(sessionContext.tier) : undefined
+      const contextWindowOverride =
+        contextTarget && model?.provider && model.modelId
+          ? { providerId: model.provider, modelId: model.modelId, tokens: contextTarget }
+          : contextWindowControl && needGenerating
+            ? null
+            : undefined
       const submitAction = getSubmitAction({
         generating,
         compactionBlocking,
@@ -1047,7 +1079,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
           const enqueueResult = enqueueUserMessage(
             currentSessionId,
             outgoingMessage,
-            headerRead?.summary.lastNonSummaryMessageId
+            headerRead?.summary.lastNonSummaryMessageId,
+            contextWindowOverride
           )
           if (enqueueResult !== 'queued') {
             // The draft is kept in both failure cases — it is the only copy of the text.
@@ -1059,7 +1092,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
           // right now consumes it at its next step instead of letting it wait
           // for the turn to end. Only a running reply has a consumer to hand it
           // to; behind a compression the item simply keeps its place in line.
-          if (options.steer && generating && steeringEnabled) {
+          if (options.steer && generating && steeringEnabled && !contextWindowOverride) {
             requestSteerQueuedMessage(currentSessionId, outgoingMessage.id)
           }
           if (submitAction === 'queue-resume') {
@@ -1072,7 +1105,10 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         const params = {
           constructedMessage: outgoingMessage,
           needGenerating,
-          settingsPatch: reasoningSettingsPatch,
+          settingsPatch: sessionContext.draftPatch
+            ? { ...reasoningSettingsPatch, ...sessionContext.draftPatch }
+            : reasoningSettingsPatch,
+          contextWindowOverride,
           onUserMessageReady: finalizeUserMessageDraft,
         }
 
@@ -2098,7 +2134,12 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                   isContextLoading={contextPending}
                   pendingContextMessages={pendingContextMessages}
                   totalContextMessages={messageCount}
-                  contextWindow={effectiveContextWindow ?? undefined}
+                  contextWindow={
+                    !contextWindowControl || contextCapacity.source === 'runtime'
+                      ? (effectiveContextWindow ?? undefined)
+                      : undefined
+                  }
+                  contextWindowControl={contextWindowControl}
                   currentMessageCount={messageCount}
                   maxContextMessageCount={currentSessionMergedSettings?.maxContextMessageCount}
                   onCompressClick={
@@ -2113,11 +2154,12 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                   contextWindowKnown={contextWindowKnown}
                   onAutoCompactionChange={sessionId && !isNewSession ? handleAutoCompactionChange : undefined}
                 >
-                  <Flex
+                  <UnstyledButton
+                    type="button"
+                    aria-label={t('Estimated Token Usage') || undefined}
                     data-testid={TestId.chat.contextMenuTrigger}
-                    align="center"
-                    gap="2"
-                    className={`shrink-0 text-xs cursor-pointer hover:text-chatbox-tint-secondary transition-colors px-2 py-1 rounded-md hover:bg-[var(--chatbox-background-tertiary)] ${
+                    display="flex"
+                    className={`items-center gap-0.5 shrink-0 text-xs cursor-pointer hover:text-chatbox-tint-secondary transition-colors px-2 py-1 rounded-md hover:bg-[var(--chatbox-background-tertiary)] ${
                       tokenPercentage && tokenPercentage > 80 ? 'text-chatbox-tint-error' : 'text-chatbox-tint-tertiary'
                     }`}
                   >
@@ -2129,7 +2171,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                       {contextPending && ` · ${t('Partial estimate')}`}
                       {tokenPercentage !== null && tokenPercentage > 10 && ` (${tokenPercentage}%)`}
                     </Text>
-                  </Flex>
+                  </UnstyledButton>
                 </TokenCountMenu>
 
                 {/* Model Selector */}

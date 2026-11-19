@@ -1,5 +1,5 @@
 import { createForkCommandIdentity } from '@chatbox/core/application/session'
-import { trySessionGenerationLock, withSessionGenerationLock } from '@chatbox/core/generation'
+import { type GenerationOptions, trySessionGenerationLock, withSessionGenerationLock } from '@chatbox/core/generation'
 import type { SessionHeader } from '@chatbox/core/ports'
 import { SessionActionBlockedError } from '@chatbox/core/session/action-gates'
 import { isActionAvailableInMode, resolveSessionMode } from '@chatbox/core/session/mode-policy'
@@ -18,18 +18,13 @@ import { createAttachmentResolver } from './attachment-resolver'
 import { createNewFork, createSaveAndResendFork } from './forks'
 import { insertMessageAfter, modifyMessage } from './messages'
 import { getSessionHeader, getSessionSettings, getSessionTokenModel } from './session-settings'
-import type { AgentModeEntrySource } from './types'
 import { initializeTargetMessage } from './utils'
 
 /** Internal generation entry point for callers that already hold the session generation lock. */
 export async function _generateWithoutSessionLock(
   sessionId: string,
   targetMsg: Message,
-  options?: {
-    operationType?: 'send_message' | 'regenerate'
-    skipAgentModeSuggestion?: boolean
-    agentModeEntrySource?: AgentModeEntrySource
-  }
+  options?: GenerationOptions
 ) {
   const session = await getSessionHeader(sessionId)
   if (!session) {
@@ -55,11 +50,7 @@ export async function retryFromLastToolCallAfterApiError(sessionId: string, mess
 export async function generate(
   sessionId: string,
   targetMsg: Message,
-  options?: {
-    operationType?: 'send_message' | 'regenerate'
-    skipAgentModeSuggestion?: boolean
-    agentModeEntrySource?: AgentModeEntrySource
-  }
+  options?: GenerationOptions
 ) {
   return withSessionGenerationLock(sessionId, () => _generateWithoutSessionLock(sessionId, targetMsg, options))
 }

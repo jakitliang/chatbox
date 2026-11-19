@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { createDefaultSettings } from '@chatbox/core'
 import {
   type Config,
   type ProviderModelInfo,
@@ -135,18 +136,16 @@ describe('Ollama native model discovery', () => {
       toggle: [false, true],
       unsupported: [false],
     }
-    const apiRequest = vi
-      .fn<ModelDependencies['request']['apiRequest']>()
-      .mockImplementation((options) =>
-        response(
-          options.method === 'GET'
-            ? { models: Object.keys(values).map((name) => ({ name })) }
-            : {
-                capabilities: ['completion', 'tools', 'thinking'],
-                thinking: { values: values[JSON.parse(options.body as string).model] },
-              }
-        )
+    const apiRequest = vi.fn<ModelDependencies['request']['apiRequest']>().mockImplementation((options) =>
+      response(
+        options.method === 'GET'
+          ? { models: Object.keys(values).map((name) => ({ name })) }
+          : {
+              capabilities: ['completion', 'tools', 'thinking'],
+              thinking: { values: values[JSON.parse(options.body as string).model] },
+            }
       )
+    )
     const ollamaHost = 'http://localhost:11434'
     const model = new Ollama({ ollamaHost, model: { modelId: '' } }, dependencies(apiRequest))
     const existing = Object.keys(values).map((modelId) => ({ modelId, reasoningEffortLevels: ['low'] }))
@@ -215,6 +214,55 @@ describe('Ollama native model discovery', () => {
   })
 
   describe('Ollama reasoning requests', () => {
+    it('uses the native transport only for an explicit context request on a factory model', async () => {
+      const apiRequest = vi.fn<ModelDependencies['request']['apiRequest']>().mockImplementation(({ url }) =>
+        Promise.resolve(
+          url.endsWith('/api/chat')
+            ? new Response('{"model":"local","message":{"role":"assistant","content":"OK"},"done":true}\n', {
+                headers: { 'content-type': 'application/x-ndjson' },
+              })
+            : new Response(
+                'data: {"choices":[{"index":0,"delta":{"content":"OK"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n',
+                { headers: { 'content-type': 'text/event-stream' } }
+              )
+        )
+      )
+      const runtime = getModel(
+        { provider: 'ollama', modelId: 'local', maxTokens: 48 },
+        {
+          ...createDefaultSettings(),
+          providers: {
+            ollama: {
+              apiHost: 'http://localhost:11434/prefix',
+              models: [{ modelId: 'local', capabilities: ['reasoning'] }],
+            },
+          },
+        },
+        {} as Config,
+        dependencies(apiRequest)
+      )
+      const prompt = [{ role: 'user' as const, content: 'Hello' }]
+      const explicit = { providerId: 'ollama', modelId: 'local', tokens: 8192 }
+      const providerOptions = runtime.writeReasoningOptions?.('high')
+      expect(providerOptions).toBeDefined()
+      for (const options of [{}, { contextWindowOverride: explicit, providerOptions }, {}]) {
+        for await (const part of runtime.chatStream(prompt, options)) {
+          expect(part.type).not.toBe('error')
+        }
+      }
+
+      const requests = apiRequest.mock.calls.map(([request]) => request)
+      expect(requests.map(({ url }) => url)).toEqual([
+        'http://localhost:11434/prefix/v1/chat/completions',
+        'http://localhost:11434/prefix/api/chat',
+        'http://localhost:11434/prefix/v1/chat/completions',
+      ])
+      expect(JSON.parse(String(requests[0].body))).not.toHaveProperty('num_ctx')
+      expect(JSON.parse(String(requests[1].body)).options).toMatchObject({ num_ctx: 8192, num_predict: 48 })
+      expect(JSON.parse(String(requests[1].body))).toHaveProperty('think', true)
+      expect(JSON.parse(String(requests[2].body))).not.toHaveProperty('num_ctx')
+    })
+
     it.each([
       [undefined, 'default', undefined],
       [undefined, 'off', 'none'],

@@ -11,6 +11,7 @@ import type { ModelDependencies } from '../../../types/adapters'
 import { normalizeOpenAIApiHostAndPath } from '../../../utils/llm_utils'
 import { isStandardReasoningEffort, type ReasoningControlOption } from '../../../utils/reasoning-control'
 import { validContextWindow } from '../../context-window'
+import { fastFlowLMModelDiscoveryQuery } from '../fastflowlm-context-transport'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -80,7 +81,7 @@ export default class FastFlowLM extends OpenAICompatible {
 
   public async listModels(): Promise<ProviderModelInfo[]> {
     const response = await this.dependencies.request.apiRequest({
-      url: `${this.options.apiHost}/models?installed=true&include=capabilities`,
+      url: `${this.options.apiHost}/models?${fastFlowLMModelDiscoveryQuery}`,
       method: 'GET',
       headers: {},
       useProxy: this.options.useProxy,

@@ -1,6 +1,7 @@
 import { collectCompactedAttachments } from '@shared/context/attachments'
 import { projectContextMessagesForModel } from '@shared/context/model-projection'
 import { flattenToolCallPartsToText } from '@shared/context/tool-flatten'
+import type { ContextWindowOverride } from '@shared/providers/context-window-control'
 import type { LoggerPort, SettingsRepositoryPort } from '../../ports'
 import type { Message, SessionHeader, SessionSettings, Settings } from '../../types'
 import type { SessionHeaderRead } from '../../ports/session-row-repository'
@@ -64,6 +65,7 @@ export interface CompactionPolicyPort {
     sessionSettings: SessionSettings
     globalSettings: Settings
     pendingMessage?: Message
+    contextWindowOverride?: ContextWindowOverride
     /** Request tokens outside the conversation (tool definitions, extra instructions) seen on the last request. */
     requestOverhead: RequestOverheadTokens
   }): Promise<CompactionPressure | null>
@@ -155,7 +157,11 @@ export class CompactionService {
     })
   }
 
-  async needsCompaction(sessionId: string, pendingMessage?: Message): Promise<boolean> {
+  async needsCompaction(
+    sessionId: string,
+    pendingMessage?: Message,
+    contextWindowOverride?: ContextWindowOverride
+  ): Promise<boolean> {
     const read = await this.options.sessions.getSessionHeader(sessionId)
     const session = read?.header
     if (!session) return false
@@ -163,7 +169,7 @@ export class CompactionService {
     const globalSettings = this.options.settings.getSettings()
     if (!isAutoCompactionEnabled(session.settings, globalSettings)) return false
 
-    const pressure = await this.measure(sessionId, session, globalSettings, pendingMessage)
+    const pressure = await this.measure(sessionId, session, globalSettings, pendingMessage, contextWindowOverride)
     if (!pressure) return false
     // Another thread or fork, or a different model window, starts without the earlier baseline.
     const compacted = this.compactedSizes.get(sessionId)
@@ -181,7 +187,8 @@ export class CompactionService {
     sessionId: string,
     session: SessionHeader,
     globalSettings: Settings,
-    pendingMessage?: Message
+    pendingMessage?: Message,
+    contextWindowOverride?: ContextWindowOverride
   ): Promise<CompactionPressure | null> {
     const modelId = session.settings?.modelId ?? globalSettings.defaultChatModel?.model
     if (!modelId) return null
@@ -193,6 +200,7 @@ export class CompactionService {
       sessionSettings,
       globalSettings,
       pendingMessage,
+      ...(contextWindowOverride && { contextWindowOverride }),
       requestOverhead: this.requestOverhead.get(sessionId) ?? NO_REQUEST_OVERHEAD,
     })
   }
@@ -232,7 +240,10 @@ export class CompactionService {
       return { status: 'skipped', reason: 'busy' }
     }
     if (options.abortSignal?.aborted) return { status: 'cancelled' }
-    if (request.kind === 'automatic' && !(await this.needsCompaction(sessionId, request.pendingMessage))) {
+    if (
+      request.kind === 'automatic' &&
+      !(await this.needsCompaction(sessionId, request.pendingMessage, request.contextWindowOverride))
+    ) {
       return { status: 'skipped', reason: 'not_needed' }
     }
     if (this.ongoing.has(sessionId)) {

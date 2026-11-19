@@ -1,9 +1,11 @@
 import type { LanguageModelV4, LanguageModelV4CallOptions } from '@ai-sdk/provider'
+import { jsonSchema, tool } from 'ai'
 import { describe, expect, it, vi } from 'vitest'
 import { fetchRemoteModels } from '../../../models/openai-compatible'
 import type { Config, ProviderModelInfo, Settings } from '../../../types'
 import { ModelProviderEnum } from '../../../types'
 import type { ModelDependencies } from '../../../types/adapters'
+import { getReasoningProviderOptions } from '../../../utils/reasoning-control'
 import { getModel, getProviderDefinition } from '../../index'
 import FastFlowLM from './fastflowlm'
 
@@ -55,7 +57,7 @@ describe('FastFlowLM independent keyless provider', () => {
       { modelId: 'fixture-vision', type: 'chat' },
     ])
     expect(apiRequest).toHaveBeenCalledExactlyOnceWith({
-      url: `${baseURL}/models`,
+      url: `${baseURL}/models?installed=true&include=capabilities`,
       method: 'GET',
       headers: {},
       useProxy: true,
@@ -70,25 +72,18 @@ describe('FastFlowLM independent keyless provider', () => {
     )
   })
 
-  it('maps native metadata without treating configured windows or thinking toggles as capability limits', async () => {
+  it('maps FLM metadata to existing model capabilities and the published maximum', async () => {
     const apiRequest = vi.fn<ModelDependencies['request']['apiRequest']>().mockImplementation(() =>
       reply({
         data: [
           {
             id: 'fixture-multimodal',
-            type: 'audio',
-            capabilities: ['transcription', 'vision', 'tools', 'thinking'],
-            thinking_toggleable: false,
-            model_context_length: 262144,
-            configured_context_length: 32768,
-            default_context_length: 16384,
-            context_capacity: { max: 131072, request_parameter: 'num_ctx' },
+            flm: { vlm: true, tools: true, think: true, max_position_embeddings: 262144, default_context_length: 16384 },
           },
-          { id: 'fixture-embedding', type: 'embedding', capabilities: ['embedding'] },
-          { id: 'fixture-embedding-native', capabilities: ['embedding'] },
-          { id: 'fixture-text', capabilities: ['completion'] },
-          { id: 'fixture-empty', capabilities: [] },
-          { id: 'fixture-unknown', capabilities: null },
+          { id: 'gpt-oss:20b', flm: { think: false, reasoning_effort: ['low', 'medium', 'high'] } },
+          { id: 'fixture-no-vision', flm: { vlm: false } },
+          { id: 'fixture-no-toggle', flm: { think: false } },
+          { id: 'fixture-unknown' },
         ],
       })
     )
@@ -100,32 +95,24 @@ describe('FastFlowLM independent keyless provider', () => {
       {
         modelId: 'fixture-multimodal',
         type: 'chat',
-        capabilities: ['vision', 'reasoning', 'tool_use'],
+        capabilities: ['vision', 'tool_use', 'reasoning'],
         maxContextWindow: 262144,
       },
-      { modelId: 'fixture-embedding', type: 'embedding', capabilities: [] },
-      { modelId: 'fixture-embedding-native', type: 'embedding', capabilities: [] },
-      { modelId: 'fixture-text', type: 'chat', capabilities: [] },
-      { modelId: 'fixture-empty', type: 'chat', capabilities: [] },
+      { modelId: 'gpt-oss:20b', type: 'chat', capabilities: ['reasoning'] },
+      { modelId: 'fixture-no-vision', type: 'chat', capabilities: [] },
+      { modelId: 'fixture-no-toggle', type: 'chat' },
       { modelId: 'fixture-unknown', type: 'chat' },
     ])
     expect(apiRequest).toHaveBeenCalledOnce()
   })
 
   it.each([
-    [{ model_context_length: 65536 }, 65536],
-    [{ model_info: { 'general.architecture': 'fixture_arch', 'fixture_arch.context_length': 131072 } }, 131072],
-    [{ context_capacity: { max: 262144, default: 8192 } }, 262144],
-    [{ configured_context_length: 32768, default_context_length: 16384 }, undefined],
-    [
-      { model_info: { 'other.context_length': 65536, 'fixture.rope.scaling.original_context_length': 8192 } },
-      undefined,
-    ],
-    [{ model_context_length: '65536', context_capacity: { max: -1 } }, undefined],
-    [{ model_context_length: 0 }, undefined],
-    [{ model_context_length: 1.5 }, undefined],
-    [{ model_context_length: Number.MAX_SAFE_INTEGER + 1 }, undefined],
-    [{ model_context_length: -1, context_capacity: { max: 65536 } }, 65536],
+    [{ flm: { max_position_embeddings: 65536, default_context_length: 8192 } }, 65536],
+    [{ flm: { default_context_length: 16384 } }, undefined],
+    [{ flm: { max_position_embeddings: '65536' } }, undefined],
+    [{ flm: { max_position_embeddings: -1 } }, undefined],
+    [{ flm: { max_position_embeddings: 1.5 } }, undefined],
+    [{ flm: { max_position_embeddings: Number.MAX_SAFE_INTEGER + 1 } }, undefined],
   ])('reads only validated server-reported model capacity (%j)', async (metadata, expected) => {
     const apiRequest = vi
       .fn<ModelDependencies['request']['apiRequest']>()
@@ -193,7 +180,7 @@ describe('FastFlowLM independent keyless provider', () => {
     expect(runtime.options.apiKey).toBe('')
     expect(runtime.options.model).toMatchObject(saved)
     expect(runtime.isSupportVision()).toBe(true)
-    expect(runtime.isSupportToolUse('agent')).toBe(true)
+    expect(runtime.isSupportToolUse()).toBe(true)
     expect(runtime.isSupportReasoning()).toBe(true)
   })
 
@@ -294,5 +281,50 @@ describe('FastFlowLM independent keyless provider', () => {
     expect(parts).toContainEqual(expect.objectContaining({ type: 'reasoning-delta', delta: 'Thinking' }))
     expect(parts.some((part) => part.type === 'error')).toBe(false)
     expect(new Headers(apiRequest.mock.calls[0][0].headers as HeadersInit).has('authorization')).toBe(false)
+  })
+
+  it.each([
+    ['default', undefined],
+    ['high', true],
+    ['off', false],
+  ] as const)('sends the %s choice with standard tool and image inputs', async (level, think) => {
+    const apiRequest = vi.fn<ModelDependencies['request']['apiRequest']>().mockImplementation(() =>
+      Promise.resolve(
+        new Response(
+          'data: {"choices":[{"index":0,"delta":{"content":"OK"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n',
+          { headers: { 'content-type': 'text/event-stream' } }
+        )
+      )
+    )
+    const model: ProviderModelInfo = { modelId: 'qwen3.5:4b', capabilities: ['reasoning', 'vision', 'tool_use'] }
+    const runtime = new FastFlowLM({ apiHost: 'http://localhost:52625', model }, dependencies(apiRequest))
+    const image = 'data:image/png;base64,AA=='
+    const parts = []
+    for await (const part of runtime.chatStream(
+      [
+        {
+          role: 'user',
+          content: [{ type: 'text', text: 'Describe the image' }, { type: 'file', data: image, mediaType: 'image/png' }],
+        },
+      ],
+      {
+        providerOptions: getReasoningProviderOptions(ModelProviderEnum.FastFlowLM, model, level, {
+          openaiCompatible: { enable_thinking: true, reasoningEffort: 'high' },
+        }),
+        tools: { lookup: tool({ inputSchema: jsonSchema({ type: 'object', properties: {} }) }) },
+      }
+    )) {
+      parts.push(part)
+    }
+
+    expect(parts).toContainEqual(expect.objectContaining({ type: 'text-delta', text: 'OK' }))
+    expect(apiRequest).toHaveBeenCalledOnce()
+    const body = JSON.parse(apiRequest.mock.calls[0][0].body as string)
+    if (think === undefined) expect(body).not.toHaveProperty('think')
+    else expect(body.think).toBe(think)
+    expect(body).not.toHaveProperty('enable_thinking')
+    expect(body).not.toHaveProperty('reasoning_effort')
+    expect(body.messages[0].content).toContainEqual({ type: 'image_url', image_url: { url: image } })
+    expect(body.tools).toMatchObject([{ type: 'function', function: { name: 'lookup' } }])
   })
 })

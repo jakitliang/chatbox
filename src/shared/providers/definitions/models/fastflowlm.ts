@@ -1,22 +1,24 @@
 import { ApiError } from '../../../models/errors'
 import OpenAICompatible, { type OpenAICompatibleSettings } from '../../../models/openai-compatible'
+import type { CallChatCompletionOptions } from '../../../models/types'
 import type { ProviderModelInfo } from '../../../types'
 import type { ModelDependencies } from '../../../types/adapters'
 import { normalizeOpenAIApiHostAndPath } from '../../../utils/llm_utils'
+import { validContextWindow } from '../../context-window'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
-}
-
-function positiveInteger(value: unknown): number | undefined {
-  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : undefined
 }
 
 /** Independent, keyless FLM runtime. Never enters OpenAI's OAuth or Responses paths. */
 export default class FastFlowLM extends OpenAICompatible {
   public name = 'FastFlowLM'
 
-  constructor(options: Omit<OpenAICompatibleSettings, 'apiKey'>, dependencies: ModelDependencies) {
+  constructor(
+    options: Omit<OpenAICompatibleSettings, 'apiKey'>,
+    dependencies: ModelDependencies,
+    private readonly savedModels: readonly ProviderModelInfo[] = []
+  ) {
     // The generic normalizer defaults an empty host to OpenAI. FLM must not.
     if (!options.apiHost.trim()) {
       throw new Error('API host is required')
@@ -25,9 +27,21 @@ export default class FastFlowLM extends OpenAICompatible {
     super({ ...options, apiHost, apiKey: '' }, dependencies)
   }
 
+  protected getCallSettings(options: CallChatCompletionOptions) {
+    const compatible = options.providerOptions?.openaiCompatible
+    if (compatible?.enable_thinking === undefined) return super.getCallSettings(options)
+
+    const { enable_thinking: think, ...rest } = compatible
+    const openaiCompatible = { ...rest, think }
+    return super.getCallSettings({
+      ...options,
+      providerOptions: { ...options.providerOptions, openaiCompatible },
+    })
+  }
+
   public async listModels(): Promise<ProviderModelInfo[]> {
     const response = await this.dependencies.request.apiRequest({
-      url: `${this.options.apiHost}/models`,
+      url: `${this.options.apiHost}/models?installed=true&include=capabilities`,
       method: 'GET',
       headers: {},
       useProxy: this.options.useProxy,
@@ -39,32 +53,28 @@ export default class FastFlowLM extends OpenAICompatible {
     const models: ProviderModelInfo[] = []
     for (const item of payload.data) {
       if (!isRecord(item) || typeof item.id !== 'string' || !item.id.trim()) continue
-      const model: ProviderModelInfo = { modelId: item.id, type: 'chat' }
-      if (item.type === 'embedding' || item.type === 'rerank' || item.type === 'image') model.type = item.type
-      if (Array.isArray(item.capabilities)) {
-        // Native metadata initializes the existing capability checkboxes, not runtime name-based rules.
-        model.capabilities = []
-        if (item.capabilities.includes('vision')) model.capabilities.push('vision')
-        if (item.capabilities.includes('thinking')) model.capabilities.push('reasoning')
-        if (item.capabilities.includes('tools')) model.capabilities.push('tool_use')
-        if (
-          item.type === undefined &&
-          item.capabilities.includes('embedding') &&
-          !item.capabilities.includes('completion')
-        ) {
-          model.type = 'embedding'
-        }
-      }
+      const saved = this.savedModels.find((model) => model.modelId === item.id)
+      const model: ProviderModelInfo = { modelId: item.id, type: saved?.type ?? 'chat' }
+      if (isRecord(item.flm)) {
+        const { vlm, tools, think, reasoning_effort, max_position_embeddings } = item.flm
+        const maximum = validContextWindow(max_position_embeddings)
+        if (maximum !== undefined) model.maxContextWindow = maximum
 
-      const info = isRecord(item.model_info) ? item.model_info : undefined
-      const architecture = info?.['general.architecture']
-      const capacity = isRecord(item.context_capacity) ? item.context_capacity : undefined
-      // Catalog limits are descriptive. The runtime delegate alone supplies compaction windows.
-      const contextWindow =
-        positiveInteger(item.model_context_length) ??
-        (typeof architecture === 'string' ? positiveInteger(info?.[`${architecture}.context_length`]) : undefined) ??
-        positiveInteger(capacity?.max)
-      if (contextWindow !== undefined) model.maxContextWindow = contextWindow
+        // `think: false` rules out a toggle, not reasoning itself.
+        const reasoning = think === true || (Array.isArray(reasoning_effort) && reasoning_effort.length > 0)
+        let capabilities: Set<NonNullable<ProviderModelInfo['capabilities']>[number]> | undefined
+        for (const [capability, supported] of [
+          ['vision', vlm],
+          ['tool_use', tools],
+          ['reasoning', reasoning || undefined],
+        ] as const) {
+          if (typeof supported !== 'boolean') continue
+          capabilities ??= new Set(saved?.capabilities)
+          if (supported) capabilities.add(capability)
+          else capabilities.delete(capability)
+        }
+        if (capabilities) model.capabilities = [...capabilities]
+      }
       models.push(model)
     }
     return models

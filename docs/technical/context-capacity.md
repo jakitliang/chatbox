@@ -28,8 +28,10 @@ Legacy compaction helpers remain compatibility wrappers around the same capacity
 
 ## Persistence compatibility
 
-Existing `contextWindow` data remains readable. `maxContextWindow` is an optional additional field, so no bulk migration is needed. Registry enrichment fills a missing legacy window and records the model maximum separately rather than overwriting a saved effective window. Explicit model refresh can update the published maximum while preserving the configured window. FastFlowLM's newly discovered theoretical capacity is stored as `maxContextWindow`.
+Existing `contextWindow` data remains readable. `maxContextWindow` is an optional additional field, so no bulk migration is needed. Registry enrichment fills a missing legacy window and records the model maximum separately rather than overwriting a saved effective window. Explicit model refresh can update the published maximum while preserving the configured window. FastFlowLM fetches `/v1/models?installed=true&include=capabilities` from the configured server and uses only `flm.max_position_embeddings` as the published maximum.
 
-No capability checkboxes, reasoning protocol behavior or compression thresholds are changed by these interfaces.
+On the same refresh, FastFlowLM's `flm.vlm` and `flm.tools` update the existing vision and tool-use capabilities when supplied. A supported `think` switch or advertised effort levels indicate reasoning support. Missing capability information preserves saved choices; `think: false` alone only means the switch is unavailable.
+
+FastFlowLM sends an explicit thinking choice as top-level `think` and omits it for the default choice. Tools and images use the existing OpenAI-compatible request format.
 
 On explicit model fetch, Ollama maps the published `/api/show` capacity to `maxContextWindow`. The model list uses the same context-window display as other providers.

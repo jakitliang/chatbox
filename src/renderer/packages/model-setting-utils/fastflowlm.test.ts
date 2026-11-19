@@ -2,6 +2,7 @@ import { ModelProviderEnum, type ProviderModelInfo } from '@shared/types'
 import type { ModelDependencies } from '@shared/types/adapters'
 import { describe, expect, it, vi } from 'vitest'
 import { createModelDependencies } from '@/adapters'
+import { getModelManifest } from '@/packages/remote'
 import RegistrySettingUtil from './registry-setting-util'
 
 vi.mock('@/adapters', () => ({ createModelDependencies: vi.fn() }))
@@ -36,6 +37,7 @@ describe('FastFlowLM manual model settings', () => {
     })
     const util = new RegistrySettingUtil(ModelProviderEnum.FastFlowLM)
     const catalog = await util.getMergeOptionGroups(settings)
+    expect(getModelManifest).not.toHaveBeenCalled()
     expect(catalog[0]).toBe(saved)
     expect(catalog[1]).toEqual({ modelId: 'fixture-new', type: 'chat' })
     expect(settings.models).toEqual([saved])
@@ -47,7 +49,7 @@ describe('FastFlowLM manual model settings', () => {
       modelId: 'fixture-saved',
       nickname: 'My FLM',
       type: 'chat',
-      capabilities: [],
+      capabilities: ['vision', 'tool_use'],
       contextWindow: 8192,
       maxOutput: 512,
     }
@@ -58,16 +60,11 @@ describe('FastFlowLM manual model settings', () => {
             data: [
               {
                 id: saved.modelId,
-                capabilities: ['vision', 'tools', 'thinking'],
-                model_context_length: 131072,
-                configured_context_length: 32768,
+                flm: { vlm: false, think: true, max_position_embeddings: 131072, default_context_length: 32768 },
               },
               {
                 id: 'fixture-new-metadata',
-                capabilities: ['thinking'],
-                thinking_toggleable: false,
-                model_info: { 'general.architecture': 'fixture_arch', 'fixture_arch.context_length': 65536 },
-                configured_context_length: 16384,
+                flm: { think: false, reasoning_effort: ['low', 'high'], max_position_embeddings: 65536 },
               },
             ],
           })
@@ -83,10 +80,10 @@ describe('FastFlowLM manual model settings', () => {
     const util = new RegistrySettingUtil(ModelProviderEnum.FastFlowLM)
     const catalog = await util.getMergeOptionGroups({ apiHost: 'http://flm.example:52625', models: [saved] })
     expect(catalog).toEqual([
-      { ...saved, capabilities: ['vision', 'reasoning', 'tool_use'], maxContextWindow: 131072 },
+      { ...saved, capabilities: ['tool_use', 'reasoning'], maxContextWindow: 131072 },
       { modelId: 'fixture-new-metadata', type: 'chat', capabilities: ['reasoning'], maxContextWindow: 65536 },
     ])
-    expect(saved.capabilities).toEqual([])
+    expect(saved.capabilities).toEqual(['vision', 'tool_use'])
     expect(apiRequest).toHaveBeenCalledOnce()
   })
 })

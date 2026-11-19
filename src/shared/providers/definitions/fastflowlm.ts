@@ -13,6 +13,7 @@ export const fastFlowLMProvider = defineProvider({
   id: ModelProviderEnum.FastFlowLM,
   name: 'FastFlowLM',
   type: ModelProviderType.OpenAI,
+  modelListSource: 'provider-only',
   reasoningStrategy: FastFlowLM.reasoningStrategy,
   contextWindowDelegate: {
     getContextWindow: getRuntimeContextWindowValue,
@@ -56,7 +57,8 @@ export const fastFlowLMProvider = defineProvider({
         stream: config.settings.stream,
         useProxy: config.providerSetting.useProxy,
       },
-      config.dependencies
+      config.dependencies,
+      config.providerSetting.models
     ),
   getDisplayName: (modelId, providerSettings) =>
     `FastFlowLM (${providerSettings?.models?.find((m) => m.modelId === modelId)?.nickname || modelId})`,

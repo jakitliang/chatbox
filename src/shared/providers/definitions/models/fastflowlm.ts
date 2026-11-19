@@ -9,7 +9,7 @@ import type { CallChatCompletionOptions } from '../../../models/types'
 import type { ProviderModelInfo } from '../../../types'
 import type { ModelDependencies } from '../../../types/adapters'
 import { normalizeOpenAIApiHostAndPath } from '../../../utils/llm_utils'
-import type { ReasoningControlOption } from '../../../utils/reasoning-control'
+import { isStandardReasoningEffort, type ReasoningControlOption } from '../../../utils/reasoning-control'
 import { validContextWindow } from '../../context-window'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -35,7 +35,7 @@ export default class FastFlowLM extends OpenAICompatible {
 
   protected getReasoningStrategy(): ReasoningStrategy {
     const base = compatibleBooleanReasoningStrategy
-    const levels = this.options.model.reasoningEffortLevels
+    const levels = this.options.model.reasoningEffortLevels?.filter(isStandardReasoningEffort)
     if (!levels?.length) return base
     return {
       ...base,
@@ -47,13 +47,13 @@ export default class FastFlowLM extends OpenAICompatible {
           ),
       readLevel(options) {
         const effort = options?.openaiCompatible?.reasoningEffort
-        if (levels.some((level) => level === effort)) return effort as (typeof levels)[number]
+        if (isStandardReasoningEffort(effort) && levels.includes(effort)) return effort
         return options?.openaiCompatible?.enable_thinking === false ? 'off' : 'default'
       },
       writeOptions(level, previous) {
         if (level === 'off') return base.writeOptions(level, previous)
         const next = stripReasoningProviderOptions(previous)
-        return level !== 'default' && levels.includes(level)
+        return isStandardReasoningEffort(level) && levels.includes(level)
           ? { ...next, openaiCompatible: { reasoningEffort: level } }
           : next
       },
@@ -100,9 +100,7 @@ export default class FastFlowLM extends OpenAICompatible {
         if (maximum !== undefined) model.maxContextWindow = maximum
 
         if (Array.isArray(reasoning_effort)) {
-          model.reasoningEffortLevels = [
-            ...new Set(reasoning_effort.filter((level) => level === 'low' || level === 'medium' || level === 'high')),
-          ]
+          model.reasoningEffortLevels = [...new Set(reasoning_effort.filter(isStandardReasoningEffort))]
         } else if (
           reasoning_effort === undefined &&
           typeof think === 'boolean' &&

@@ -1,7 +1,13 @@
 import type { ProviderOptions } from '../types'
 // 'default' sends no reasoning-related parameters at all (the provider's server-side
 // default applies); 'off' force-sends the provider's explicit disable parameters.
-export type ReasoningControlLevel = 'default' | 'off' | 'low' | 'medium' | 'high'
+export type StandardReasoningEffort = 'low' | 'medium' | 'high'
+export type StandardReasoningControlLevel = 'default' | 'off' | StandardReasoningEffort
+export type ReasoningControlLevel = StandardReasoningControlLevel | `effort:${string}`
+
+export function isStandardReasoningEffort(value: unknown): value is StandardReasoningEffort {
+  return value === 'low' || value === 'medium' || value === 'high'
+}
 
 /**
  * Session-level storage for reasoning provider options. `providerOptionsByModel`
@@ -61,5 +67,5 @@ export function setReasoningProviderOptionsForModel(
 
 export interface ReasoningControlOption {
   level: ReasoningControlLevel
-  label: 'default' | 'off' | 'on' | 'low' | 'medium' | 'high'
+  label: ReasoningControlLevel | 'on'
 }

@@ -36,7 +36,7 @@ export const AutomationStateAttr = {
   messageLayout: 'data-message-layout',
 } as const
 
-export type AutomationReasoningLevel = 'default' | 'off' | 'low' | 'medium' | 'high'
+import type { ReasoningControlLevel } from '../utils/reasoning-control'
 
 export const TestId = {
   chat: {
@@ -90,7 +90,7 @@ export const TestId = {
   reasoning: {
     trigger: 'reasoning-control-trigger',
     menu: 'reasoning-control-menu',
-    level: (level: AutomationReasoningLevel) => `reasoning-level-${level}`,
+    level: (level: ReasoningControlLevel) => `reasoning-level-${level}`,
   },
   layout: {
     titleBar: 'app-title-bar',

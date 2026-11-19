@@ -51,6 +51,27 @@ function renderButton(reasoningEffort: 'low' | 'medium' | 'high' = 'high') {
 }
 
 describe('ReasoningControlButton', () => {
+  test('renders and selects a model-defined effort without translating its name', async () => {
+    const onChange = vi.fn()
+    render(
+      <MantineProvider>
+        <ReasoningControlButton
+          model={{
+            getReasoningOptions: () => [{ level: 'effort:balanced', label: 'effort:balanced' }],
+            readReasoningLevel: () => 'effort:balanced',
+          }}
+          iconSize={22}
+          onChange={onChange}
+        />
+      </MantineProvider>
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Thinking: balanced' }))
+    const item = await screen.findByTestId(TestId.reasoning.level('effort:balanced'))
+    expect(item.textContent).toBe('balanced')
+    fireEvent.click(item)
+    expect(onChange).toHaveBeenCalledWith('effort:balanced')
+  })
+
   test('shows Astra thinking controls and lets the user choose high effort', async () => {
     const onChange = vi.fn()
     render(

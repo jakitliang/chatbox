@@ -5,7 +5,7 @@ import {
   stripReasoningProviderOptions,
 } from '../../../models/reasoning-strategy'
 import type { ProviderOptions } from '../../../types'
-import type { ReasoningControlLevel } from '../../../utils/reasoning-control'
+import type { StandardReasoningControlLevel } from '../../../utils/reasoning-control'
 
 const GPT_VERSION_PATTERN = /(?:^|\/)gpt-(\d+)(?=[.-]|$)/i
 const OPENAI_NO_REASONING_OPTIONS = /(?:^|\/)o1-(?:preview|mini)(?:-\d{4}-\d{2}-\d{2})?$/i
@@ -40,7 +40,7 @@ export function normalizeOpenAIReasoningOptions(
 
 export function getOpenAIReasoningEffort(
   modelId: string,
-  level: Exclude<ReasoningControlLevel, 'default'>
+  level: Exclude<StandardReasoningControlLevel, 'default'>
 ): NonNullable<ProviderOptions['openai']>['reasoningEffort'] {
   return level === 'off' ? (OPENAI_NONE_EFFORT_MODELS.test(modelId) ? 'none' : 'minimal') : level
 }

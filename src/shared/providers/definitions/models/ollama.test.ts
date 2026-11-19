@@ -1,7 +1,14 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { Config, ProviderModelInfo, Settings } from '../../../types'
+import {
+  type Config,
+  type ProviderModelInfo,
+  ProviderModelInfoSchema,
+  type ProviderOptions,
+  type Settings,
+} from '../../../types'
 import type { ModelDependencies } from '../../../types/adapters'
 import { getModel } from '../../index'
+import { refreshProviderModelCapabilities } from '../../model-config'
 import Ollama from './ollama'
 
 function dependencies(apiRequest = vi.fn<ModelDependencies['request']['apiRequest']>()): ModelDependencies {
@@ -122,6 +129,40 @@ describe('Ollama native model discovery', () => {
     ])
   })
 
+  it('refreshes named levels, clears them for a toggle, and hides off-only models', async () => {
+    const values: Record<string, (boolean | string)[]> = {
+      levels: ['balanced', 'high', 'balanced'],
+      toggle: [false, true],
+      unsupported: [false],
+    }
+    const apiRequest = vi
+      .fn<ModelDependencies['request']['apiRequest']>()
+      .mockImplementation((options) =>
+        response(
+          options.method === 'GET'
+            ? { models: Object.keys(values).map((name) => ({ name })) }
+            : {
+                capabilities: ['completion', 'tools', 'thinking'],
+                thinking: { values: values[JSON.parse(options.body as string).model] },
+              }
+        )
+      )
+    const ollamaHost = 'http://localhost:11434'
+    const model = new Ollama({ ollamaHost, model: { modelId: '' } }, dependencies(apiRequest))
+    const existing = Object.keys(values).map((modelId) => ({ modelId, reasoningEffortLevels: ['low'] }))
+    const [named, toggle, unsupported] = refreshProviderModelCapabilities(existing, await model.listModels()).map(
+      (info) => ProviderModelInfoSchema.parse(info)
+    )
+    expect(named.reasoningEffortLevels).toEqual(['balanced', 'high'])
+    expect(toggle.reasoningEffortLevels).toEqual([])
+    expect(unsupported.capabilities).toEqual(['tool_use'])
+    const labels = (info: ProviderModelInfo) =>
+      new Ollama({ ollamaHost, model: info }, dependencies()).getReasoningOptions().map(({ label }) => label)
+    expect(labels(named)).toEqual(['default', 'off', 'effort:balanced', 'high'])
+    expect(labels(toggle)).toEqual(['default', 'off', 'on'])
+    expect(labels(unsupported)).toEqual([])
+  })
+
   it.each([
     [{ 'general.architecture': 'llama', 'llama.context_length': 131072 }, 131072],
     [
@@ -136,11 +177,15 @@ describe('Ollama native model discovery', () => {
     [{ 'general.architecture': 'llama', 'llama.context_length': '131072' }, undefined],
     [undefined, undefined],
   ])('reads only the published context maximum (%j)', async (model_info, maximum) => {
-    const apiRequest = vi.fn<ModelDependencies['request']['apiRequest']>().mockImplementation((options) =>
-      response(
-        options.method === 'GET' ? { models: [{ name: 'local:latest' }] } : { model_info, parameters: 'num_ctx 32768' }
+    const apiRequest = vi
+      .fn<ModelDependencies['request']['apiRequest']>()
+      .mockImplementation((options) =>
+        response(
+          options.method === 'GET'
+            ? { models: [{ name: 'local:latest' }] }
+            : { model_info, parameters: 'num_ctx 32768' }
+        )
       )
-    )
     const model = new Ollama({ ollamaHost: 'http://localhost:11434', model: { modelId: '' } }, dependencies(apiRequest))
     const [discovered] = await model.listModels()
     expect(discovered.maxContextWindow).toBe(maximum)
@@ -165,7 +210,68 @@ describe('Ollama native model discovery', () => {
     { modelId: 'qwen3:unknown' },
   ])('does not infer tools or vision from the name $modelId', (info) => {
     const model = new Ollama({ ollamaHost: 'http://localhost:11434', model: info }, dependencies())
-    expect(model.isSupportToolUse('agent')).toBe(false)
+    expect(model.isSupportToolUse()).toBe(false)
     expect(model.isSupportVision()).toBe(false)
+  })
+
+  describe('Ollama reasoning requests', () => {
+    it.each([
+      [undefined, 'default', undefined],
+      [undefined, 'off', 'none'],
+      [[], 'high', 'high'],
+      [['low', 'high'], 'low', 'low'],
+      [['balanced'], 'effort:balanced', 'balanced'],
+    ] as const)(
+      'sends the selected effort for %j / %s on the compatibility endpoint',
+      async (levels, level, effort) => {
+        const apiRequest = vi
+          .fn<ModelDependencies['request']['apiRequest']>()
+          .mockResolvedValue(
+            new Response(
+              'data: {"choices":[{"index":0,"delta":{"reasoning":"trace"},"finish_reason":null}]}\n\n' +
+                'data: {"choices":[{"index":0,"delta":{"content":"OK"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n',
+              { headers: { 'content-type': 'text/event-stream' } }
+            )
+          )
+        const runtime = new Ollama(
+          {
+            ollamaHost: 'http://localhost:11434',
+            model: {
+              modelId: 'local',
+              capabilities: ['reasoning'],
+              reasoningEffortLevels: levels ? [...levels] : undefined,
+            },
+          },
+          dependencies(apiRequest)
+        )
+        const providerOptions = runtime.writeReasoningOptions(level)
+        expect(runtime.readReasoningLevel(providerOptions)).toBe(level)
+        const parts = []
+        for await (const part of runtime.chatStream([{ role: 'user', content: 'Hello' }], { providerOptions })) {
+          parts.push(part)
+        }
+        expect(parts.some(({ type }) => type === 'reasoning-delta')).toBe(true)
+        expect(apiRequest).toHaveBeenCalledOnce()
+        const [request] = apiRequest.mock.calls[0]
+        expect(request.url).toBe('http://localhost:11434/v1/chat/completions')
+        const body = JSON.parse(request.body as string)
+        expect(body).not.toHaveProperty('enable_thinking')
+        expect(body).not.toHaveProperty('think')
+        if (effort === undefined) expect(body).not.toHaveProperty('reasoning_effort')
+        else expect(body.reasoning_effort).toBe(effort)
+      }
+    )
+
+    it.each([
+      [{ openaiCompatible: { enable_thinking: false } }, 'off'],
+      [{ openaiCompatible: { enable_thinking: true } }, 'high'],
+      [{ openaiCompatible: { reasoningEffort: 'unavailable' } }, 'default'],
+    ] satisfies [ProviderOptions, string][])('reads existing options %j as %s', (options, level) => {
+      const runtime = new Ollama(
+        { ollamaHost: 'http://localhost:11434', model: { modelId: 'local', capabilities: ['reasoning'] } },
+        dependencies()
+      )
+      expect(runtime.readReasoningLevel(options)).toBe(level)
+    })
   })
 })

@@ -59,6 +59,11 @@ FastFlowLM 的手动模型刷新会将 `flm.reasoning_effort` 保存为模型元
 模型实例从这份数据生成聊天菜单，不需要再次请求目录。选择「关」发送 `think: false`，
 仅有开关的模型选择「开」发送 `think: true`，选择具体档位则发送 `reasoning_effort`。
 
+Ollama 刷新模型时读取原生 `/api/show` 的 `thinking.values`。布尔开关模型显示「默认／关／开」，
+命名档位按服务端声明顺序显示；较旧的服务端不返回档位时，仍使用 `thinking` capability 提供开关。
+聊天继续使用 `/v1/chat/completions`：「默认」省略参数，「关」发送 `reasoning_effort: "none"`，
+「开」发送 `"high"`，命名档位原样发送。不支持关闭思考的模型可能由 Ollama 降到最低档。
+
 下表为内部 `providerOptions` 与最终协议的典型映射，不是支持模型清单。
 
 | 路径 | 思考参数示例 |

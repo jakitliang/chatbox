@@ -1,5 +1,10 @@
 import { type ProviderOptions, ProviderOptionsSchema } from '../types'
-import type { ReasoningControlLevel, ReasoningControlOption } from '../utils/reasoning-control'
+import {
+  isStandardReasoningEffort,
+  type ReasoningControlLevel,
+  type ReasoningControlOption,
+  type StandardReasoningControlLevel,
+} from '../utils/reasoning-control'
 
 /** Internal policy shared by model adapters with the same reasoning protocol. */
 export interface ReasoningStrategy {
@@ -59,7 +64,7 @@ export function createReasoningStrategy({
   off?: boolean
   toggle?: boolean
   read: ReasoningStrategy['readLevel']
-  write: (level: Exclude<ReasoningControlLevel, 'default'>, previous?: ProviderOptions) => ProviderOptions
+  write: (level: Exclude<StandardReasoningControlLevel, 'default'>, previous?: ProviderOptions) => ProviderOptions
 }): ReasoningStrategy {
   const options = compatibleBooleanReasoningStrategy.getOptions().flatMap((option): ReasoningControlOption[] => {
     if (option.level === 'off' && !off) return []
@@ -70,9 +75,9 @@ export function createReasoningStrategy({
     getOptions: () => options,
     readLevel: read,
     writeOptions: (level, previous) =>
-      level === 'default' || (level === 'off' && !off)
-        ? stripReasoningProviderOptions(previous)
-        : write(level, previous),
+      (level === 'off' && off) || isStandardReasoningEffort(level)
+        ? write(level, previous)
+        : stripReasoningProviderOptions(previous),
     normalizeOptions: (options) => options,
   }
 }

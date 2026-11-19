@@ -1,7 +1,17 @@
 import OpenAICompatible, { type OpenAICompatibleSettings } from '../../../models/openai-compatible'
-import type { ProviderModelInfo } from '../../../types'
+import {
+  compatibleBooleanReasoningStrategy,
+  type ReasoningStrategy,
+  stripReasoningProviderOptions,
+} from '../../../models/reasoning-strategy'
+import type { ProviderModelInfo, ProviderOptions } from '../../../types'
 import type { ModelDependencies } from '../../../types/adapters'
 import { normalizeOpenAIApiHostAndPath } from '../../../utils/llm_utils'
+import {
+  isStandardReasoningEffort,
+  type ReasoningControlLevel,
+  type ReasoningControlOption,
+} from '../../../utils/reasoning-control'
 
 interface OllamaOptions extends OpenAICompatibleSettings {
   ollamaHost: string
@@ -22,9 +32,61 @@ function applyNativeCapabilities(model: ProviderModelInfo, capabilities: unknown
   model.type = capabilities.includes('embedding') && !capabilities.includes('completion') ? 'embedding' : 'chat'
 }
 
+function applyThinkingMetadata(model: ProviderModelInfo, thinking: { values?: unknown } | undefined) {
+  if (!Array.isArray(thinking?.values)) return
+  const values = thinking.values.filter(
+    (value): value is string | boolean => typeof value === 'boolean' || (typeof value === 'string' && !!value.trim())
+  )
+  if (!values.length) return
+
+  // The compatibility endpoint reserves "none" for off.
+  const levels = [...new Set(values.filter((value): value is string => typeof value === 'string' && value !== 'none'))]
+  model.reasoningEffortLevels = levels
+  if (levels.length || values.includes(true)) {
+    model.capabilities = [...new Set([...(model.capabilities ?? []), 'reasoning' as const])]
+  } else {
+    model.capabilities = model.capabilities?.filter((capability) => capability !== 'reasoning') ?? []
+  }
+}
+
 export default class Ollama extends OpenAICompatible {
   protected usesFixedSampling() {
     return false
+  }
+
+  protected getReasoningStrategy(): ReasoningStrategy {
+    const levels = this.options.model.reasoningEffortLevels
+    const menu: (ReasoningControlOption & { effort?: string })[] = compatibleBooleanReasoningStrategy
+      .getOptions()
+      .flatMap((option): (ReasoningControlOption & { effort?: string })[] => {
+        if (option.label === 'off') return [{ ...option, effort: 'none' }]
+        if (option.label !== 'on') return [option]
+        if (!levels?.length) return [{ ...option, effort: 'high' }]
+        return levels.map((effort) => {
+          const level: ReasoningControlLevel = isStandardReasoningEffort(effort) ? effort : `effort:${effort}`
+          return { level, label: level, effort }
+        })
+      })
+
+    function readLevel(options?: ProviderOptions): ReasoningControlLevel {
+      const { reasoningEffort, enable_thinking } = options?.openaiCompatible ?? {}
+      // Older sessions stored a boolean. Reuse it only where there is a matching choice.
+      const effort = reasoningEffort ?? (enable_thinking === undefined ? undefined : enable_thinking ? 'high' : 'none')
+      return menu.find((option) => option.effort === effort)?.level ?? 'default'
+    }
+
+    function writeOptions(level: ReasoningControlLevel, previous?: ProviderOptions): ProviderOptions | undefined {
+      const next = stripReasoningProviderOptions(previous)
+      const effort = menu.find((option) => option.level === level)?.effort
+      return effort === undefined ? next : { ...next, openaiCompatible: { reasoningEffort: effort } }
+    }
+
+    return {
+      getOptions: () => menu.map(({ level, label }) => ({ level, label })),
+      readLevel,
+      writeOptions,
+      normalizeOptions: (options) => writeOptions(readLevel(options), options),
+    }
   }
 
   public name = 'Ollama'
@@ -83,6 +145,7 @@ export default class Ollama extends OpenAICompatible {
             if (!response.ok) throw new Error(`Ollama show request failed: ${response.status}`)
             const details = await response.json()
             applyNativeCapabilities(model, details.capabilities)
+            applyThinkingMetadata(model, details.thinking)
 
             const info = details.model_info
             const architecture = info?.['general.architecture']

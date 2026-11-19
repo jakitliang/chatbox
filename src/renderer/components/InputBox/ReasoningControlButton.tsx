@@ -2,7 +2,13 @@ import { Menu, UnstyledButton } from '@mantine/core'
 import { TestId } from '@shared/automation/testids'
 import type { ModelInterface } from '@shared/models/types'
 import type { ProviderOptions } from '@shared/types'
-import { type ReasoningControlLevel, type ReasoningControlOption } from '@shared/utils/reasoning-control'
+import {
+  isStandardReasoningEffort,
+  type ReasoningControlLevel,
+  type ReasoningControlOption,
+  type StandardReasoningControlLevel,
+  type StandardReasoningEffort,
+} from '@shared/utils/reasoning-control'
 import { IconBrain, IconCircleOff, IconSparkles } from '@tabler/icons-react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -15,7 +21,7 @@ interface ReasoningControlButtonProps {
   onChange: (level: ReasoningControlLevel) => void
 }
 
-const LEVEL_COLORS: Record<ReasoningControlLevel, string> = {
+const LEVEL_COLORS: Record<StandardReasoningControlLevel, string> = {
   default: 'var(--chatbox-tint-tertiary)',
   off: 'var(--chatbox-tint-tertiary)',
   low: 'var(--chatbox-tint-secondary)',
@@ -57,7 +63,12 @@ export default function ReasoningControlButton({
                 'flex items-center gap-1 px-2 py-1 rounded-lg ' +
                 'hover:bg-[var(--chatbox-background-tertiary)] transition-colors'
               }
-              style={{ color: LEVEL_COLORS[level] }}
+              style={{
+                color:
+                  level === 'default' || level === 'off' || isStandardReasoningEffort(level)
+                    ? LEVEL_COLORS[level]
+                    : LEVEL_COLORS.high,
+              }}
               aria-label={t('Thinking: {{level}}', { level: levelLabel })}
             >
               {/* Icon-only collapsed state: the level text lives in the menu items,
@@ -85,9 +96,7 @@ export default function ReasoningControlButton({
   )
 }
 
-type ReasoningEffortLevel = Exclude<ReasoningControlLevel, 'default' | 'off'>
-
-const REASONING_LEVEL_DOT_COUNTS: Record<ReasoningEffortLevel, number> = {
+const REASONING_LEVEL_DOT_COUNTS: Record<StandardReasoningEffort, number> = {
   low: 1,
   medium: 2,
   high: 3,
@@ -130,7 +139,7 @@ function ReasoningLevelStatusIcon({
     )
   }
 
-  const activeDotCount = REASONING_LEVEL_DOT_COUNTS[level]
+  const activeDotCount = isStandardReasoningEffort(level) ? REASONING_LEVEL_DOT_COUNTS[level] : 3
   const dotSize = Math.max(2, Math.round(size * 0.2))
 
   return (
@@ -172,5 +181,7 @@ function getLevelLabel(level: ReasoningControlLevel, t: (key: string) => string)
       return t('Medium')
     case 'high':
       return t('High')
+    default:
+      return level.slice('effort:'.length)
   }
 }

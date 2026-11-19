@@ -7,6 +7,7 @@ import { ModelProviderEnum } from '../../../types'
 import type { ModelDependencies } from '../../../types/adapters'
 import { getReasoningProviderOptions } from '../../../utils/reasoning-control'
 import { getModel, getProviderDefinition } from '../../index'
+import { refreshProviderModelCapabilities } from '../../model-config'
 import FastFlowLM from './fastflowlm'
 
 const reply = (data: unknown) => Promise.resolve(new Response(JSON.stringify(data)))
@@ -98,12 +99,51 @@ describe('FastFlowLM independent keyless provider', () => {
         capabilities: ['vision', 'tool_use', 'reasoning'],
         maxContextWindow: 262144,
       },
-      { modelId: 'gpt-oss:20b', type: 'chat', capabilities: ['reasoning'] },
+      {
+        modelId: 'gpt-oss:20b',
+        type: 'chat',
+        capabilities: ['reasoning'],
+        reasoningEffortLevels: ['low', 'medium', 'high'],
+      },
       { modelId: 'fixture-no-vision', type: 'chat', capabilities: [] },
       { modelId: 'fixture-no-toggle', type: 'chat' },
       { modelId: 'fixture-unknown', type: 'chat' },
     ])
     expect(apiRequest).toHaveBeenCalledOnce()
+  })
+
+  it('returns options from the refreshed model without querying the catalog again', async () => {
+    const saved: ProviderModelInfo = {
+      modelId: 'local',
+      capabilities: ['reasoning'],
+      reasoningEffortLevels: ['medium'],
+    }
+    const apiRequest = vi
+      .fn<ModelDependencies['request']['apiRequest']>()
+      .mockImplementationOnce(() =>
+        reply({ data: [{ id: 'local', flm: { think: false, reasoning_effort: ['low', 'high', 'low', 'unknown'] } }] })
+      )
+      .mockImplementationOnce(() => reply({ data: [{ id: 'local', flm: { think: true } }] }))
+    const deps = dependencies(apiRequest)
+    const apiHost = 'http://flm.example:52625'
+    const list = (model: ProviderModelInfo) => new FastFlowLM({ apiHost, model }, deps, [model]).listModels()
+    const [refreshed] = refreshProviderModelCapabilities([saved], await list(saved))
+    expect(new FastFlowLM({ apiHost, model: refreshed }, deps).getReasoningOptions()).toEqual([
+      { level: 'default', label: 'default' },
+      { level: 'off', label: 'off' },
+      { level: 'low', label: 'low' },
+      { level: 'high', label: 'high' },
+    ])
+    const [toggle] = refreshProviderModelCapabilities([refreshed], await list(refreshed))
+    expect(new FastFlowLM({ apiHost, model: toggle }, deps).getReasoningOptions()).toEqual([
+      { level: 'default', label: 'default' },
+      { level: 'off', label: 'off' },
+      { level: 'high', label: 'on' },
+    ])
+    expect(new FastFlowLM({ apiHost, model: { ...refreshed, capabilities: [] } }, deps).getReasoningOptions()).toEqual(
+      []
+    )
+    expect(apiRequest).toHaveBeenCalledTimes(2)
   })
 
   it.each([

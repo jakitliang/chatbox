@@ -48,6 +48,9 @@ ChatboxAI、OpenCode Zen／Go、自建供应商等代理路径通过模型 `apiS
 
 ## 4. 各供应商协议示例
 
+FastFlowLM 的手动模型刷新会将 `flm.reasoning_effort` 保存为模型元数据 `reasoningEffortLevels`。
+模型实例的 `getReasoningOptions()` 可以读取这份数据，不需要再次请求目录；现有聊天菜单和请求档位还没有接入该方法。
+
 下表为内部 `providerOptions` 与最终协议的典型映射，不是支持模型清单。
 
 | 路径 | 思考参数示例 |

@@ -59,6 +59,10 @@ export const ProviderModelInfoSchema = z.object({
     .array(z.enum(['vision', 'reasoning', 'tool_use', 'web_search']))
     .optional()
     .catch([]),
+  reasoningEffortLevels: z
+    .array(z.enum(['low', 'medium', 'high']))
+    .optional()
+    .catch(undefined),
   contextWindow: z.number().optional().catch(undefined),
   // Published model capacity; distinct from the effective/configured budget window and maxOutput.
   maxContextWindow: z.number().optional().catch(undefined),

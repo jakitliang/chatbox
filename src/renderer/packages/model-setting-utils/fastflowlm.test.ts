@@ -81,7 +81,13 @@ describe('FastFlowLM manual model settings', () => {
     const catalog = await util.getMergeOptionGroups({ apiHost: 'http://flm.example:52625', models: [saved] })
     expect(catalog).toEqual([
       { ...saved, capabilities: ['tool_use', 'reasoning'], maxContextWindow: 131072 },
-      { modelId: 'fixture-new-metadata', type: 'chat', capabilities: ['reasoning'], maxContextWindow: 65536 },
+      {
+        modelId: 'fixture-new-metadata',
+        type: 'chat',
+        capabilities: ['reasoning'],
+        maxContextWindow: 65536,
+        reasoningEffortLevels: ['low', 'high'],
+      },
     ])
     expect(saved.capabilities).toEqual(['vision', 'tool_use'])
     expect(apiRequest).toHaveBeenCalledOnce()

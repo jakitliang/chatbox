@@ -1,9 +1,11 @@
 import { ApiError } from '../../../models/errors'
 import OpenAICompatible, { type OpenAICompatibleSettings } from '../../../models/openai-compatible'
+import { compatibleBooleanReasoningStrategy } from '../../../models/reasoning-strategy'
 import type { CallChatCompletionOptions } from '../../../models/types'
 import type { ProviderModelInfo } from '../../../types'
 import type { ModelDependencies } from '../../../types/adapters'
 import { normalizeOpenAIApiHostAndPath } from '../../../utils/llm_utils'
+import type { ReasoningControlOption } from '../../../utils/reasoning-control'
 import { validContextWindow } from '../../context-window'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -25,6 +27,16 @@ export default class FastFlowLM extends OpenAICompatible {
     }
     const { apiHost } = normalizeOpenAIApiHostAndPath({ apiHost: options.apiHost })
     super({ ...options, apiHost, apiKey: '' }, dependencies)
+  }
+
+  public getReasoningOptions(): ReasoningControlOption[] {
+    if (!this.isSupportReasoning()) return []
+    const options = compatibleBooleanReasoningStrategy.getOptions()
+    const levels = this.options.model.reasoningEffortLevels
+    if (!levels?.length) return options
+    return options.flatMap((option) =>
+      option.label === 'on' ? levels.map((level) => ({ level, label: level })) : [option]
+    )
   }
 
   protected getCallSettings(options: CallChatCompletionOptions) {
@@ -60,8 +72,19 @@ export default class FastFlowLM extends OpenAICompatible {
         const maximum = validContextWindow(max_position_embeddings)
         if (maximum !== undefined) model.maxContextWindow = maximum
 
+        if (Array.isArray(reasoning_effort)) {
+          model.reasoningEffortLevels = [
+            ...new Set(reasoning_effort.filter((level) => level === 'low' || level === 'medium' || level === 'high')),
+          ]
+        } else if (
+          reasoning_effort === undefined &&
+          typeof think === 'boolean' &&
+          saved?.reasoningEffortLevels?.length
+        ) {
+          model.reasoningEffortLevels = []
+        }
         // `think: false` rules out a toggle, not reasoning itself.
-        const reasoning = think === true || (Array.isArray(reasoning_effort) && reasoning_effort.length > 0)
+        const reasoning = think === true || !!model.reasoningEffortLevels?.length
         let capabilities: Set<NonNullable<ProviderModelInfo['capabilities']>[number]> | undefined
         for (const [capability, supported] of [
           ['vision', vlm],

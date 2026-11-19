@@ -1,3 +1,9 @@
+import {
+  noReasoningReplay,
+  prepareReasoningHistory,
+  type ReasoningHistoryInput,
+  signedReasoningReplay,
+} from '@shared/models/reasoning-replay'
 import type { ModelInterface } from '@shared/models/types'
 import type { Message, Session } from '@shared/types'
 import { jsonSchema, tool } from 'ai'
@@ -15,6 +21,13 @@ function createModel(
     modelId: 'test',
     apiStyle: options.apiStyle ?? 'openai',
     reasoningReplaySource: options.replaySource,
+    prepareReasoningHistory: (input: ReasoningHistoryInput) =>
+      prepareReasoningHistory(
+        options.apiStyle === 'openai-responses'
+          ? signedReasoningReplay('openai', { portable: true, reasoningReplaySource: options.replaySource })
+          : noReasoningReplay,
+        input
+      ),
     isSupportSystemMessage: () => options.system !== false,
     isSupportVision: () => options.vision !== false,
   } as unknown as ModelInterface
@@ -72,6 +85,21 @@ function createRequest(model = createModel()): GenerationPreparationRequest<Test
 }
 
 describe('BasicGenerationPreparation', () => {
+  it('uses the model request options without mutating the saved selection', async () => {
+    const model = createModel()
+    model.prepareReasoningHistory = vi.fn(() => ({ conversion: {} }))
+    const request = createRequest(model)
+    request.providerOptions = { openai: { reasoningEffort: 'high' } }
+
+    const prepared = await new BasicGenerationPreparation<TestContext>().prepare(request)
+
+    expect(model.prepareReasoningHistory).toHaveBeenCalledWith(
+      expect.objectContaining({ mode: 'portable', providerOptions: request.providerOptions })
+    )
+    expect(prepared.chatOptions.providerOptions).toBeUndefined()
+    expect(request.providerOptions).toEqual({ openai: { reasoningEffort: 'high' } })
+  })
+
   it('uses shared context building and model conversion for persisted native attachments', async () => {
     const request = createRequest()
     const preparation = new BasicGenerationPreparation<TestContext>()

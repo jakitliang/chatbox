@@ -2,17 +2,18 @@ import { createOpenAI } from '@ai-sdk/openai'
 import { extractReasoningMiddleware, wrapLanguageModel } from 'ai'
 import AbstractAISDKModel from '../../../models/abstract-ai-sdk'
 import { fetchRemoteModels } from '../../../models/openai-compatible'
+import { signedReasoningReplay } from '../../../models/reasoning-replay'
 import type { CallChatCompletionOptions } from '../../../models/types'
 import { createFetchWithProxy } from '../../../models/utils/fetch-proxy'
 import type { ProviderModelInfo } from '../../../types'
 import type { ModelDependencies } from '../../../types/adapters'
 import { normalizeOpenAIResponsesHostAndPath } from '../../../utils/llm_utils'
-import { normalizeOpenAIReasoningOptions } from '../../../utils/reasoning-control'
 import {
   compatibleImageApiHeaders,
   createOpenAICompatibleImageModel,
   getOpenAIImageGenerationOptions,
 } from './openai-compatible-image'
+import { normalizeOpenAIReasoningOptions, openAIResponsesReasoning } from './openai-reasoning'
 
 interface Options {
   apiKey: string
@@ -29,6 +30,14 @@ interface Options {
 type FetchFunction = typeof globalThis.fetch
 
 export default class CustomOpenAIResponses extends AbstractAISDKModel {
+  protected getReasoningStrategy() {
+    return openAIResponsesReasoning(this.modelId)
+  }
+
+  protected getReasoningReplayPolicy() {
+    return signedReasoningReplay('openai', { portable: true, reasoningReplaySource: this.reasoningReplaySource })
+  }
+
   public name = 'Custom OpenAI Responses'
 
   constructor(

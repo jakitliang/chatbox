@@ -29,9 +29,11 @@ import type {
   MessageTextPart,
   MessageToolCallPart,
   ProviderModelInfo,
+  ProviderOptions,
   StreamTextResult,
 } from '../types'
 import type { ModelDependencies } from '../types/adapters'
+import type { ReasoningControlLevel, ReasoningControlOption } from '../utils/reasoning-control'
 import { withCacheReadUsage } from './cache-read-usage'
 import { normalizeCompletedResponse } from './completed-response-normalizer'
 import {
@@ -47,7 +49,12 @@ import { wrapOpenAICompatibleNonStreamingModel } from './openai-compatible-non-s
 import { openAIResponsesToolStrictMiddleware } from './openai-responses-tool-strict'
 import { stopWhenPersistentToolCallPause } from './persistent-tool-call-pause'
 import { bindReplaySource } from './provider-part-metadata'
-import { type ReasoningStrategy, stripReasoningProviderOptions } from './reasoning-strategy'
+import { noReasoningReplay, prepareReasoningHistory, type ReasoningHistoryInput } from './reasoning-replay'
+import {
+  passthroughReasoningStrategy,
+  type ReasoningStrategy,
+  stripReasoningProviderOptions,
+} from './reasoning-strategy'
 import { createRetryableChatModel } from './retryable-chat-model'
 import { simulateStreamingWithTextReplayMetadataMiddleware, textReplayMetadataMiddleware } from './text-replay-metadata'
 import { repairToolCallJson } from './tool-call-json-repair'
@@ -129,11 +136,18 @@ interface ToolExecutionResult {
 }
 
 export default abstract class AbstractAISDKModel implements ModelInterface {
-  public static reasoningStrategy: ReasoningStrategy | undefined
   public name = 'AI SDK Model'
   public injectDefaultMetadata = true
   public modelId = ''
   public reasoningReplaySource?: string
+
+  protected getReasoningReplayPolicy() {
+    return noReasoningReplay
+  }
+
+  public prepareReasoningHistory(input: ReasoningHistoryInput) {
+    return prepareReasoningHistory(this.getReasoningReplayPolicy(), input)
+  }
 
   public get apiStyle(): ProviderModelInfo['apiStyle'] {
     return this.options.model.apiStyle
@@ -147,6 +161,26 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
   }
   public isSupportReasoning() {
     return this.options.model.capabilities?.includes('reasoning') || false
+  }
+
+  protected getReasoningStrategy(): ReasoningStrategy {
+    return passthroughReasoningStrategy
+  }
+
+  public getReasoningOptions(): readonly ReasoningControlOption[] {
+    return this.isSupportReasoning() ? this.getReasoningStrategy().getOptions() : []
+  }
+
+  public readReasoningLevel(options?: ProviderOptions): ReasoningControlLevel {
+    if (!this.isSupportReasoning()) return 'default'
+    const level = this.getReasoningStrategy().readLevel(options)
+    return this.getReasoningOptions().some((option) => option.level === level) ? level : 'default'
+  }
+
+  public writeReasoningOptions(level: ReasoningControlLevel, previous?: ProviderOptions): ProviderOptions | undefined {
+    return this.isSupportReasoning()
+      ? this.getReasoningStrategy().writeOptions(level, previous)
+      : stripReasoningProviderOptions(previous)
   }
 
   static isSupportTextEmbedding() {
@@ -263,9 +297,12 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
   // value, so those fields are dropped here after subclass getCallSettings so
   // every transport (Moonshot, aggregators, custom OpenAI hosts) sees the same
   // request shape.
+  protected usesFixedSampling() {
+    return isKimiFixedSamplingModel(this.modelId)
+  }
+
   private resolveCallSettings(options: CallChatCompletionOptions): CallSettings {
-    const providerId = this.options.model.providerId
-    const strategy = (this.constructor as typeof AbstractAISDKModel).reasoningStrategy
+    const strategy = this.getReasoningStrategy()
     const supportsReasoning = this.isSupportReasoning()
     const shouldStrip = !!options.providerOptions && !supportsReasoning
     let sanitizedOptions = shouldStrip
@@ -278,7 +315,7 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
       }
     }
     const settings = this.getCallSettings(sanitizedOptions)
-    if (!isKimiFixedSamplingModel(this.options.model.modelId, providerId)) {
+    if (!this.usesFixedSampling()) {
       return sanitizeCallSettings(settings)
     }
     return sanitizeCallSettings({

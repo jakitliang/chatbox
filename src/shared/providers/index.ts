@@ -106,22 +106,6 @@ function getModelConfig(settings: SessionSettings, globalSettings: Settings, pro
 }
 
 /**
- * Fills `model.apiStyle` from the provider's type when the model does not carry one,
- * mirroring the renderer's `withProviderApiStyleFallback`. This lets reasoning-control
- * support be judged by API style + model id for providers that proxy upstream models
- * (custom providers and built-in proxies like github-copilot whose id carries no
- * reasoning semantics). For built-in providers that resolve reasoning by their own id,
- * apiStyle is ignored, so stamping it is a harmless no-op.
- */
-function withReasoningApiStyle(
-  model: ProviderModelInfo,
-  providerType: string | undefined,
-  providerId?: string
-): ProviderModelInfo {
-  return withResolvedModelApiStyle(model, { providerId, providerType })
-}
-
-/**
  * New getModel() implementation using the provider registry.
  *
  * This function checks if a provider is registered in the registry.
@@ -151,11 +135,7 @@ export function getModel(
       globalSettings,
       dependencies.platformType || 'desktop'
     )
-    const model = withReasoningApiStyle(
-      getModelConfig(settings, globalSettings, provider),
-      providerBaseInfo.type,
-      provider
-    )
+    const model = withResolvedModelApiStyle(getModelConfig(settings, globalSettings, provider), providerBaseInfo.type)
     const formattedApiPath = providerSetting.apiPath || providerBaseInfo.defaultSettings?.apiPath || ''
     const effectiveApiKey = resolveEffectiveApiKey(providerSetting, dependencies.platformType || 'desktop')
 
@@ -180,11 +160,7 @@ export function getModel(
     globalSettings,
     dependencies.platformType || 'desktop'
   )
-  const model = withReasoningApiStyle(
-    getModelConfig(settings, globalSettings, provider),
-    providerBaseInfo.type,
-    provider
-  )
+  const model = withResolvedModelApiStyle(getModelConfig(settings, globalSettings, provider), providerBaseInfo.type)
 
   if (providerBaseInfo.isCustom) {
     const formattedApiPath = providerSetting.apiPath || providerBaseInfo.defaultSettings?.apiPath || ''

@@ -1,4 +1,3 @@
-import type { ReasoningStrategy } from '../models/reasoning-strategy'
 import type { ModelInterface } from '../models/types'
 import type { PlatformType } from '../platform'
 import type { Config, ProviderModelInfo, ProviderSettings, SessionSettings, SessionType, Settings } from '../types'
@@ -39,8 +38,6 @@ export interface ProviderDefinition {
   contextWindowDelegate?: ContextWindowDelegate
   /** Model specification, independent of the currently loaded window. */
   maxContextWindowDelegate?: MaxContextWindowDelegate
-  /** Shared with the concrete model class; absent keeps native protocol controls. */
-  reasoningStrategy?: ReasoningStrategy
   /** Unique identifier for the provider (matches ModelProviderEnum value) */
   id: string
   /** Display name for the provider */

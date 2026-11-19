@@ -25,16 +25,23 @@ Vision、Tool use 等能力同样以保存的配置为准，不能在通用请�
 
 ## 3. 能力判定与协议适配分离
 
-`getReasoningControlCapabilities()` 先检查保存的 `reasoning`，再选择控制形态。
-`ReasoningStrategy` 与供应商适配层只负责 effort、budget、toggle 的选项、归一化和 wire 格式，
-不能用模型名白名单或 API 风格不匹配重新否决已勾选的能力。
+聊天控件直接调用当前模型实例的 `getReasoningOptions()`、`readReasoningLevel()` 和
+`writeReasoningOptions()`。模型实例先检查保存的 `reasoning`，再使用适配器实现的
+effort、budget 或 toggle 规则。请求参数归一化也使用实例的规则；历史思考回放通过
+`prepareReasoningHistory()` 由当前模型返回消息转换选项及本次请求的有效参数，
+不依赖当前档位或能力勾选。转换器执行模型给出的选项，不选择供应商协议；
+仅桌面 agent 链路支持的回放不会被带入 portable 生成链路。
 
 保留必要的模型级协议差异：例如 Claude adaptive thinking、Gemini budget／level、
 OpenAI 合法 effort 值及不可关闭的模型、DeepSeek V4 的强度参数。
 这些分支回答“参数怎样发送”，不是“模型是否具备能力”。
+协议规则放在对应模型适配器旁边；多个适配器使用相同协议时复用同一份规则，
+例如 Azure 复用 OpenAI 请求校验，自建 Gemini 复用 Gemini 的档位和参数规则。
+公共层只处理档位结构和会话选项，不导入具体协议规则。
 未知模型使用当前供应商／协议的既有控制形态；未知 Gemini 名称不会再把显式配置的 `thinkingConfig` 丢弃。
 
-ChatboxAI、OpenCode Zen／Go、自建供应商等代理路径通过模型 `apiStyle` 选择有效协议：
+代理由自己的工厂或模型适配器选择实际协议。例如 GitHub Copilot 在自己的工厂内
+修正已保存的 `apiStyle`，不要求控件或公共生成链路重新猜测。
 
 | apiStyle | 协议适配 |
 |---|---|
@@ -49,7 +56,8 @@ ChatboxAI、OpenCode Zen／Go、自建供应商等代理路径通过模型 `apiS
 ## 4. 各供应商协议示例
 
 FastFlowLM 的手动模型刷新会将 `flm.reasoning_effort` 保存为模型元数据 `reasoningEffortLevels`。
-模型实例的 `getReasoningOptions()` 可以读取这份数据，不需要再次请求目录；现有聊天菜单和请求档位还没有接入该方法。
+模型实例从这份数据生成聊天菜单，不需要再次请求目录。选择「关」发送 `think: false`，
+仅有开关的模型选择「开」发送 `think: true`，选择具体档位则发送 `reasoning_effort`。
 
 下表为内部 `providerOptions` 与最终协议的典型映射，不是支持模型清单。
 
@@ -64,6 +72,7 @@ FastFlowLM 的手动模型刷新会将 `flm.reasoning_effort` 保存为模型元
 
 OpenAI 的 `forceReasoning` 是 SDK 适配标志，使已配置能力的未知模型也能序列化参数，不应泄漏给兼容接口。
 协议本身不支持某种参数或无法关闭思考时，仍保留原有合法值映射和选项限制。
+`o1-preview` 和 `o1-mini`（含日期快照）不提供可调档位，请求也不会发送旧会话中残留的 OpenAI 思考参数。
 
 ### DeepSeek
 
@@ -80,6 +89,9 @@ ChatboxAI 的 DeepSeek API 风格变化时，生成新配置前清除旧思考�
 DeepSeek 的历史消息、`reasoning_content` 回传和响应解析保持原有处理，不因能力勾选或控制策略改写、删除或过滤。
 
 ## 5. 按模型持久化；default 不等于 off
+
+`ProviderOptionsSchema` 仅描述思考配置。通用清理直接使用该 schema 声明的键，
+不另维护供应商名单；各模型适配器仍负责各自协议的字段读写。
 
 思考配置保存在 `session.settings.providerOptionsByModel`，键为 `${provider}:${modelId}`。
 `setReasoningProviderOptionsForModel()` 写入，`resolveReasoningProviderOptions()` 只读取当前模型的条目。

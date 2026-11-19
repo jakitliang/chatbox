@@ -4,7 +4,6 @@ import { convertToModelMessages } from '../services/model-message-converter'
 import { supportsToolResultImages } from '../tools/view-image'
 import { type Message, ModelProviderEnum, ModelProviderType, type ProviderSettings, type Settings } from '../types'
 import type { ModelDependencies } from '../types/adapters'
-import { resolveReasoningReplayPolicy } from '../utils/reasoning-control'
 import { getModel } from './index'
 
 const dependencies: ModelDependencies = {
@@ -40,10 +39,7 @@ describe('encrypted reasoning source isolation', () => {
     expect(xai.apiStyle).toBe('openai')
     expect(xai.reasoningReplaySource).toBeUndefined()
     expect(supportsToolResultImages(xai.apiStyle)).toBe(false)
-    expect(
-      resolveReasoningReplayPolicy(ModelProviderEnum.XAI, { modelId: xai.modelId, apiStyle: xai.apiStyle })
-        .preserveReasoning
-    ).toBe(false)
+    expect(xai.prepareReasoningHistory?.({ mode: 'agent' }).conversion.preserveReasoning).toBe(false)
   })
 
   it('has a stable opaque binding and changes with credentials, account, endpoint, model or provider', () => {
@@ -75,24 +71,6 @@ describe('encrypted reasoning source isolation', () => {
     const accountlessOAuth = (token: string) =>
       model('openai', { activeAuthMode: 'oauth', oauth: { accessToken: token } }).reasoningReplaySource
     expect(accountlessOAuth('token')).not.toBe(accountlessOAuth('refreshed-token'))
-  })
-
-  it('binds ChatboxAI ciphertext to the license identity', () => {
-    const create = (licenseKey: string) =>
-      getModel(
-        { provider: ModelProviderEnum.ChatboxAI, modelId: 'responses-model' },
-        {
-          ...defaults(),
-          licenseKey,
-          providers: {
-            [ModelProviderEnum.ChatboxAI]: { models: [{ modelId: 'responses-model', apiStyle: 'openai-responses' }] },
-          },
-        },
-        newConfigs(),
-        dependencies
-      )
-    expect(create('license-a').reasoningReplaySource).toBeTruthy()
-    expect(create('license-a').reasoningReplaySource).not.toBe(create('license-b').reasoningReplaySource)
   })
 
   it('only emits ciphertext for matching provenance and never sends the local marker', async () => {

@@ -7,7 +7,6 @@ import { convertToModelMessages } from '../../services/model-message-converter'
 import type { SessionSettings, Settings } from '../../types'
 import { ModelProviderEnum } from '../../types'
 import type { ModelDependencies } from '../../types/adapters'
-import { getReasoningProviderOptions, resolveReasoningReplayPolicy } from '../../utils/reasoning-control'
 import type { SentryScope } from '../../utils/sentry_adapter'
 import CustomClaude from './models/custom-claude'
 import CustomGemini from './models/custom-gemini'
@@ -75,7 +74,7 @@ function createModel(
         apiKey: 'sk-test',
         apiHost,
         useProxy,
-        models: [{ modelId }],
+        models: [{ modelId, ...(modelId === 'deepseek-v4-pro' ? { capabilities: ['reasoning'] } : {}) }],
       },
     },
   }
@@ -288,7 +287,7 @@ describe.each([ModelProviderEnum.OpenCodeGo, ModelProviderEnum.OpenCodeZen] as c
         const model = createModel(provider, deepseekModel.modelId, dependencies)
         const result = await model.chat([{ role: 'user', content: 'Calculate.' }], {
           sessionId: 'deepseek-session',
-          providerOptions: getReasoningProviderOptions(provider, deepseekModel, level),
+          providerOptions: model.writeReasoningOptions?.(level),
         })
         const request = apiRequest.mock.calls[0][0]
         const body = JSON.parse(String(request.body))
@@ -339,10 +338,10 @@ describe.each([ModelProviderEnum.OpenCodeGo, ModelProviderEnum.OpenCodeZen] as c
           },
         ],
         async () => null,
-        { modelSupportVision: false, ...resolveReasoningReplayPolicy(provider, deepseekModel) }
+        { modelSupportVision: false, ...model.prepareReasoningHistory({ mode: 'agent' }).conversion }
       )
       const result = await model.chat(messages, {
-        providerOptions: getReasoningProviderOptions(provider, deepseekModel, 'high'),
+        providerOptions: model.writeReasoningOptions?.('high'),
       })
       const request = apiRequest.mock.calls[0][0]
       const body = JSON.parse(String(request.body))

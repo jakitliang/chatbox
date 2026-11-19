@@ -6,7 +6,6 @@ export const lmStudioProvider = defineProvider({
   id: ModelProviderEnum.LMStudio,
   name: 'LM Studio',
   type: ModelProviderType.OpenAI,
-  reasoningStrategy: LMStudio.reasoningStrategy,
   defaultSettings: {
     apiHost: 'http://127.0.0.1:1234',
   },

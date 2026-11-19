@@ -23,6 +23,10 @@ function applyNativeCapabilities(model: ProviderModelInfo, capabilities: unknown
 }
 
 export default class Ollama extends OpenAICompatible {
+  protected usesFixedSampling() {
+    return false
+  }
+
   public name = 'Ollama'
   public options: OllamaOptions
 

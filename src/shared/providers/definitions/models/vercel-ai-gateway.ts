@@ -1,9 +1,19 @@
 import { createGatewayProvider } from '@ai-sdk/gateway'
 import AbstractAISDKModel from '../../../models/abstract-ai-sdk'
+import {
+  type ReasoningHistoryInput,
+  signedReasoningReplay,
+  textReasoningReplay,
+} from '../../../models/reasoning-replay'
 import type { CallChatCompletionOptions } from '../../../models/types'
+import { isDeepSeekReasoningModel } from '../../../models/utils/deepseek'
 import { createFetchWithProxy } from '../../../models/utils/fetch-proxy'
 import type { ProviderModelInfo } from '../../../types'
 import type { ModelDependencies } from '../../../types/adapters'
+import { claudeReasoning } from './anthropic-reasoning'
+import { prepareAnthropicReasoningHistory } from './anthropic-reasoning-history'
+import { geminiReasoning } from './gemini-reasoning'
+import { openAIReasoning } from './openai-reasoning'
 
 interface Options {
   apiKey: string
@@ -17,6 +27,30 @@ interface Options {
 }
 
 export default class VercelAIGateway extends AbstractAISDKModel {
+  protected getReasoningStrategy() {
+    const [upstream] = this.modelId.split('/')
+    if (this.apiStyle === 'anthropic' || upstream === 'anthropic') return claudeReasoning(this.modelId)
+    if (this.apiStyle === 'google' || upstream === 'google') return geminiReasoning(this.modelId)
+    return openAIReasoning(this.modelId)
+  }
+
+  protected getReasoningReplayPolicy() {
+    if (this.apiStyle === 'google') {
+      return signedReasoningReplay('google', { portable: true, ensureGoogleFunctionCallSignatures: true })
+    }
+    if (this.apiStyle === 'openai-responses') {
+      return signedReasoningReplay('openai', { portable: true, reasoningReplaySource: this.reasoningReplaySource })
+    }
+    if (this.apiStyle === 'openai' && isDeepSeekReasoningModel(this.modelId)) return textReasoningReplay
+    return super.getReasoningReplayPolicy()
+  }
+
+  public prepareReasoningHistory(input: ReasoningHistoryInput) {
+    return this.apiStyle === 'anthropic'
+      ? prepareAnthropicReasoningHistory(this.modelId, input)
+      : super.prepareReasoningHistory(input)
+  }
+
   public name = 'Vercel AI Gateway'
 
   constructor(

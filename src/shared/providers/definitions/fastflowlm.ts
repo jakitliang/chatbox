@@ -1,7 +1,7 @@
 import { ModelProviderEnum, ModelProviderType, type ProviderSettings } from '../../types'
 import { normalizeOpenAIApiHostAndPath } from '../../utils/llm_utils'
-import { defineProvider } from '../registry'
 import { getRuntimeContextWindowValue } from '../context-window'
+import { defineProvider } from '../registry'
 import FastFlowLM from './models/fastflowlm'
 
 function runtimeHost(settings: ProviderSettings): string | undefined {
@@ -14,7 +14,6 @@ export const fastFlowLMProvider = defineProvider({
   name: 'FastFlowLM',
   type: ModelProviderType.OpenAI,
   modelListSource: 'provider-only',
-  reasoningStrategy: FastFlowLM.reasoningStrategy,
   contextWindowDelegate: {
     getContextWindow: getRuntimeContextWindowValue,
     runtime: {

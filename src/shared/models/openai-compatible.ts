@@ -4,8 +4,10 @@ import type { ProviderModelInfo } from '../types'
 import type { ModelDependencies } from '../types/adapters'
 import AbstractAISDKModel from './abstract-ai-sdk'
 import { ApiError } from './errors'
+import { textReasoningReplay } from './reasoning-replay'
 import { compatibleBooleanReasoningStrategy, type ReasoningStrategy } from './reasoning-strategy'
 import type { CallChatCompletionOptions, ModelInterface } from './types'
+import { isDeepSeekReasoningModel } from './utils/deepseek'
 import { createFetchWithProxy } from './utils/fetch-proxy'
 import { createOpenAIChatCompletionSseFetch } from './utils/openai-chat-sse-termination'
 
@@ -23,7 +25,15 @@ export interface OpenAICompatibleSettings {
 }
 
 export default abstract class OpenAICompatible extends AbstractAISDKModel implements ModelInterface {
-  public static reasoningStrategy: ReasoningStrategy = compatibleBooleanReasoningStrategy
+  protected getReasoningReplayPolicy() {
+    return this.apiStyle === 'openai' && isDeepSeekReasoningModel(this.modelId)
+      ? textReasoningReplay
+      : super.getReasoningReplayPolicy()
+  }
+
+  protected getReasoningStrategy(): ReasoningStrategy {
+    return compatibleBooleanReasoningStrategy
+  }
   public name = 'OpenAI Compatible'
 
   constructor(

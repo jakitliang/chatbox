@@ -8,7 +8,6 @@ export const xiaomiMiMoProvider = defineProvider({
   id: ModelProviderEnum.XiaomiMiMo,
   name: 'Xiaomi MiMo',
   type: ModelProviderType.OpenAI,
-  reasoningStrategy: XiaomiMiMo.reasoningStrategy,
   urls: {
     website: 'https://mimo.mi.com/',
     apiKey: 'https://mimo.mi.com/keys',

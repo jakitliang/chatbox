@@ -5,7 +5,6 @@ import { fetchRemoteModels } from '../../../models/openai-compatible'
 import type { Config, ProviderModelInfo, Settings } from '../../../types'
 import { ModelProviderEnum } from '../../../types'
 import type { ModelDependencies } from '../../../types/adapters'
-import { getReasoningProviderOptions } from '../../../utils/reasoning-control'
 import { getModel, getProviderDefinition } from '../../index'
 import { refreshProviderModelCapabilities } from '../../model-config'
 import FastFlowLM from './fastflowlm'
@@ -79,7 +78,13 @@ describe('FastFlowLM independent keyless provider', () => {
         data: [
           {
             id: 'fixture-multimodal',
-            flm: { vlm: true, tools: true, think: true, max_position_embeddings: 262144, default_context_length: 16384 },
+            flm: {
+              vlm: true,
+              tools: true,
+              think: true,
+              max_position_embeddings: 262144,
+              default_context_length: 16384,
+            },
           },
           { id: 'gpt-oss:20b', flm: { think: false, reasoning_effort: ['low', 'medium', 'high'] } },
           { id: 'fixture-no-vision', flm: { vlm: false } },
@@ -249,6 +254,37 @@ describe('FastFlowLM independent keyless provider', () => {
   })
 
   it.each([
+    ['default', {}],
+    ['off', { think: false }],
+    ['low', { reasoning_effort: 'low' }],
+    ['high', { reasoning_effort: 'high' }],
+  ] as const)('sends only the FLM reasoning field for %s on an effort model', async (level, expected) => {
+    const apiRequest = vi.fn<ModelDependencies['request']['apiRequest']>().mockResolvedValue(
+      new Response(
+        'data: {"choices":[{"index":0,"delta":{"content":"OK"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n',
+        {
+          headers: { 'content-type': 'text/event-stream' },
+        }
+      )
+    )
+    const runtime = new FastFlowLM(
+      {
+        apiHost: 'http://localhost:52625',
+        model: { modelId: 'local', capabilities: ['reasoning'], reasoningEffortLevels: ['low', 'high'] },
+      },
+      dependencies(apiRequest)
+    )
+    const providerOptions = runtime.writeReasoningOptions(level)
+    expect(runtime.readReasoningLevel(providerOptions)).toBe(level)
+    for await (const _part of runtime.chatStream([{ role: 'user', content: 'Hello' }], { providerOptions })) {
+      // Drain the stream so the request is sent.
+    }
+    const body = JSON.parse(apiRequest.mock.calls[0][0].body as string)
+    const keys = new Set(['think', 'reasoning_effort', 'enable_thinking'])
+    expect(Object.fromEntries(Object.entries(body).filter(([key]) => keys.has(key)))).toEqual(expected)
+  })
+
+  it.each([
     { maxOutput: undefined, maxTokens: undefined },
     { maxOutput: 512, maxTokens: undefined },
     { maxOutput: undefined, maxTokens: 128 },
@@ -298,13 +334,11 @@ describe('FastFlowLM independent keyless provider', () => {
       { choices: [{ index: 0, delta: { content: null }, finish_reason: 'stop' }] },
       { choices: [], usage: { prompt_tokens: 1, completion_tokens: 2, total_tokens: 3 } },
     ]
-    const apiRequest = vi
-      .fn<ModelDependencies['request']['apiRequest']>()
-      .mockResolvedValue(
-        new Response(`${chunks.map((chunk) => `data: ${JSON.stringify(chunk)}\n\n`).join('')}data: [DONE]\n\n`, {
-          headers: { 'content-type': 'text/event-stream' },
-        })
-      )
+    const apiRequest = vi.fn<ModelDependencies['request']['apiRequest']>().mockResolvedValue(
+      new Response(`${chunks.map((chunk) => `data: ${JSON.stringify(chunk)}\n\n`).join('')}data: [DONE]\n\n`, {
+        headers: { 'content-type': 'text/event-stream' },
+      })
+    )
     const runtime = new FastFlowLM(
       { apiHost: 'http://localhost:52625', model: { modelId: 'fixture-local' } },
       dependencies(apiRequest)
@@ -328,14 +362,16 @@ describe('FastFlowLM independent keyless provider', () => {
     ['high', true],
     ['off', false],
   ] as const)('sends the %s choice with standard tool and image inputs', async (level, think) => {
-    const apiRequest = vi.fn<ModelDependencies['request']['apiRequest']>().mockImplementation(() =>
-      Promise.resolve(
-        new Response(
-          'data: {"choices":[{"index":0,"delta":{"content":"OK"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n',
-          { headers: { 'content-type': 'text/event-stream' } }
+    const apiRequest = vi
+      .fn<ModelDependencies['request']['apiRequest']>()
+      .mockImplementation(() =>
+        Promise.resolve(
+          new Response(
+            'data: {"choices":[{"index":0,"delta":{"content":"OK"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n',
+            { headers: { 'content-type': 'text/event-stream' } }
+          )
         )
       )
-    )
     const model: ProviderModelInfo = { modelId: 'qwen3.5:4b', capabilities: ['reasoning', 'vision', 'tool_use'] }
     const runtime = new FastFlowLM({ apiHost: 'http://localhost:52625', model }, dependencies(apiRequest))
     const image = 'data:image/png;base64,AA=='
@@ -344,11 +380,14 @@ describe('FastFlowLM independent keyless provider', () => {
       [
         {
           role: 'user',
-          content: [{ type: 'text', text: 'Describe the image' }, { type: 'file', data: image, mediaType: 'image/png' }],
+          content: [
+            { type: 'text', text: 'Describe the image' },
+            { type: 'file', data: image, mediaType: 'image/png' },
+          ],
         },
       ],
       {
-        providerOptions: getReasoningProviderOptions(ModelProviderEnum.FastFlowLM, model, level, {
+        providerOptions: runtime.writeReasoningOptions(level, {
           openaiCompatible: { enable_thinking: true, reasoningEffort: 'high' },
         }),
         tools: { lookup: tool({ inputSchema: jsonSchema({ type: 'object', properties: {} }) }) },

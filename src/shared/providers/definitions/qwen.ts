@@ -8,7 +8,6 @@ export const qwenProvider = defineProvider({
   id: ModelProviderEnum.Qwen,
   name: 'Qwen',
   type: ModelProviderType.OpenAI,
-  reasoningStrategy: Qwen.reasoningStrategy,
   modelsDevProviderId: 'alibaba',
   curatedModelIds: [
     'qwen3.7-max',

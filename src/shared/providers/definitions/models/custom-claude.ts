@@ -4,12 +4,14 @@ import type { ModelMessage } from 'ai'
 import AbstractAISDKModel, { type CallSettings } from '../../../models/abstract-ai-sdk'
 import { applyAnthropicCacheBreakpoints } from '../../../models/anthropic-cache'
 import { ApiError } from '../../../models/errors'
+import type { ReasoningHistoryInput } from '../../../models/reasoning-replay'
 import type { CallChatCompletionOptions } from '../../../models/types'
 import { createFetchWithProxy } from '../../../models/utils/fetch-proxy'
 import type { ProviderModelInfo } from '../../../types'
 import type { ModelDependencies } from '../../../types/adapters'
 import { normalizeClaudeHost } from '../../../utils/llm_utils'
-import { normalizeClaudeReasoningOptions } from '../../../utils/reasoning-control'
+import { claudeReasoning, normalizeClaudeReasoningOptions } from './anthropic-reasoning'
+import { prepareAnthropicReasoningHistory } from './anthropic-reasoning-history'
 
 interface Options {
   apiKey: string
@@ -23,6 +25,14 @@ interface Options {
 }
 
 export default class CustomClaude extends AbstractAISDKModel {
+  protected getReasoningStrategy() {
+    return claudeReasoning(this.modelId)
+  }
+
+  public prepareReasoningHistory(input: ReasoningHistoryInput) {
+    return prepareAnthropicReasoningHistory(this.modelId, input)
+  }
+
   public name = 'Custom Claude'
 
   constructor(

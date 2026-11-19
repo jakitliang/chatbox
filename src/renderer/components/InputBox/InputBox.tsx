@@ -441,8 +441,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const { providers } = useProviders()
     const {
       effectiveProviderOptions,
-      modelInfo,
-      reasoningModelInfo,
+      modelInstance,
       selectedProviderInfo,
       settingsPatch: reasoningSettingsPatch,
       handleReasoningLevelChange,
@@ -1990,8 +1989,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                 <AttachmentMenu onImageUploadClick={onImageUploadClick} onFileUploadClick={onFileUploadClick} t={t} />
 
                 <ReasoningControlButton
-                  provider={model?.provider}
-                  model={reasoningModelInfo}
+                  model={modelInstance}
                   providerOptions={effectiveProviderOptions}
                   iconSize={toolbarIconSize}
                   onChange={(level) => void handleReasoningLevelChange(level)}

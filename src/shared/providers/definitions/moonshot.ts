@@ -1,3 +1,4 @@
+import { passthroughReasoningStrategy } from '../../models/reasoning-strategy'
 import { ModelProviderEnum, ModelProviderType } from '../../types'
 import { defineProvider } from '../registry'
 import OpenAI from './models/openai'
@@ -58,6 +59,7 @@ function createMoonshotProvider(config: {
           apiKey: createConfig.effectiveApiKey,
           apiHost: createConfig.formattedApiHost || config.apiHost,
           model: createConfig.model,
+          reasoningPolicy: passthroughReasoningStrategy,
           dalleStyle: 'vivid',
           temperature: createConfig.settings.temperature,
           topP: createConfig.settings.topP,

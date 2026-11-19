@@ -2,19 +2,21 @@ import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { extractReasoningMiddleware, wrapLanguageModel } from 'ai'
 import AbstractAISDKModel from '../../../models/abstract-ai-sdk'
 import { fetchRemoteModels, getOpenAICompatibleProviderOptionsKey } from '../../../models/openai-compatible'
+import { textReasoningReplay } from '../../../models/reasoning-replay'
 import { compatibleBooleanReasoningStrategy, type ReasoningStrategy } from '../../../models/reasoning-strategy'
 import type { CallChatCompletionOptions } from '../../../models/types'
+import { isDeepSeekReasoningModel } from '../../../models/utils/deepseek'
 import { createFetchWithProxy } from '../../../models/utils/fetch-proxy'
 import { createOpenAIChatCompletionSseFetch } from '../../../models/utils/openai-chat-sse-termination'
 import type { ProviderModelInfo } from '../../../types'
 import type { ModelDependencies } from '../../../types/adapters'
 import { normalizeOpenAIApiHostAndPath } from '../../../utils/llm_utils'
-import { pickOpenAICompatibleReasoningOptions } from '../../../utils/reasoning-control'
 import {
   compatibleImageApiHeaders,
   createOpenAICompatibleImageModel,
   getOpenAIImageGenerationOptions,
 } from './openai-compatible-image'
+import { pickOpenAICompatibleReasoningOptions } from './openai-reasoning'
 
 interface Options {
   apiKey: string
@@ -31,7 +33,13 @@ interface Options {
 type FetchFunction = typeof globalThis.fetch
 
 export default class CustomOpenAI extends AbstractAISDKModel {
-  public static reasoningStrategy: ReasoningStrategy = compatibleBooleanReasoningStrategy
+  protected getReasoningReplayPolicy() {
+    return isDeepSeekReasoningModel(this.modelId) ? textReasoningReplay : super.getReasoningReplayPolicy()
+  }
+
+  protected getReasoningStrategy(): ReasoningStrategy {
+    return compatibleBooleanReasoningStrategy
+  }
   public name = 'Custom OpenAI'
 
   constructor(

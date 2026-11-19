@@ -6,7 +6,7 @@ import { createOpenAIChatCompletionSseFetch } from '../../../models/utils/openai
 import type { ProviderModelInfo } from '../../../types'
 import type { ModelDependencies } from '../../../types/adapters'
 import { normalizeAzureEndpoint } from '../../../utils/llm_utils'
-import { normalizeOpenAIReasoningOptions } from '../../../utils/reasoning-control'
+import { normalizeOpenAIReasoningOptions, openAIReasoning } from './openai-reasoning'
 
 const AZURE_V1_API_VERSION = 'v1'
 
@@ -56,6 +56,10 @@ interface Options {
 }
 
 export default class AzureOpenAI extends AbstractAISDKModel {
+  protected getReasoningStrategy() {
+    return openAIReasoning(this.modelId)
+  }
+
   public name = 'Azure OpenAI'
 
   constructor(

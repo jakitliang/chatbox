@@ -1,3 +1,4 @@
+import { passthroughReasoningStrategy } from '../../models/reasoning-strategy'
 import { createBearerOAuthFetch, createOAuthCredentialManager, isUsingOAuth } from '../../oauth'
 import { ModelProviderEnum, ModelProviderType } from '../../types'
 import { defineProvider } from '../registry'
@@ -64,6 +65,7 @@ function createMiniMaxProvider(config: {
           apiKey: isOAuth ? 'oauth-placeholder' : createConfig.effectiveApiKey,
           apiHost: createConfig.formattedApiHost || config.apiHost,
           model: createConfig.model,
+          reasoningPolicy: passthroughReasoningStrategy,
           dalleStyle: 'vivid',
           temperature: createConfig.settings.temperature,
           topP: createConfig.settings.topP,

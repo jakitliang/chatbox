@@ -1,22 +1,15 @@
 import { Menu, UnstyledButton } from '@mantine/core'
 import { TestId } from '@shared/automation/testids'
-import type { ProviderModelInfo, ProviderOptions } from '@shared/types'
-import {
-  getReasoningControlCapabilities,
-  getReasoningControlLevel,
-  getReasoningControlOptions,
-  type ReasoningControlDisabledReason,
-  type ReasoningControlLevel,
-  type ReasoningControlOption,
-} from '@shared/utils/reasoning-control'
+import type { ModelInterface } from '@shared/models/types'
+import type { ProviderOptions } from '@shared/types'
+import { type ReasoningControlLevel, type ReasoningControlOption } from '@shared/utils/reasoning-control'
 import { IconBrain, IconCircleOff, IconSparkles } from '@tabler/icons-react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppTooltip as Tooltip } from '@/components/ui/tooltip'
 
 interface ReasoningControlButtonProps {
-  provider?: string
-  model?: ProviderModelInfo | null
+  model?: Pick<ModelInterface, 'getReasoningOptions' | 'readReasoningLevel'>
   providerOptions?: ProviderOptions
   iconSize: number
   onChange: (level: ReasoningControlLevel) => void
@@ -31,40 +24,16 @@ const LEVEL_COLORS: Record<ReasoningControlLevel, string> = {
 }
 
 export default function ReasoningControlButton({
-  provider,
   model,
   providerOptions,
   iconSize,
   onChange,
 }: ReasoningControlButtonProps) {
   const { t } = useTranslation()
-  const capabilities = useMemo(() => getReasoningControlCapabilities(provider, model), [provider, model])
-  const level = useMemo(
-    () => getReasoningControlLevel(provider, model, providerOptions),
-    [provider, model, providerOptions]
-  )
-  const options = useMemo(() => getReasoningControlOptions(provider, model), [provider, model])
+  const level = useMemo(() => model?.readReasoningLevel?.(providerOptions) ?? 'default', [model, providerOptions])
+  const options = useMemo(() => model?.getReasoningOptions?.() ?? [], [model])
 
-  if (!capabilities.supported && !capabilities.disabledReason) {
-    return null
-  }
-
-  if (capabilities.disabledReason) {
-    return (
-      <Tooltip label={getDisabledReasonLabel(capabilities.disabledReason, t)} position="top" withArrow>
-        <span>
-          <UnstyledButton
-            data-testid={TestId.reasoning.trigger}
-            className="flex items-center gap-1 px-2 py-1 rounded-lg cursor-not-allowed opacity-60"
-            style={{ color: 'var(--chatbox-tint-tertiary)' }}
-            disabled
-          >
-            <IconBrain size={iconSize} strokeWidth={1.8} />
-          </UnstyledButton>
-        </span>
-      </Tooltip>
-    )
-  }
+  if (!options.length) return null
 
   const selectedOption = options.find((item) => item.level === level)
   const levelLabel = getOptionLabel(selectedOption || { level, label: level }, t)
@@ -184,28 +153,6 @@ function ReasoningLevelStatusIcon({
       })}
     </span>
   )
-}
-
-// Literal t() calls so i18next-parser (which only scans src/renderer) can extract the keys
-function getDisabledReasonLabel(reason: ReasoningControlDisabledReason, t: (key: string) => string): string {
-  switch (reason) {
-    case 'requires-anthropic-api-style':
-      return t(
-        'Thinking controls are disabled because this Claude model is not exposed through the Anthropic API style.'
-      )
-    case 'requires-google-api-style':
-      return t('Thinking controls are disabled because this Gemini model is not exposed through the Google API style.')
-    case 'requires-openai-api-style':
-      return t('Thinking controls are disabled because this GPT model is not exposed through an OpenAI API style.')
-    case 'requires-deepseek-api-style':
-      return t(
-        'Thinking controls are disabled because this DeepSeek model is not exposed through the DeepSeek API style.'
-      )
-    case 'requires-qwen-api-style':
-      return t('Thinking controls are disabled because this Qwen model is not exposed through the Qwen API style.')
-    case 'requires-xai-api-style':
-      return t('Thinking controls are disabled because this Grok model is not exposed through the xAI API style.')
-  }
 }
 
 function getOptionLabel(option: ReasoningControlOption, t: (key: string) => string): string {

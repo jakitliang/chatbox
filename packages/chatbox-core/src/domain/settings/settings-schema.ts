@@ -192,6 +192,7 @@ const OpenRouterParamsSchema = z.object({
   reasoning: ReasoningOptionsSchema.optional().catch(undefined),
 })
 
+// This schema is only for reasoning controls. Non-reasoning settings must not be added here.
 export const ProviderOptionsSchema = z.object({
   claude: ClaudeParamsSchema.optional(),
   openai: OpenAIParamsSchema.optional(),

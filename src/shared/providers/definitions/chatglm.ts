@@ -6,7 +6,6 @@ export const chatGLMProvider = defineProvider({
   id: ModelProviderEnum.GLM,
   name: 'GLM',
   type: ModelProviderType.OpenAI,
-  reasoningStrategy: ChatGLM.reasoningStrategy,
   modelsDevProviderId: 'zhipuai',
   curatedModelIds: ['glm-5.2', 'glm-5.1', 'glm-5', 'glm-5v-turbo', 'glm-4.7', 'glm-4.7-flash', 'glm-4.5'],
   defaultSettings: {

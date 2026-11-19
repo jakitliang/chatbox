@@ -2,7 +2,8 @@
 
 import { MantineProvider } from '@mantine/core'
 import { TestId } from '@shared/automation/testids'
-import { ModelProviderEnum, type ProviderModelInfo, type ProviderOptions } from '@shared/types'
+import { openAIResponsesReasoning } from '@shared/providers/definitions/models/openai-reasoning'
+import type { ProviderOptions } from '@shared/types'
 import { describe, expect, test, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@/test-utils'
 import ReasoningControlButton from './ReasoningControlButton'
@@ -30,15 +31,17 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
-const model: ProviderModelInfo = { modelId: 'gpt-5.1' }
+function model(modelId: string) {
+  const policy = openAIResponsesReasoning(modelId)
+  return { getReasoningOptions: policy.getOptions, readReasoningLevel: policy.readLevel }
+}
 
 function renderButton(reasoningEffort: 'low' | 'medium' | 'high' = 'high') {
   const providerOptions: ProviderOptions = { openai: { reasoningEffort } }
   return render(
     <MantineProvider>
       <ReasoningControlButton
-        provider={ModelProviderEnum.OpenAIResponses}
-        model={model}
+        model={model('gpt-5.1')}
         providerOptions={providerOptions}
         iconSize={22}
         onChange={vi.fn()}
@@ -52,12 +55,7 @@ describe('ReasoningControlButton', () => {
     const onChange = vi.fn()
     render(
       <MantineProvider>
-        <ReasoningControlButton
-          provider={ModelProviderEnum.OpenAIResponses}
-          model={{ modelId: 'gpt-6-astra' }}
-          iconSize={22}
-          onChange={onChange}
-        />
+        <ReasoningControlButton model={model('gpt-6-astra')} iconSize={22} onChange={onChange} />
       </MantineProvider>
     )
 

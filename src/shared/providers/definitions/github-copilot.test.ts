@@ -6,7 +6,6 @@ import { getModel } from '../../providers'
 import type { SessionSettings, Settings } from '../../types'
 import type { ModelDependencies } from '../../types/adapters'
 import type { SentryScope } from '../../utils/sentry_adapter'
-import { withResolvedModelApiStyle } from '../api-style'
 import {
   applyGitHubCopilotModelMetadata,
   getGitHubCopilotApiStyle,
@@ -244,23 +243,6 @@ describe('GitHub Copilot model factory', () => {
 
     expect(models.find((item) => item.modelId === 'gpt-5.6-luna')?.apiStyle).toBe('openai-responses')
     expect(models.find((item) => item.modelId === 'claude-sonnet-5')?.apiStyle).toBe('openai')
-  })
-})
-
-describe('GitHub Copilot reasoning catalog metadata', () => {
-  it('overwrites provider-type fallback so stored Copilot records match the wire protocol', () => {
-    expect(
-      withResolvedModelApiStyle(
-        { modelId: 'gpt-5.6-luna', apiStyle: 'openai' },
-        { providerId: 'github-copilot', providerType: 'openai' }
-      ).apiStyle
-    ).toBe('openai-responses')
-    expect(
-      withResolvedModelApiStyle(
-        { modelId: 'claude-sonnet-5' },
-        { providerId: 'github-copilot', providerType: 'openai' }
-      ).apiStyle
-    ).toBe('openai')
   })
 })
 

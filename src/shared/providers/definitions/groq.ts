@@ -6,7 +6,6 @@ export const groqProvider = defineProvider({
   id: ModelProviderEnum.Groq,
   name: 'Groq',
   type: ModelProviderType.OpenAI,
-  reasoningStrategy: Groq.reasoningStrategy,
   modelsDevProviderId: 'groq',
   curatedModelIds: [
     'openai/gpt-oss-120b',

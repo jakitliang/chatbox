@@ -4,10 +4,26 @@ import { extractReasoningMiddleware, wrapLanguageModel } from 'ai'
 import AbstractAISDKModel from '../../../models/abstract-ai-sdk'
 import { applyAnthropicCacheBreakpoints } from '../../../models/anthropic-cache'
 import { fetchRemoteModels } from '../../../models/openai-compatible'
+import { textReasoningReplay } from '../../../models/reasoning-replay'
+import { createReasoningStrategy, readReasoningEffort } from '../../../models/reasoning-strategy'
 import type { CallChatCompletionOptions } from '../../../models/types'
+import { isDeepSeekReasoningModel } from '../../../models/utils/deepseek'
 import { createOpenAIChatCompletionSseFetch } from '../../../models/utils/openai-chat-sse-termination'
 import type { ProviderModelInfo } from '../../../types'
 import type { ModelDependencies } from '../../../types/adapters'
+
+const openRouterReasoning = createReasoningStrategy({
+  read(options) {
+    const reasoning = options?.openrouter?.reasoning
+    return reasoning?.enabled === false ? 'off' : readReasoningEffort(reasoning?.effort)
+  },
+  write: (level, previous) => ({
+    ...previous,
+    openrouter: {
+      reasoning: level === 'off' ? { enabled: false, exclude: true } : { effort: level, exclude: false },
+    },
+  }),
+})
 
 interface Options {
   apiKey: string
@@ -20,6 +36,16 @@ interface Options {
 }
 
 export default class OpenRouter extends AbstractAISDKModel {
+  protected getReasoningReplayPolicy() {
+    return this.apiStyle === 'openai' && isDeepSeekReasoningModel(this.modelId)
+      ? textReasoningReplay
+      : super.getReasoningReplayPolicy()
+  }
+
+  protected getReasoningStrategy() {
+    return openRouterReasoning
+  }
+
   public name = 'OpenRouter'
 
   constructor(

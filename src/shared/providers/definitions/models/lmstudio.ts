@@ -5,6 +5,10 @@ import { normalizeOpenAIApiHostAndPath } from '../../../utils/llm_utils'
 interface Options extends OpenAICompatibleSettings {}
 
 export default class LMStudio extends OpenAICompatible {
+  protected usesFixedSampling() {
+    return false
+  }
+
   public name = 'LM Studio'
   public options: Options
 

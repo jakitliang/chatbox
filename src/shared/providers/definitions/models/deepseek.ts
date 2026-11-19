@@ -4,11 +4,13 @@ import type { LanguageModelV4 } from '@ai-sdk/provider'
 import AbstractAISDKModel, { type CallSettings } from '../../../models/abstract-ai-sdk'
 import { ApiError } from '../../../models/errors'
 import { getOpenAICompatibleProviderOptionsKey } from '../../../models/openai-compatible'
+import { textReasoningReplay } from '../../../models/reasoning-replay'
 import type { CallChatCompletionOptions } from '../../../models/types'
 import { normalizeDeepSeekReasoningEffort } from '../../../models/utils/deepseek'
 import { createOpenAIChatCompletionSseFetch } from '../../../models/utils/openai-chat-sse-termination'
 import type { ProviderModelInfo } from '../../../types'
 import type { ModelDependencies } from '../../../types/adapters'
+import { deepSeekReasoning } from './deepseek-reasoning'
 
 interface Options {
   apiKey: string
@@ -20,6 +22,14 @@ interface Options {
 }
 
 export default class DeepSeek extends AbstractAISDKModel {
+  protected getReasoningStrategy() {
+    return deepSeekReasoning(this.modelId)
+  }
+
+  protected getReasoningReplayPolicy() {
+    return textReasoningReplay
+  }
+
   public name = 'DeepSeek'
 
   constructor(

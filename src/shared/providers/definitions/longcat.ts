@@ -8,7 +8,6 @@ export const longCatProvider = defineProvider({
   id: ModelProviderEnum.LongCat,
   name: 'LongCat',
   type: ModelProviderType.OpenAI,
-  reasoningStrategy: LongCat.reasoningStrategy,
   urls: {
     website: 'https://longcat.chat/platform',
     apiKey: 'https://longcat.chat/platform/api-keys',

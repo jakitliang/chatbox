@@ -1,19 +1,14 @@
-import { withResolvedModelApiStyle } from '@shared/providers/api-style'
-import type { ProviderInfo, ProviderModelInfo, ProviderOptions, SessionSettings } from '@shared/types'
-import {
-  getReasoningProviderOptions,
-  type ReasoningControlLevel,
-  setReasoningProviderOptionsForModel,
-} from '@shared/utils/reasoning-control'
+import type { ModelInterface } from '@shared/models/types'
+import type { ProviderInfo, ProviderOptions, SessionSettings } from '@shared/types'
+import { type ReasoningControlLevel, setReasoningProviderOptionsForModel } from '@shared/utils/reasoning-control'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createModel } from '@/adapters'
 import { rendererApplication } from '@/app/renderer-application'
 
 type SelectedModel = {
   provider: string
   modelId: string
 }
-
-type ReasoningProviderInfo = Pick<ProviderInfo, 'id' | 'type' | 'models' | 'defaultSettings'>
 
 interface UseReasoningControlStateOptions {
   currentSessionId?: string
@@ -26,47 +21,12 @@ interface UseReasoningControlStateOptions {
 interface ReasoningControlState {
   effectiveProviderOptions?: ProviderOptions
   isDirty: boolean
-  modelInfo: ProviderModelInfo | null | undefined
-  reasoningModelInfo: ProviderModelInfo | null
+  modelInstance?: ModelInterface
   selectedProviderInfo?: ProviderInfo
   settingsPatch?: Partial<SessionSettings>
   handleReasoningLevelChange: (level: ReasoningControlLevel) => Promise<void>
   markSettingsCommitted: () => void
   waitForPendingPersist: () => Promise<void>
-}
-
-function withProviderApiStyleFallback(
-  modelInfo: ProviderModelInfo,
-  providerInfo?: Pick<ReasoningProviderInfo, 'id' | 'type'>
-): ProviderModelInfo {
-  return withResolvedModelApiStyle(modelInfo, {
-    providerId: providerInfo?.id,
-    providerType: providerInfo?.type,
-  })
-}
-
-function findProviderModelInfo(model: SelectedModel | undefined, providerInfo: ReasoningProviderInfo | undefined) {
-  if (!model) return null
-  const foundModel = (providerInfo?.models || providerInfo?.defaultSettings?.models)?.find(
-    (item) => item.modelId === model.modelId
-  )
-  return foundModel ? withProviderApiStyleFallback(foundModel, providerInfo) : undefined
-}
-
-/**
- * Resolves the model info used for reasoning-control decisions (capabilities, level,
- * request options). Falls back to a synthetic info carrying the provider's API style
- * when the model is not in the provider's model list. Shared with the session
- * settings modal so both surfaces classify models identically.
- */
-export function resolveReasoningModelInfo(
-  model: SelectedModel | undefined,
-  providerInfo: ReasoningProviderInfo | undefined
-): ProviderModelInfo | null {
-  if (!model) return null
-  const found = findProviderModelInfo(model, providerInfo)
-  if (found) return found
-  return withProviderApiStyleFallback({ modelId: model.modelId }, providerInfo)
 }
 
 interface DraftReasoningEntry {
@@ -91,12 +51,35 @@ export function useReasoningControlState({
     [providers, model]
   )
 
-  const modelInfo = useMemo(() => findProviderModelInfo(model, selectedProviderInfo), [model, selectedProviderInfo])
-  const lastResolvedModelRef = useRef<{
-    key: string
-    modelInfo: ProviderModelInfo
-  } | null>(null)
-
+  const provider = model?.provider
+  const modelId = model?.modelId
+  const [resolved, setResolved] = useState<{
+    provider: string
+    modelId: string
+    providerInfo?: ProviderInfo
+    instance: ModelInterface
+  }>()
+  useEffect(() => {
+    if (!provider || !modelId) return
+    let active = true
+    void createModel({ provider, modelId })
+      .then((instance) => {
+        if (active) setResolved({ provider, modelId, providerInfo: selectedProviderInfo, instance })
+      })
+      .catch((error: unknown) => {
+        if (active) console.error('Failed to resolve the selected model for reasoning controls', error)
+      })
+    return () => {
+      active = false
+    }
+  }, [provider, modelId, selectedProviderInfo])
+  const modelInstance =
+    resolved &&
+    resolved.provider === provider &&
+    resolved.modelId === modelId &&
+    resolved.providerInfo === selectedProviderInfo
+      ? resolved.instance
+      : undefined
   const modelKey = model ? `${model.provider}:${model.modelId}` : ''
   const sessionKey = currentSessionId || 'new'
   const resetKey = `${sessionKey}:${modelKey}`
@@ -124,24 +107,6 @@ export function useReasoningControlState({
       setDraftByModel({})
     }
   }, [resetKey, sessionKey])
-
-  useEffect(() => {
-    if (modelKey && modelInfo) {
-      lastResolvedModelRef.current = {
-        key: modelKey,
-        modelInfo,
-      }
-    }
-  }, [modelKey, modelInfo])
-
-  const reasoningModelInfo = useMemo<ProviderModelInfo | null>(() => {
-    if (!model) return null
-    if (modelInfo) return modelInfo
-    if (lastResolvedModelRef.current?.key === modelKey) {
-      return lastResolvedModelRef.current.modelInfo
-    }
-    return withProviderApiStyleFallback({ modelId: model.modelId }, selectedProviderInfo)
-  }, [model, modelInfo, modelKey, selectedProviderInfo])
 
   const currentDraft = isNewSession ? draftByModel[modelKey] : undefined
   const effectiveProviderOptions = currentDraft
@@ -188,12 +153,8 @@ export function useReasoningControlState({
 
   const handleReasoningLevelChange = useCallback(
     async (level: ReasoningControlLevel) => {
-      const nextProviderOptions = getReasoningProviderOptions(
-        model?.provider,
-        reasoningModelInfo,
-        level,
-        effectiveProviderOptions
-      )
+      if (!modelInstance?.writeReasoningOptions) return
+      const nextProviderOptions = modelInstance.writeReasoningOptions(level, effectiveProviderOptions)
       if (isNewSession || !currentSessionId) {
         setDraftByModel((prev) => ({ ...prev, [modelKey]: { options: nextProviderOptions } }))
         return
@@ -214,15 +175,7 @@ export function useReasoningControlState({
       pendingPersistRef.current = persistPromise
       await persistPromise
     },
-    [
-      currentSessionId,
-      effectiveProviderOptions,
-      isNewSession,
-      model?.provider,
-      modelKey,
-      persistProviderOptions,
-      reasoningModelInfo,
-    ]
+    [currentSessionId, effectiveProviderOptions, isNewSession, modelInstance, modelKey, persistProviderOptions]
   )
 
   // Called before submit so generation reads the new options from session settings.
@@ -257,8 +210,7 @@ export function useReasoningControlState({
   return {
     effectiveProviderOptions,
     isDirty,
-    modelInfo,
-    reasoningModelInfo,
+    modelInstance,
     selectedProviderInfo,
     settingsPatch,
     handleReasoningLevelChange,

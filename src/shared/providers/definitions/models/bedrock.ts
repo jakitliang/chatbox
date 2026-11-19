@@ -3,6 +3,7 @@ import AbstractAISDKModel, { type CallSettings } from '../../../models/abstract-
 import type { CallChatCompletionOptions } from '../../../models/types'
 import type { ProviderModelInfo } from '../../../types'
 import type { ModelDependencies } from '../../../types/adapters'
+import { claudeReasoning } from './anthropic-reasoning'
 
 interface Options {
   accessKey: string
@@ -16,6 +17,10 @@ interface Options {
 }
 
 export default class Bedrock extends AbstractAISDKModel {
+  protected getReasoningStrategy() {
+    return claudeReasoning(this.modelId)
+  }
+
   public name = 'AWS Bedrock'
 
   constructor(

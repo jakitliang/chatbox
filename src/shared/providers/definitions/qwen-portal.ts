@@ -9,7 +9,6 @@ export const qwenPortalProvider = defineProvider({
   id: ModelProviderEnum.QwenPortal,
   name: 'Qwen Portal',
   type: ModelProviderType.OpenAI,
-  reasoningStrategy: Qwen.reasoningStrategy,
   modelsDevProviderId: 'alibaba',
   curatedModelIds: ['coder-model', 'vision-model'],
   urls: {

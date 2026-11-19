@@ -1,4 +1,40 @@
+import { createReasoningStrategy } from '../../../models/reasoning-strategy'
+
 export type GoogleThinkingLevel = 'minimal' | 'low' | 'medium' | 'high'
+
+export function geminiReasoning(modelId: string) {
+  const usesLevel = getGoogleThinkingMode(modelId) === 'level'
+  return createReasoningStrategy({
+    off: canDisableGoogleThinking(modelId),
+    read(options) {
+      const config = options?.google?.thinkingConfig
+      if (!config) return 'default'
+      if (config.includeThoughts === false) return 'off'
+      if (config.thinkingLevel && config.thinkingLevel !== 'minimal') return config.thinkingLevel
+      const budget = config.thinkingBudget ?? 0
+      return budget <= 0 ? 'off' : budget >= 10240 ? 'high' : budget >= 4096 ? 'medium' : 'low'
+    },
+    write: (level, previous) => ({
+      ...previous,
+      google: {
+        thinkingConfig: usesLevel
+          ? {
+              thinkingLevel:
+                level === 'off'
+                  ? getSupportedGoogleThinkingLevels(modelId).includes('minimal')
+                    ? 'minimal'
+                    : 'low'
+                  : level,
+              includeThoughts: level !== 'off',
+            }
+          : {
+              thinkingBudget: level === 'off' ? 0 : { low: 1024, medium: 8192, high: 24576 }[level],
+              includeThoughts: level !== 'off',
+            },
+      },
+    }),
+  })
+}
 export type GoogleThinkingMode = 'budget' | 'level' | 'none'
 
 export interface GoogleThinkingConfig {

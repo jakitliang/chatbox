@@ -2,13 +2,6 @@ import { describe, expect, it } from 'vitest'
 import { compatibleBooleanReasoningStrategy as strategy } from './reasoning-strategy'
 
 describe('compatible boolean reasoning strategy', () => {
-  it('distinguishes explicit unsupported metadata from unknown metadata', () => {
-    expect(strategy.getCapabilities({ modelId: 'qwen3-test', capabilities: [] })?.supported).toBe(false)
-    expect(strategy.getCapabilities({ modelId: 'qwen3-test' })?.supported).toBe(true)
-    expect(strategy.getCapabilities({ modelId: 'unknown' })).toBeUndefined()
-    expect(strategy.getCapabilities({ modelId: 'other', capabilities: ['reasoning'] })?.supported).toBe(true)
-  })
-
   it.each([undefined, false, true])('normalizes %s directly without an effort or budget', (enabled) => {
     const previous = {
       openai: { reasoningEffort: 'high' as const },

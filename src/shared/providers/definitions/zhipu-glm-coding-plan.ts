@@ -8,7 +8,6 @@ export const zhipuGLMCodingPlanProvider = defineProvider({
   id: ModelProviderEnum.ZhipuGLMCodingPlan,
   name: 'GLM Coding Plan',
   type: ModelProviderType.OpenAI,
-  reasoningStrategy: ZhipuGLMCodingPlan.reasoningStrategy,
   urls: {
     website: 'https://bigmodel.cn/coding-plan',
     apiKey: 'https://bigmodel.cn/coding-plan/personal/overview',

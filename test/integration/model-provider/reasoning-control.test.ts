@@ -33,11 +33,7 @@ import {
   type SessionSettings,
   type Settings,
 } from '../../../src/shared/types'
-import {
-  getReasoningControlCapabilities,
-  getReasoningProviderOptions,
-  type ReasoningControlLevel,
-} from '../../../src/shared/utils/reasoning-control'
+import type { ReasoningControlLevel } from '../../../src/shared/utils/reasoning-control'
 import { createMockModelDependencies } from '../mocks/model-dependencies'
 import { MockSentryAdapter } from '../mocks/sentry'
 
@@ -481,6 +477,7 @@ function createModelInfo(modelId: string, apiStyle?: ProviderModelInfo['apiStyle
   return {
     modelId,
     apiStyle,
+    capabilities: ['reasoning'],
   }
 }
 
@@ -560,16 +557,6 @@ describe.runIf(activeCases.length > 0)('Thinking control provider integration te
     '$name',
     async (testCase) => {
       const modelInfo = createModelInfo(testCase.modelId, testCase.apiStyle)
-      const capabilities = getReasoningControlCapabilities(testCase.provider, modelInfo)
-      expect(capabilities.supported).toBe(true)
-
-      const providerOptions = getReasoningProviderOptions(testCase.provider, modelInfo, testCase.level)
-      expect(providerOptions).toEqual(testCase.expectedProviderOptions)
-
-      if (testCase.skipProviderCallReason) {
-        return
-      }
-
       const platform = new TestPlatform()
       const dependencies = await createMockModelDependencies(platform, new MockSentryAdapter())
       const globalSettings = createGlobalSettings(testCase.provider, testCase.apiKey, modelInfo, testCase.apiHost)
@@ -585,6 +572,10 @@ describe.runIf(activeCases.length > 0)('Thinking control provider integration te
         stream: true,
       }
       const model = getModel(sessionSettings, globalSettings, newConfigs(), dependencies)
+      expect(model.getReasoningOptions?.().length).toBeGreaterThan(0)
+      const providerOptions = model.writeReasoningOptions?.(testCase.level)
+      expect(providerOptions).toEqual(testCase.expectedProviderOptions)
+      if (testCase.skipProviderCallReason) return
       const messages: ModelMessage[] = [
         { role: 'system', content: 'You are a concise test assistant.' },
         { role: 'user', content: testCase.prompt || 'Reply with exactly: OK' },

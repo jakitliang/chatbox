@@ -30,8 +30,4 @@ describe('isKimiFixedSamplingModel', () => {
       expect(isKimiFixedSamplingModel(modelId)).toBe(false)
     })
   }
-
-  it.each(['ollama', 'lm-studio'])('leaves sampling free for the %s local provider', (providerId) => {
-    expect(isKimiFixedSamplingModel('kimi-k2:1t', providerId)).toBe(false)
-  })
 })

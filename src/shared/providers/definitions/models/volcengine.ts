@@ -1,7 +1,9 @@
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import AbstractAISDKModel from '../../../models/abstract-ai-sdk'
 import { getOpenAICompatibleProviderOptionsKey } from '../../../models/openai-compatible'
+import { textReasoningReplay } from '../../../models/reasoning-replay'
 import type { CallChatCompletionOptions } from '../../../models/types'
+import { isDeepSeekReasoningModel } from '../../../models/utils/deepseek'
 import { createOpenAIChatCompletionSseFetch } from '../../../models/utils/openai-chat-sse-termination'
 import type { ProviderModelInfo } from '../../../types'
 import type { ModelDependencies } from '../../../types/adapters'
@@ -19,6 +21,10 @@ const Host = 'https://ark.cn-beijing.volces.com'
 const Path = '/api/v3/chat/completions'
 
 export default class VolcEngine extends AbstractAISDKModel {
+  protected getReasoningReplayPolicy() {
+    return isDeepSeekReasoningModel(this.modelId) ? textReasoningReplay : super.getReasoningReplayPolicy()
+  }
+
   public name = 'VolcEngine'
 
   constructor(

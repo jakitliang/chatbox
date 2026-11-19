@@ -1,14 +1,15 @@
-import type { GoogleProvider, GoogleLanguageModelOptions } from '@ai-sdk/google'
+import type { GoogleLanguageModelOptions, GoogleProvider } from '@ai-sdk/google'
 import type { LanguageModelV4 } from '@ai-sdk/provider'
 import { generateText } from 'ai'
 import AbstractAISDKModel, { type CallSettings } from '../../../models/abstract-ai-sdk'
 import { ApiError } from '../../../models/errors'
+import { signedReasoningReplay } from '../../../models/reasoning-replay'
 import type { CallChatCompletionOptions } from '../../../models/types'
 import type { ProviderModelInfo } from '../../../types'
 import type { ModelDependencies } from '../../../types/adapters'
-import { normalizeGoogleThinkingConfig } from '../../../utils/google-thinking'
 import { buildGeminiImageConfig } from '../gemini-types'
 import { isGeminiImageModel } from '../image-models'
+import { geminiReasoning, normalizeGoogleThinkingConfig } from './gemini-reasoning'
 
 export interface GeminiModelOptions {
   model: ProviderModelInfo
@@ -19,6 +20,14 @@ export interface GeminiModelOptions {
 }
 
 export abstract class GeminiModel<TOptions extends GeminiModelOptions> extends AbstractAISDKModel {
+  protected getReasoningStrategy() {
+    return geminiReasoning(this.modelId)
+  }
+
+  protected getReasoningReplayPolicy() {
+    return signedReasoningReplay('google', { portable: true, ensureGoogleFunctionCallSignatures: true })
+  }
+
   constructor(
     public options: TOptions,
     dependencies: ModelDependencies

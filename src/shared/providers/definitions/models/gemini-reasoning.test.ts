@@ -4,7 +4,7 @@ import {
   getGoogleThinkingMode,
   getSupportedGoogleThinkingLevels,
   normalizeGoogleThinkingConfig,
-} from './google-thinking'
+} from './gemini-reasoning'
 
 describe('google-thinking utils', () => {
   it('detects the correct thinking mode for Gemini model families', () => {

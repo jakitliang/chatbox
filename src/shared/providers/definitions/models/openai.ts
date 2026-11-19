@@ -2,14 +2,15 @@ import { createOpenAI } from '@ai-sdk/openai'
 import { extractReasoningMiddleware, wrapLanguageModel } from 'ai'
 import AbstractAISDKModel from '../../../models/abstract-ai-sdk'
 import { fetchRemoteModels } from '../../../models/openai-compatible'
+import type { ReasoningStrategy } from '../../../models/reasoning-strategy'
 import type { CallChatCompletionOptions, CallSettings } from '../../../models/types'
 import { createFetchWithProxy } from '../../../models/utils/fetch-proxy'
 import { createOpenAIChatCompletionSseFetch } from '../../../models/utils/openai-chat-sse-termination'
 import type { ProviderModelInfo } from '../../../types'
 import type { ModelDependencies } from '../../../types/adapters'
 import { normalizeOpenAIApiHostAndPath } from '../../../utils/llm_utils'
-import { normalizeOpenAIReasoningOptions } from '../../../utils/reasoning-control'
 import { getOpenAIImageGenerationOptions } from './openai-compatible-image'
+import { normalizeOpenAIReasoningOptions, openAIReasoning } from './openai-reasoning'
 
 interface Options {
   apiKey: string
@@ -29,9 +30,14 @@ interface Options {
   skipRemoteModelList?: boolean
   /** Skip host normalization (e.g. for Copilot API which doesn't use /v1 prefix) */
   skipHostNormalization?: boolean
+  reasoningPolicy?: ReasoningStrategy
 }
 
 export default class OpenAI extends AbstractAISDKModel {
+  protected getReasoningStrategy() {
+    return this.options.reasoningPolicy ?? openAIReasoning(this.modelId)
+  }
+
   public name = 'OpenAI'
   public options: Options
 

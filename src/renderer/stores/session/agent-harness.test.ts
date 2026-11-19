@@ -114,7 +114,9 @@ vi.mock('@/packages/user-exec-approval', () => ({
 }))
 
 import { convertToOpenAICompatibleChatMessages } from '@ai-sdk/openai-compatible/internal'
+import { newConfigs, settings as defaultSettings } from '@shared/defaults'
 import type { ModelInterface } from '@shared/models/types'
+import { getModel } from '@shared/providers'
 import { sandboxAttachmentRelPath } from '@shared/sandbox/attachment-path'
 import type { SandboxProvider } from '@shared/sandbox-provider'
 import {
@@ -176,6 +178,20 @@ function createModelDependencies(): ModelDependencies {
     },
     getRemoteConfig: vi.fn(),
   }
+}
+
+function createHistoryModel(provider: NonNullable<SessionSettings['provider']>, modelId: string): ModelInterface {
+  const model = getModel(
+    { provider, modelId },
+    { ...defaultSettings(), providers: { [provider]: { apiKey: 'fixture', models: [{ modelId }] } } },
+    newConfigs(),
+    createModelDependencies()
+  )
+  return createMockModel({
+    modelId,
+    apiStyle: model.apiStyle,
+    prepareReasoningHistory: model.prepareReasoningHistory?.bind(model),
+  })
 }
 
 function createSession(copilotId?: string): Session {
@@ -1012,7 +1028,7 @@ describe('prepareAgentGenerationHarness', () => {
       configs: { uuid: 'config-1' } as Config,
       messages,
       targetMsgIx: messages.length,
-      model: createMockModel({ modelId, apiStyle: 'openai' }),
+      model: createHistoryModel(provider, modelId),
       dependencies: createModelDependencies(),
       webBrowsing: false,
       agentModeValue: 'off',
@@ -1121,7 +1137,7 @@ describe('prepareAgentGenerationHarness', () => {
       configs: { uuid: 'config-1' } as Config,
       messages,
       targetMsgIx: messages.length,
-      model: createMockModel({ modelId: 'claude-sonnet-5', apiStyle: 'anthropic' }),
+      model: createHistoryModel(ModelProviderEnum.Claude, 'claude-sonnet-5'),
       dependencies: createModelDependencies(),
       webBrowsing: false,
       agentModeValue: 'off',
@@ -1182,7 +1198,7 @@ describe('prepareAgentGenerationHarness', () => {
       configs: { uuid: 'config-1' } as Config,
       messages,
       targetMsgIx: messages.length,
-      model: createMockModel({ modelId: 'claude-opus-5', apiStyle: 'anthropic' }),
+      model: createHistoryModel(ModelProviderEnum.Claude, 'claude-opus-5'),
       dependencies: createModelDependencies(),
       webBrowsing: false,
       agentModeValue: 'off',
@@ -1244,7 +1260,7 @@ describe('prepareAgentGenerationHarness', () => {
       configs: { uuid: 'config-1' } as Config,
       messages,
       targetMsgIx: messages.length,
-      model: createMockModel({ modelId: 'claude-haiku-4-5', apiStyle: 'anthropic' }),
+      model: createHistoryModel(ModelProviderEnum.Claude, 'claude-haiku-4-5'),
       dependencies: createModelDependencies(),
       webBrowsing: false,
       agentModeValue: 'off',
@@ -1304,7 +1320,7 @@ describe('prepareAgentGenerationHarness', () => {
       configs: { uuid: 'config-1' } as Config,
       messages,
       targetMsgIx: messages.length,
-      model: createMockModel({ modelId: 'claude-haiku-4-5', apiStyle: 'anthropic' }),
+      model: createHistoryModel(ModelProviderEnum.Claude, 'claude-haiku-4-5'),
       dependencies: createModelDependencies(),
       webBrowsing: false,
       agentModeValue: 'off',
@@ -1353,7 +1369,7 @@ describe('prepareAgentGenerationHarness', () => {
       configs: { uuid: 'config-1' } as Config,
       messages,
       targetMsgIx: messages.length,
-      model: createMockModel({ modelId: 'claude-haiku-4-5', apiStyle: 'anthropic' }),
+      model: createHistoryModel(ModelProviderEnum.Claude, 'claude-haiku-4-5'),
       dependencies: createModelDependencies(),
       webBrowsing: false,
       agentModeValue: 'off',
@@ -1407,7 +1423,7 @@ describe('prepareAgentGenerationHarness', () => {
       configs: { uuid: 'config-1' } as Config,
       messages,
       targetMsgIx: messages.length,
-      model: createMockModel({ modelId: 'claude-sonnet-5', apiStyle: 'anthropic' }),
+      model: createHistoryModel(ModelProviderEnum.Claude, 'claude-sonnet-5'),
       dependencies: createModelDependencies(),
       webBrowsing: false,
       agentModeValue: 'off',

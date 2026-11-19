@@ -9,6 +9,8 @@ import {
   type ToolUseScope,
 } from 'src/shared/types'
 import { z } from 'zod'
+import type { ReasoningControlLevel, ReasoningControlOption } from '../utils/reasoning-control'
+import type { ReasoningHistoryInput, ReasoningHistoryPreparation } from './reasoning-replay'
 
 export interface ModelInterface {
   name: string
@@ -20,6 +22,10 @@ export interface ModelInterface {
   readonly apiStyle?: ProviderModelInfo['apiStyle']
   /** Opaque provider/model/endpoint/auth binding for encrypted reasoning replay. */
   reasoningReplaySource?: string
+  prepareReasoningHistory?(input: ReasoningHistoryInput): ReasoningHistoryPreparation
+  getReasoningOptions?(): readonly ReasoningControlOption[]
+  readReasoningLevel?(options?: ProviderOptions): ReasoningControlLevel
+  writeReasoningOptions?(level: ReasoningControlLevel, previous?: ProviderOptions): ProviderOptions | undefined
   isSupportVision(): boolean
   isSupportToolUse(scope?: ToolUseScope): boolean
   isSupportSystemMessage(): boolean

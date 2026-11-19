@@ -1,6 +1,10 @@
 import { ApiError } from '../../../models/errors'
 import OpenAICompatible, { type OpenAICompatibleSettings } from '../../../models/openai-compatible'
-import { compatibleBooleanReasoningStrategy } from '../../../models/reasoning-strategy'
+import {
+  compatibleBooleanReasoningStrategy,
+  type ReasoningStrategy,
+  stripReasoningProviderOptions,
+} from '../../../models/reasoning-strategy'
 import type { CallChatCompletionOptions } from '../../../models/types'
 import type { ProviderModelInfo } from '../../../types'
 import type { ModelDependencies } from '../../../types/adapters'
@@ -29,14 +33,37 @@ export default class FastFlowLM extends OpenAICompatible {
     super({ ...options, apiHost, apiKey: '' }, dependencies)
   }
 
-  public getReasoningOptions(): ReasoningControlOption[] {
-    if (!this.isSupportReasoning()) return []
-    const options = compatibleBooleanReasoningStrategy.getOptions()
+  protected getReasoningStrategy(): ReasoningStrategy {
+    const base = compatibleBooleanReasoningStrategy
     const levels = this.options.model.reasoningEffortLevels
-    if (!levels?.length) return options
-    return options.flatMap((option) =>
-      option.label === 'on' ? levels.map((level) => ({ level, label: level })) : [option]
-    )
+    if (!levels?.length) return base
+    return {
+      ...base,
+      getOptions: () =>
+        base
+          .getOptions()
+          .flatMap((option): ReasoningControlOption[] =>
+            option.label === 'on' ? levels.map((level) => ({ level, label: level })) : [option]
+          ),
+      readLevel(options) {
+        const effort = options?.openaiCompatible?.reasoningEffort
+        if (levels.some((level) => level === effort)) return effort as (typeof levels)[number]
+        return options?.openaiCompatible?.enable_thinking === false ? 'off' : 'default'
+      },
+      writeOptions(level, previous) {
+        if (level === 'off') return base.writeOptions(level, previous)
+        const next = stripReasoningProviderOptions(previous)
+        return level !== 'default' && levels.includes(level)
+          ? { ...next, openaiCompatible: { reasoningEffort: level } }
+          : next
+      },
+      normalizeOptions(options) {
+        const effort = options?.openaiCompatible?.reasoningEffort
+        return effort === undefined
+          ? base.normalizeOptions(options)
+          : { ...stripReasoningProviderOptions(options), openaiCompatible: { reasoningEffort: effort } }
+      },
+    }
   }
 
   protected getCallSettings(options: CallChatCompletionOptions) {

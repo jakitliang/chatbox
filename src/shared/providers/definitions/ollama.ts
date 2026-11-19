@@ -7,7 +7,6 @@ export const ollamaProvider = defineProvider({
   id: ModelProviderEnum.Ollama,
   name: 'Ollama',
   type: ModelProviderType.OpenAI,
-  reasoningStrategy: Ollama.reasoningStrategy,
   modelListSource: 'provider-only',
   contextWindowDelegate: ollamaContextWindowDelegate,
   defaultSettings: {

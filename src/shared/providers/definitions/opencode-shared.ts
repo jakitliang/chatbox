@@ -2,6 +2,7 @@ import { createGoogle } from '@ai-sdk/google'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { extractReasoningMiddleware, wrapLanguageModel } from 'ai'
 import { fetchRemoteModels, getOpenAICompatibleProviderOptionsKey } from '../../models/openai-compatible'
+import { textReasoningReplay } from '../../models/reasoning-replay'
 import type { CallChatCompletionOptions, CallSettings, ModelInterface } from '../../models/types'
 import { isDeepSeekReasoningModel, normalizeDeepSeekReasoningEffort } from '../../models/utils/deepseek'
 import { createFetchWithProxy } from '../../models/utils/fetch-proxy'
@@ -11,6 +12,7 @@ import type { ModelDependencies } from '../../types/adapters'
 import type { CreateModelConfig } from '../types'
 import CustomClaude from './models/custom-claude'
 import CustomGemini from './models/custom-gemini'
+import { deepSeekReasoning } from './models/deepseek-reasoning'
 import OpenAI from './models/openai'
 import OpenAIResponses from './models/openai-responses'
 
@@ -107,6 +109,14 @@ export function defineOpenCodeModelClasses(
   stampModels: (models: ProviderModelInfo[]) => ProviderModelInfo[]
 ): OpenCodeModelClasses {
   class Chat extends OpenAI {
+    protected getReasoningReplayPolicy() {
+      return isDeepSeekReasoningModel(this.modelId) ? textReasoningReplay : super.getReasoningReplayPolicy()
+    }
+
+    protected getReasoningStrategy() {
+      return isDeepSeekReasoningModel(this.modelId) ? deepSeekReasoning(this.modelId) : super.getReasoningStrategy()
+    }
+
     public name = displayName
 
     protected getRequestHeaders(options?: CallChatCompletionOptions): Record<string, string> {

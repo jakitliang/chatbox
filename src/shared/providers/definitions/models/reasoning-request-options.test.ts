@@ -3,7 +3,6 @@ import type { LanguageModelV4CallOptions } from '@ai-sdk/provider'
 import type { CallChatCompletionOptions } from '@shared/models/types'
 import type { ProviderModelInfo } from '@shared/types'
 import type { ModelDependencies } from '@shared/types/adapters'
-import { getReasoningProviderOptions } from '@shared/utils/reasoning-control'
 import type { SentryScope } from '@shared/utils/sentry_adapter'
 import { describe, expect, it, vi } from 'vitest'
 import * as providerRegistry from '../../registry'
@@ -169,7 +168,7 @@ describe('reasoning request options', () => {
       createDependencies()
     )
     const settings = (custom as unknown as ResolveCallSettingsHarness).resolveCallSettings({
-      providerOptions: getReasoningProviderOptions(model.providerId, model, level),
+      providerOptions: custom.writeReasoningOptions(level),
     })
     await custom.exposeChatModel(fetch).doGenerate({
       prompt: [{ role: 'user', content: [{ type: 'text', text: 'Hello' }] }],
@@ -507,6 +506,29 @@ describe('reasoning request options', () => {
     })
   })
 
+  it.each(['o1-preview', 'o1-mini-2024-09-12'])(
+    'omits saved reasoning options at the OpenAI request edge for %s',
+    (modelId) => {
+      const openai = new OpenAI(
+        {
+          apiKey: 'test-key',
+          apiHost: 'https://api.openai.com/v1',
+          model: { modelId, capabilities: ['reasoning'] },
+          dalleStyle: 'vivid',
+          injectDefaultMetadata: false,
+          useProxy: false,
+        },
+        createDependencies()
+      )
+
+      const settings = (openai as unknown as ResolveCallSettingsHarness).resolveCallSettings({
+        providerOptions: { openai: { reasoningSummary: 'auto', forceReasoning: true } },
+      })
+
+      expect(settings.providerOptions).toBeUndefined()
+    }
+  )
+
   it('strips stale OpenAI reasoning effort for non-reasoning gpt-5-chat models', () => {
     // gpt-5-chat* are non-reasoning models; @ai-sdk/openai forwards reasoningEffort
     // as reasoning_effort unconditionally and upstream rejects it ("Unrecognized
@@ -594,7 +616,7 @@ describe('reasoning request options', () => {
       createDependencies()
     )
     const settings = (copilot as unknown as ResolveCallSettingsHarness).resolveCallSettings({
-      providerOptions: getReasoningProviderOptions(model.providerId, model, 'high'),
+      providerOptions: copilot.writeReasoningOptions('high'),
     })
     expect(settings.providerOptions).toEqual({ openai: { reasoningEffort: 'high' } })
   })
@@ -754,7 +776,6 @@ describe('reasoning request options', () => {
         model: {
           modelId: 'kimi-k2:1t',
           type: 'chat',
-          providerId: 'ollama',
         },
         temperature: 0.2,
         topP: 0.8,

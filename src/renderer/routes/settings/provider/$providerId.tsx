@@ -17,7 +17,6 @@ import { SystemProviders } from '@shared/defaults'
 import { type OAuthProviderInfo, toOAuthProviderId, toOAuthSettingsProviderId } from '@shared/oauth'
 import { getProviderDefinition } from '@shared/providers'
 import { refreshProviderModelCapabilities } from '@shared/providers/model-config'
-import { refreshOllamaModelCapabilities } from '@shared/providers/ollama-capabilities'
 import {
   ModelProviderEnum,
   ModelProviderType,
@@ -387,16 +386,14 @@ function ProviderSettings({ providerId }: { providerId: string }) {
       }
       const modelConfig = getModelSettingUtil(baseInfo.id, baseInfo.isCustom ? baseInfo.type : undefined)
       const modelList = await modelConfig.getMergeOptionGroups({
-        ...baseInfo?.defaultSettings,
+        ...baseInfo.defaultSettings,
         ...providerSettings,
       })
 
       if (modelList.length) {
         // Existing rows do not trigger onAddModel; persist refreshed capabilities here for every provider.
         setProviderSettings((current) => ({
-          models: (baseInfo.id === ModelProviderEnum.Ollama
-            ? refreshOllamaModelCapabilities
-            : refreshProviderModelCapabilities)(current?.models || baseInfo.defaultSettings?.models || [], modelList),
+          models: refreshProviderModelCapabilities(current?.models || baseInfo.defaultSettings?.models || [], modelList),
         }))
         setFetchedModels(modelList)
       } else {

@@ -24,19 +24,17 @@ const message = (id: string, text = 'batch content'): Message => ({
   contentParts: [{ type: 'text', text }],
 })
 
-it('does not use Ollama informational metadata for context resolution or compaction', () => {
+it('does not use the published Ollama maximum as its runtime budget', () => {
   const model: ProviderModelInfo & { provider: string } = {
     provider: 'ollama', modelId: 'display-only-test:local',
     contextWindow: 4096,
-    ollamaDisplayMetadata: { contextLength: 262144, configuredContextLength: 32768 },
+    maxContextWindow: 262144,
   }
-  const { ollamaDisplayMetadata: _display, ...withoutDisplay } = model
   expect(resolveModelContextWindow(model)).toBe(4096)
-  expect(getCompactionBudgetForModel({ model })).toEqual(getCompactionBudgetForModel({ model: withoutDisplay }))
+  expect(getCompactionBudgetForModel({ model })).not.toBeNull()
   delete model.contextWindow
-  delete withoutDisplay.contextWindow
-  expect(resolveModelContextWindow(model)).toEqual(resolveModelContextWindow(withoutDisplay))
-  expect(getCompactionBudgetForModel({ model })).toEqual(getCompactionBudgetForModel({ model: withoutDisplay }))
+  expect(resolveModelContextWindow(model)).toBeNull()
+  expect(getCompactionBudgetForModel({ model })).toBeNull()
 })
 
 function fixture(

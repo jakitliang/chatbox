@@ -11,23 +11,6 @@ function positiveInteger(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : undefined
 }
 
-function readDisplayMetadata(details: {
-  model_info?: Record<string, unknown>
-  parameters?: unknown
-}): NonNullable<ProviderModelInfo['ollamaDisplayMetadata']> {
-  const info = details.model_info
-  const architecture = info?.['general.architecture']
-  // Match the exact architecture key, not rope.scaling.original_context_length.
-  const contextLength =
-    typeof architecture === 'string' ? positiveInteger(info?.[`${architecture}.context_length`]) : undefined
-  const match = typeof details.parameters === 'string' ? /^\s*num_ctx\s+(\d+)\s*$/m.exec(details.parameters) : null
-  const configuredContextLength = match ? positiveInteger(Number(match[1])) : undefined
-  return {
-    ...(contextLength ? { contextLength } : {}),
-    ...(configuredContextLength ? { configuredContextLength } : {}),
-  }
-}
-
 function applyNativeCapabilities(model: ProviderModelInfo, capabilities: unknown) {
   if (!Array.isArray(capabilities)) return
 
@@ -96,8 +79,13 @@ export default class Ollama extends OpenAICompatible {
             if (!response.ok) throw new Error(`Ollama show request failed: ${response.status}`)
             const details = await response.json()
             applyNativeCapabilities(model, details.capabilities)
-            // Deliberately separate from contextWindow/maxOutput: list display only.
-            model.ollamaDisplayMetadata = readDisplayMetadata(details)
+
+            const info = details.model_info
+            const architecture = info?.['general.architecture']
+            // Match the exact architecture key, not rope.scaling.original_context_length.
+            const maximum =
+              typeof architecture === 'string' ? positiveInteger(info?.[`${architecture}.context_length`]) : undefined
+            if (maximum !== undefined) model.maxContextWindow = maximum
           } catch (error) {
             // A missing/unavailable model must not hide the rest of the catalog.
             console.error('Failed to fetch Ollama model capabilities', item.name, error)

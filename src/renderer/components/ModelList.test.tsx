@@ -21,7 +21,7 @@ function render(model: ProviderModelInfo, providerId?: string) {
   )
 }
 
-describe('Ollama informational model display', () => {
+describe('ModelList context window display', () => {
   it('resolves a catalog-only maximum using the enclosing provider identity', () => {
     setRuntimeRegistry({
       'model-list-fixture': {
@@ -45,16 +45,15 @@ describe('Ollama informational model display', () => {
   it('displays the explicit maximum rather than the smaller budget window', () => {
     expect(render({ modelId: 'private', type: 'chat', contextWindow: 8192, maxContextWindow: 65536 })).toContain('66K')
   })
-  it('renders persisted metadata without fetching or exposing a fake output limit', () => {
+  it('uses the same context window tooltip for Ollama models', () => {
     const model: ProviderModelInfo = {
       modelId: 'llama:local',
       type: 'chat',
-      ollamaDisplayMetadata: { contextLength: 131072, configuredContextLength: 32768 },
+      maxContextWindow: 131072,
     }
-    const html = render(JSON.parse(JSON.stringify(model)))
-    expect(html).toContain('131K')
-    expect(html).toContain('Ollama model_info): 131072 tokens')
-    expect(html).toContain('Ollama num_ctx: 32768')
+    const html = render(model, 'ollama')
+    expect(html).toContain('title="Context Window: 131K tokens"')
+    expect(html).not.toContain('Ollama')
     expect(html).not.toContain('Max Output')
   })
 
@@ -62,9 +61,5 @@ describe('Ollama informational model display', () => {
     const html = render({ modelId: 'cloud', type: 'chat', contextWindow: 1000000, maxOutput: 65536 })
     expect(html).toContain('1.0M')
     expect(html).toContain('66K')
-  })
-
-  it('does not invent missing capacities', () => {
-    expect(render({ modelId: 'local', type: 'chat', ollamaDisplayMetadata: {} })).not.toContain('Ollama model_info')
   })
 })

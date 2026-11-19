@@ -1,14 +1,6 @@
 import { getProviderDefinition } from '../../../shared/providers'
 import { refreshProviderModelCapabilities } from '../../../shared/providers/model-config'
-import { refreshOllamaModelCapabilities } from '../../../shared/providers/ollama-capabilities'
-import {
-  type ModelProvider,
-  ModelProviderEnum,
-  type ProviderBaseInfo,
-  type ProviderModelInfo,
-  type ProviderSettings,
-  type SessionType,
-} from '../../../shared/types'
+import type { ModelProvider, ProviderBaseInfo, ProviderModelInfo, ProviderSettings, SessionType } from '../../../shared/types'
 import {
   enrichModelsFromRegistry,
   getDiscoveredModels,
@@ -51,7 +43,7 @@ export default abstract class BaseConfig implements ModelSettingUtil {
 
     const localOptionGroups = providerSettings.models || []
     const [remoteModels, providerApiModels] = await Promise.all([
-      (this.provider === ModelProviderEnum.Ollama ? Promise.resolve([]) : this.listRemoteProviderModels()).catch(() => {
+      (definition?.modelListSource === 'provider-only' ? Promise.resolve([]) : this.listRemoteProviderModels()).catch(() => {
         return []
       }),
       this.listProviderModels(providerSettings).catch(() => {
@@ -80,10 +72,7 @@ export default abstract class BaseConfig implements ModelSettingUtil {
       this.provider,
       true
     )
-    const refreshedLocalModels =
-      this.provider === ModelProviderEnum.Ollama
-        ? refreshOllamaModelCapabilities(localOptionGroups, remoteOptionGroups)
-        : refreshProviderModelCapabilities(localOptionGroups, remoteOptionGroups)
+    const refreshedLocalModels = refreshProviderModelCapabilities(localOptionGroups, remoteOptionGroups)
     const mergedModels = this.mergeOptionGroups(refreshedLocalModels, remoteOptionGroups)
 
     // 使用 models.dev registry 丰富模型元数据（同步，无网络调用）

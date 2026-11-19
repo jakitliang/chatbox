@@ -31,3 +31,5 @@ Legacy compaction helpers remain compatibility wrappers around the same capacity
 Existing `contextWindow` data remains readable. `maxContextWindow` is an optional additional field, so no bulk migration is needed. Registry enrichment fills a missing legacy window and records the model maximum separately rather than overwriting a saved effective window. Explicit model refresh can update the published maximum while preserving the configured window. FastFlowLM's newly discovered theoretical capacity is stored as `maxContextWindow`.
 
 No capability checkboxes, reasoning protocol behavior or compression thresholds are changed by these interfaces.
+
+On explicit model fetch, Ollama maps the published `/api/show` capacity to `maxContextWindow`. The model list uses the same context-window display as other providers.

@@ -1,5 +1,5 @@
 import { getModel } from '@shared/providers'
-import { refreshOllamaModelCapabilities } from '@shared/providers/ollama-capabilities'
+import { refreshProviderModelCapabilities } from '@shared/providers/model-config'
 import { type Config, ModelProviderEnum, type ProviderModelInfo, type Settings } from '@shared/types'
 import type { ModelDependencies } from '@shared/types/adapters'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -26,7 +26,7 @@ describe('Ollama settings capability refresh', () => {
     const existing: ProviderModelInfo[] = [
       { modelId: 'gpt-oss:20b', nickname: 'Local GPT', contextWindow: 8192, capabilities: [] },
       { modelId: 'qwen3:plain', capabilities: ['tool_use', 'vision'] },
-      { modelId: 'failed-show', capabilities: ['vision'], ollamaDisplayMetadata: { contextLength: 8192 } },
+      { modelId: 'failed-show', capabilities: ['vision'], maxContextWindow: 8192 },
       { modelId: 'offline-model', nickname: 'Keep me' },
     ]
     const apiRequest = vi.fn<ModelDependencies['request']['apiRequest']>().mockImplementation((options) => {
@@ -51,16 +51,12 @@ describe('Ollama settings capability refresh', () => {
     }
     vi.mocked(createModelDependencies).mockResolvedValue(deps)
     const util = new RegistrySettingUtil(ModelProviderEnum.Ollama)
-    const options = await util.getMergeOptionGroups({
-      apiHost: 'http://localhost:11434',
-      models: existing,
-      useProxy: true,
-    })
+    const options = await util.getMergeOptionGroups({ apiHost: 'http://localhost:11434', models: existing, useProxy: true })
 
     expect(remote.getModelManifest).not.toHaveBeenCalled()
     expect(options.map((model) => model.modelId)).toEqual([...existing.map((model) => model.modelId), 'new-alias'])
     expect(options[0]).toMatchObject({ ...existing[0], capabilities: ['tool_use', 'reasoning'] })
-    expect(options[0].ollamaDisplayMetadata).toEqual({ contextLength: 131072, configuredContextLength: 32768 })
+    expect(options[0].maxContextWindow).toBe(131072)
     expect(options[0].contextWindow).toBe(8192)
     expect(options[0].maxOutput).toBeUndefined()
     expect(options[1].capabilities).toEqual([])
@@ -70,7 +66,7 @@ describe('Ollama settings capability refresh', () => {
 
     // Fetch dialog already has existing entries checked. Its persistence path
     // must refresh them without adding unselected newly discovered models.
-    const persisted = refreshOllamaModelCapabilities(existing, options)
+    const persisted = refreshProviderModelCapabilities(existing, options)
     expect(persisted).toEqual(options.slice(0, 4))
     expect(existing[0].capabilities).toEqual([])
     const selectorModel = persisted[0]
@@ -84,23 +80,12 @@ describe('Ollama settings capability refresh', () => {
     expect(runtime.isSupportToolUse('agent')).toBe(true)
   })
 
-  it('refreshes display data without capabilities, preserves limits and clears successfully missing metadata', () => {
-    const saved: ProviderModelInfo[] = [{
-      modelId: 'local', contextWindow: 4096, maxOutput: 512,
-      ollamaDisplayMetadata: { contextLength: 8192, configuredContextLength: 2048 },
-    }]
-    const refreshed = refreshOllamaModelCapabilities(saved, [{ modelId: 'local', ollamaDisplayMetadata: { contextLength: 131072 } }])
-    expect(refreshed[0]).toEqual({ ...saved[0], ollamaDisplayMetadata: { contextLength: 131072 } })
-    expect(refreshOllamaModelCapabilities(saved, [{ modelId: 'local' }])[0]).toBe(saved[0])
-    expect(refreshOllamaModelCapabilities(saved, [{ modelId: 'local', ollamaDisplayMetadata: {} }])[0]).toEqual({ ...saved[0], ollamaDisplayMetadata: {} })
-  })
-
   it('preserves saved capabilities if discovery is unavailable', () => {
     const models: ProviderModelInfo[] = [{ modelId: 'gpt-oss:20b', capabilities: ['tool_use'] }]
-    expect(refreshOllamaModelCapabilities(models, [])).toEqual(models)
-    expect(refreshOllamaModelCapabilities(models, [{ modelId: 'gpt-oss:20b' }])[0]).toBe(models[0])
+    expect(refreshProviderModelCapabilities(models, [])).toEqual(models)
+    expect(refreshProviderModelCapabilities(models, [{ modelId: 'gpt-oss:20b' }])[0]).toBe(models[0])
     expect(
-      refreshOllamaModelCapabilities(models, [{ modelId: 'gpt-oss:20b', capabilities: [] }])[0].capabilities
+      refreshProviderModelCapabilities(models, [{ modelId: 'gpt-oss:20b', capabilities: [] }])[0].capabilities
     ).toEqual([])
   })
 })

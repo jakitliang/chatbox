@@ -132,9 +132,7 @@ export function ModelList({
                     model.capabilities?.length ||
                     model.contextWindow ||
                     maximum ||
-                    model.maxOutput ||
-                    model.ollamaDisplayMetadata?.contextLength ||
-                    model.ollamaDisplayMetadata?.configuredContextLength) && (
+                    model.maxOutput) && (
                     <Flex gap="xs" align="center" wrap="wrap">
                       {model.type && model.type !== 'chat' && <Badge color="blue">{t(capitalize(model.type))}</Badge>}
 
@@ -160,25 +158,7 @@ export function ModelList({
                         </Tooltip>
                       )}
 
-                      {model.ollamaDisplayMetadata?.contextLength ||
-                      model.ollamaDisplayMetadata?.configuredContextLength ? (
-                        <Tooltip
-                          label={[
-                            `${t('Context Window')} (Ollama model_info): ${model.ollamaDisplayMetadata.contextLength ?? '—'} ${t('tokens')}`,
-                            `Ollama num_ctx: ${model.ollamaDisplayMetadata.configuredContextLength ?? '—'}`,
-                          ].join(' · ')}
-                        >
-                          <Flex gap={2} align="center" c="dimmed" style={{ flexShrink: 0, opacity: 0.8 }}>
-                            <ScalableIcon icon={IconDatabase} size={12} />
-                            <Text size="xs" style={{ whiteSpace: 'nowrap' }}>
-                              {formatTokenCount(
-                                model.ollamaDisplayMetadata.contextLength ??
-                                  model.ollamaDisplayMetadata.configuredContextLength
-                              )}
-                            </Text>
-                          </Flex>
-                        </Tooltip>
-                      ) : maximum ? (
+                      {maximum ? (
                         <Tooltip label={`${t('Context Window')}: ${formatTokenCount(maximum)} ${t('tokens')}`}>
                           <Flex gap={2} align="center" c="dimmed" style={{ flexShrink: 0, opacity: 0.8 }}>
                             <ScalableIcon icon={IconDatabase} size={12} />

@@ -24,12 +24,18 @@ Object.defineProperty(window, 'matchMedia', {
 })
 
 vi.mock('@/hooks/useMessageInput', async () => {
-  const { useCallback, useState } = await import('react')
+  const { useCallback, useRef, useState } = await import('react')
   return {
     useMessageInput: () => {
-      const [messageInput, setMessageInput] = useState('')
-      const clearDraft = useCallback(() => setMessageInput(''), [])
-      return { messageInput, setMessageInput, clearDraft }
+      const [messageInput, setValue] = useState('')
+      const draft = useRef('')
+      const setMessageInput = useCallback((value: string | ((previous: string) => string)) => {
+        draft.current = typeof value === 'string' ? value : value(draft.current)
+        setValue(draft.current)
+      }, [])
+      const clearDraft = useCallback(() => setMessageInput(''), [setMessageInput])
+      const getMessageInput = useCallback(() => draft.current, [])
+      return { messageInput, setMessageInput, getMessageInput, clearDraft }
     },
   }
 })
@@ -61,6 +67,25 @@ function textareaValue(input: HTMLElement): string {
 }
 
 describe('MessageInputField', () => {
+  test.each([false, true])('keeps edits and IME text when dictation settles (cancel=%s)', async (cancel) => {
+    const ref = createRef<MessageInputFieldRef>()
+    const abort = new AbortController()
+    renderField({ dictationPreview: { confirmed: 'spoken', interim: 'unconfirmed' } }, ref)
+    const input = screen.getByRole('textbox')
+    expect(screen.getByText('spoken')).toBeTruthy()
+    expect(screen.getByText('unconfirmed')).toBeTruthy()
+    fireEvent.input(input, { target: { value: 'manually typed' } })
+    fireEvent.compositionStart(input)
+    fireEvent.input(input, { target: { value: 'manually typed ni' }, isComposing: true })
+    const done = ref.current?.commitDictation('spoken', abort.signal)
+    expect(ref.current?.getCommittedValue()).toBe('manually typed')
+    if (cancel) abort.abort()
+    fireEvent.compositionEnd(input, { target: { value: 'manually typed 你' } })
+    await act(async () => done)
+    expect(ref.current?.getCommittedValue()).toBe(cancel ? 'manually typed 你' : 'manually typed 你 spoken')
+    expect(textareaValue(input)).not.toContain('unconfirmed')
+  })
+
   test('exposes a localized accessible name independently from its placeholder', () => {
     renderField({ isReadOnly: true })
 

@@ -1,5 +1,6 @@
-import { Badge, Button, Flex, Select, Stack, Text } from '@mantine/core'
+import { Button, Flex, Select, Stack, Text } from '@mantine/core'
 import { useNavigate } from '@tanstack/react-router'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { builtInPlaybackId, listSpeechModels, speechProviderId } from '@/packages/local-speech/playback-backends'
 import {
@@ -9,15 +10,40 @@ import {
   setSpeechEngine,
   useLocalSpeech,
 } from '@/packages/local-speech/store'
-import { usePlayback } from '@/packages/local-speech/usePlayback'
 import {
   refreshDictationAvailability,
   useDictationAvailability,
 } from '@/packages/local-speech/useDictationAvailability'
-import * as toastActions from '@/stores/toastActions'
+import { usePlayback } from '@/packages/local-speech/usePlayback'
 import { useSettingsStore } from '@/stores/settingsStore'
+import * as toastActions from '@/stores/toastActions'
+import { DefaultModelSettingsCard } from './DefaultModelSettingsCard'
 
 const preview = 'settings:speech-preview'
+const builtInDictationId = 'built-in'
+const fieldClass = 'w-full min-w-0 sm:w-[320px]'
+
+function SpeechSettingsCard({
+  title,
+  description,
+  children,
+}: {
+  title: string
+  description: string
+  children: ReactNode
+}) {
+  return (
+    <DefaultModelSettingsCard role="group" aria-label={title}>
+      <Stack gap={2}>
+        <Text fw={600}>{title}</Text>
+        <Text size="xs" c="chatbox-tertiary">
+          {description}
+        </Text>
+      </Stack>
+      {children}
+    </DefaultModelSettingsCard>
+  )
+}
 
 export default function LocalSpeechSettings() {
   const { t, i18n } = useTranslation()
@@ -54,81 +80,92 @@ export default function LocalSpeechSettings() {
   }[state.status]
 
   return (
-    <Stack gap="xs" pt="sm" className="border-0 border-t border-solid border-chatbox-border-primary">
-      <Text size="sm" fw={500}>
-        {t('Speech recognition & speech synthesis')}
-      </Text>
-      <Flex gap="xs" align="center">
-        <Text size="sm">{t('Speech recognition')}</Text>
-        <Badge variant="light">{t('Built-in')}</Badge>
-        <Button size="compact-sm" variant="subtle" onClick={() => void refreshDictationAvailability()}>
+    <Stack gap="sm">
+      <Text fw={600}>{t('Speech recognition & speech synthesis')}</Text>
+      <SpeechSettingsCard title={t('Speech recognition')} description={t('Convert speech to text.')}>
+        <Select
+          aria-label={t('Speech recognition') || 'Speech recognition'}
+          className={fieldClass}
+          data={[{ value: builtInDictationId, label: t('Built-in') }]}
+          value={builtInDictationId}
+          allowDeselect={false}
+        />
+        <Button
+          size="compact-sm"
+          variant="subtle"
+          className="self-start"
+          onClick={() => void refreshDictationAvailability()}
+        >
           {t('Refresh')}
         </Button>
-      </Flex>
-      <Text size="xs" c="chatbox-tertiary" role="status">
-        {dictationStatus}
-      </Text>
-      <Text size="sm">{t('Speech synthesis')}</Text>
-      <Select
-        label={t('Speech engine')}
-        data={[
-          { value: builtInPlaybackId, label: t('Built-in') },
-          ...models.map(({ id, label }) => ({ value: id, label })),
-        ]}
-        value={missingModel ? null : state.engineId}
-        allowDeselect={false}
-        onChange={(id) => {
-          if (id === null || id === state.engineId) return
-          try {
-            setSpeechEngine(id)
-          } catch (error) {
-            console.warn('Could not save the speech engine preference', error)
-            toastActions.add(t('Could not save the speech engine preference.'))
-          }
-        }}
-      />
-      <Button
-        onClick={() => void navigate({ to: '/settings/provider' })}
-        size="compact-sm"
-        variant="subtle"
-        className="self-start"
-      >
-        {t('Model Provider')}
-      </Button>
-      {statusText && (
         <Text size="xs" c="chatbox-tertiary" role="status">
-          {statusText}
+          {dictationStatus}
         </Text>
-      )}
-      {state.voices.length > 0 && (
+      </SpeechSettingsCard>
+      <SpeechSettingsCard title={t('Speech synthesis')} description={t('Read replies aloud.')}>
         <Select
-          label={builtIn ? t('Local voice') : t('Speech voice')}
-          data={state.voices.map(({ id, name, lang }) => ({ value: id, label: lang ? `${name} (${lang})` : name }))}
-          value={voice?.id ?? null}
+          label={t('Speech engine')}
+          className={fieldClass}
+          data={[
+            { value: builtInPlaybackId, label: t('Built-in') },
+            ...models.map(({ id, label }) => ({ value: id, label })),
+          ]}
+          value={missingModel ? null : state.engineId}
           allowDeselect={false}
           onChange={(id) => {
-            if (id === null) return
+            if (id === null || id === state.engineId) return
             try {
-              setLocalSpeechVoice(id)
+              setSpeechEngine(id)
             } catch (error) {
-              console.warn('Could not save the local speech preference', error)
-              toastActions.add(t('Could not save the local voice preference.'))
+              console.warn('Could not save the speech engine preference', error)
+              toastActions.add(t('Could not save the speech engine preference.'))
             }
           }}
         />
-      )}
-      <Flex gap="xs">
-        {builtIn && state.status !== 'unsupported' && (
-          <Button size="compact-sm" variant="subtle" onClick={() => void refreshLocalSpeech()}>
-            {t('Refresh')}
-          </Button>
+        <Button
+          onClick={() => void navigate({ to: '/settings/provider' })}
+          size="compact-sm"
+          variant="subtle"
+          className="self-start"
+        >
+          {t('Model Provider')}
+        </Button>
+        {statusText && (
+          <Text size="xs" c="chatbox-tertiary" role="status">
+            {statusText}
+          </Text>
         )}
-        {(available || playing) && (
-          <Button size="compact-sm" variant="light" onClick={toggle}>
-            {playing ? t('Stop reading') : t('Preview voice')}
-          </Button>
+        {state.voices.length > 0 && (
+          <Select
+            label={builtIn ? t('Local voice') : t('Speech voice')}
+            className={fieldClass}
+            data={state.voices.map(({ id, name, lang }) => ({ value: id, label: lang ? `${name} (${lang})` : name }))}
+            value={voice?.id ?? null}
+            allowDeselect={false}
+            onChange={(id) => {
+              if (id === null) return
+              try {
+                setLocalSpeechVoice(id)
+              } catch (error) {
+                console.warn('Could not save the local speech preference', error)
+                toastActions.add(t('Could not save the local voice preference.'))
+              }
+            }}
+          />
         )}
-      </Flex>
+        <Flex gap="xs" wrap="wrap">
+          {builtIn && state.status !== 'unsupported' && (
+            <Button size="compact-sm" variant="subtle" onClick={() => void refreshLocalSpeech()}>
+              {t('Refresh')}
+            </Button>
+          )}
+          {(available || playing) && (
+            <Button size="compact-sm" variant="light" onClick={toggle}>
+              {playing ? t('Stop reading') : t('Preview voice')}
+            </Button>
+          )}
+        </Flex>
+      </SpeechSettingsCard>
     </Stack>
   )
 }

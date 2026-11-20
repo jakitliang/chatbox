@@ -35,16 +35,42 @@ describe('device-only dictation', () => {
   })
 
   it('starts on-device and returns final text, not interim results, on stop', async () => {
-    const session = createBrowserDictation(Recognition).start('zh-CN')
+    const onUpdate = vi.fn()
+    const session = createBrowserDictation(Recognition).start('zh-CN', onUpdate)
     const recognition = Recognition.instance
-    expect(recognition).toMatchObject({ processLocally: true, lang: 'zh-CN', interimResults: false })
+    expect(recognition).toMatchObject({ processLocally: true, lang: 'zh-CN', interimResults: true })
     expect(recognition.start).toHaveBeenCalledOnce()
     recognition.deliver('interim', false)
+    expect(onUpdate).toHaveBeenLastCalledWith({ confirmed: '', interim: 'interim' })
     session.stop()
     expect(recognition.stop).toHaveBeenCalledOnce()
     recognition.deliver('final', true)
+    expect(onUpdate).toHaveBeenLastCalledWith({ confirmed: 'final', interim: '' })
     recognition.dispatchEvent(new Event('end'))
+    recognition.deliver('too late', true)
+    expect(onUpdate).toHaveBeenCalledTimes(2)
     await expect(session.result).resolves.toBe('final')
+  })
+
+  it('projects cumulative results and clears revised or withdrawn hypotheses without duplicating text', async () => {
+    const onUpdate = vi.fn()
+    const session = createBrowserDictation(Recognition).start('en-US', onUpdate)
+    function deliver(...parts: [string, boolean][]) {
+      const results = parts.map(([transcript, isFinal]) => ({ isFinal, 0: { transcript } }))
+      Recognition.instance.dispatchEvent(Object.assign(new Event('result'), { results }))
+    }
+    deliver(['one', true], ['tree', false])
+    deliver(['one', true], ['two', false])
+    deliver(['one', true])
+    deliver(['one', true], ['two', true])
+    Recognition.instance.dispatchEvent(new Event('end'))
+    expect(onUpdate.mock.calls.map(([update]) => update)).toEqual([
+      { confirmed: 'one', interim: 'tree' },
+      { confirmed: 'one', interim: 'two' },
+      { confirmed: 'one', interim: '' },
+      { confirmed: 'one two', interim: '' },
+    ])
+    await expect(session.result).resolves.toBe('one two')
   })
 
   it('discards all results on cancellation', async () => {

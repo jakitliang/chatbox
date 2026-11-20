@@ -1,5 +1,7 @@
 // Disable no-unused-vars, broken for spread args
 /* eslint no-unused-vars: off */
+
+import { SPEECH_CHANNELS } from '@shared/local-speech'
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { ElectronIPC } from 'src/shared/electron-types'
 
@@ -54,6 +56,7 @@ const electronHandler: ElectronIPC = {
     return () => ipcRenderer.off('window:focused', callback)
   },
   onTaskCloseRequest: createListener('task-operation:close-requested'),
+  onDictationUpdate: createListener<[string, string, string]>(SPEECH_CHANNELS.dictationUpdate),
   onWindowShow: (callback: () => void) => {
     ipcRenderer.on('window-show', callback)
     return () => ipcRenderer.off('window-show', callback)

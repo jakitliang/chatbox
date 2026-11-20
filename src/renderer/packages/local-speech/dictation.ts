@@ -30,70 +30,87 @@ export function createBrowserDictation(Recognition: RecognitionConstructor | und
       const status = await Recognition.available({ langs: [language], processLocally: true })
       return status === 'available' ? { kind: 'ready', language } : { kind: 'language-unavailable' }
     },
-    start(language: string): DictationSession {
+    start(language, onUpdate): DictationSession {
       if (!Recognition?.available) throw new Error('Local recognition is unavailable')
       const recognition = new Recognition()
       if (!('processLocally' in recognition)) throw new Error('Local recognition is unavailable')
       recognition.processLocally = true
       recognition.lang = language
-      recognition.interimResults = false
+      recognition.interimResults = true
       recognition.continuous = true
       let transcript = ''
       let stopping = false
       let cancelled = false
+      let finished = false
+      let timer: ReturnType<typeof setTimeout> | undefined
+      let deadline: ReturnType<typeof setTimeout> | undefined
       let resolveResult: (value: string) => void = () => {}
       let rejectResult: (reason: unknown) => void = () => {}
       const result = new Promise<string>((resolve, reject) => {
-        resolveResult = resolve
-        rejectResult = reject
+        const settle = () => {
+          if (finished) return false
+          finished = true
+          clearTimeout(timer)
+          clearTimeout(deadline)
+          return true
+        }
+        resolveResult = (text) => {
+          if (settle()) resolve(text)
+        }
+        rejectResult = (error) => {
+          if (settle()) reject(error)
+        }
         recognition.addEventListener('result', (event) => {
+          if (cancelled || finished) return
           const results = (
             event as Event & {
               results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }>
             }
           ).results
-          transcript = Array.from(results)
-            .filter((entry) => entry.isFinal)
-            .map((entry) => entry[0].transcript.trim())
-            .filter(Boolean)
-            .join(' ')
+          const parts = Array.from(results)
+          const join = (final: boolean) =>
+            parts
+              .filter((entry) => entry.isFinal === final)
+              .map((entry) => entry[0].transcript.trim())
+              .filter(Boolean)
+              .join(' ')
+          transcript = join(true)
+          onUpdate?.({ confirmed: transcript, interim: stopping ? '' : join(false) })
         })
-        recognition.addEventListener('end', () => resolve(cancelled ? '' : transcript), { once: true })
+        recognition.addEventListener('end', () => resolveResult(cancelled ? '' : transcript), { once: true })
         recognition.addEventListener(
           'error',
           (event) => {
             const { error } = event as Event & { error: string }
             if (cancelled || error === 'no-speech' || (stopping && error === 'aborted')) {
-              resolve(cancelled ? '' : transcript)
+              resolveResult(cancelled ? '' : transcript)
             } else {
-              reject(
+              rejectResult(
                 new DictationError(error === 'not-allowed' || error === 'service-not-allowed' ? 'permission' : 'failed')
               )
             }
           },
           { once: true }
         )
-        recognition.start()
-      })
-      const timer = setTimeout(stop, 120_000)
-      const deadline = setTimeout(() => {
         try {
-          recognition.abort()
+          recognition.start()
         } catch (error) {
           rejectResult(error)
-        } finally {
-          resolveResult(cancelled ? '' : transcript)
         }
-      }, 130_000)
-      const finish = () => {
-        clearTimeout(timer)
-        clearTimeout(deadline)
-      }
-      void result.then(finish, finish)
+      })
+      if (!finished) timer = setTimeout(stop, 120_000)
       function stop() {
-        if (stopping || cancelled) return
+        if (stopping || cancelled || finished) return
         stopping = true
         try {
+          deadline = setTimeout(() => {
+            try {
+              recognition.abort()
+              resolveResult(transcript)
+            } catch (error) {
+              rejectResult(error)
+            }
+          }, 3_000)
           recognition.stop()
         } catch (error) {
           rejectResult(error)
@@ -103,7 +120,7 @@ export function createBrowserDictation(Recognition: RecognitionConstructor | und
         result,
         stop,
         cancel() {
-          if (cancelled) return
+          if (cancelled || finished) return
           cancelled = true
           try {
             recognition.abort()

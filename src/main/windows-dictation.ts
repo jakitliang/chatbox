@@ -20,11 +20,12 @@ try {
   $recognizer.SetInputToDefaultAudioDevice()
   $recognizer.LoadGrammar((New-Object System.Speech.Recognition.DictationGrammar))
   $null = Register-ObjectEvent $recognizer SpeechRecognized -SourceIdentifier recognized
+  $null = Register-ObjectEvent $recognizer SpeechHypothesized -SourceIdentifier hypothesized
+  $null = Register-ObjectEvent $recognizer SpeechRecognitionRejected -SourceIdentifier rejected
   $null = Register-ObjectEvent $recognizer RecognizeCompleted -SourceIdentifier completed
   $stop = [Console]::OpenStandardInput().ReadAsync((New-Object byte[] 1), 0, 1)
   $recognizer.RecognizeAsync([System.Speech.Recognition.RecognizeMode]::Multiple)
   $ending = $false
-  $parts = New-Object 'System.Collections.Generic.List[string]'
   while ($true) {
     if (!$ending -and $stop.IsCompleted) {
       $ending = $true
@@ -37,23 +38,37 @@ try {
       if ($event.SourceEventArgs.Error) { throw $event.SourceEventArgs.Error }
       break
     }
-    if ($event.SourceIdentifier -eq 'recognized') {
-      $parts.Add($event.SourceEventArgs.Result.Text)
+    if ($event.SourceIdentifier -eq 'recognized' -or ($event.SourceIdentifier -eq 'hypothesized' -and !$ending)) {
+      [Console]::WriteLine((ConvertTo-Json -Compress -InputObject @{
+        final = ($event.SourceIdentifier -eq 'recognized')
+        text = $event.SourceEventArgs.Result.Text
+      }))
+    } elseif ($event.SourceIdentifier -eq 'rejected' -and !$ending) {
+      [Console]::WriteLine('{"final":false,"text":""}')
     }
   }
-  [Console]::Write(($parts -join ' '))
 } finally {
+  # Detach PowerShell's event handlers while the recognizer is still alive.
+  Get-EventSubscriber | Unregister-Event
   $recognizer.Dispose()
 }
 `
 
-function collect(child: ReturnType<typeof spawnWindowsSpeech>, deadline: number) {
+function collect(child: ReturnType<typeof spawnWindowsSpeech>, deadline: number, onData?: (data: string) => void) {
   return new Promise<string>((resolve, reject) => {
     let output = ''
+    let length = 0
     const timeout = setTimeout(() => child.kill(), deadline)
     child.stdout.setEncoding('utf8').on('data', (data: string) => {
-      output += data
-      if (output.length > 256_000) child.kill()
+      length += data.length
+      if (length > 256_000) {
+        reject(new Error('Windows dictation output limit exceeded'))
+        child.kill()
+      } else if (onData) {
+        onData(data)
+      } else {
+        output += data
+      }
     })
     child.stderr.resume()
     child.stdin.on('error', () => child.kill())
@@ -77,16 +92,54 @@ export async function listWindowsDictationLanguages(): Promise<string[]> {
   return languages
 }
 
-export function startWindowsDictation(language: string, signal: AbortSignal) {
+export function startWindowsDictation(
+  language: string,
+  signal: AbortSignal,
+  onUpdate: (confirmed: string, interim: string) => void
+) {
   const child = spawnWindowsSpeech(dictationScript, signal, { CHATBOX_DICTATION_LANGUAGE: language })
-  const result = collect(child, 130_000)
+  let confirmed = ''
+  let pending = ''
+  let streamError: unknown
+  let stopDeadline: ReturnType<typeof setTimeout> | undefined
+  const result = collect(child, 130_000, (data) => {
+    if (signal.aborted || streamError) return
+    const lines = (pending + data).split('\n')
+    pending = lines.pop() ?? ''
+    try {
+      for (const line of lines) {
+        const event: { final: unknown; text: unknown } = JSON.parse(line)
+        if (typeof event.final !== 'boolean' || typeof event.text !== 'string') {
+          throw new Error('Invalid Windows dictation update')
+        }
+        const text = event.text.trim()
+        if (event.final && text) confirmed = confirmed ? `${confirmed} ${text}` : text
+        onUpdate(confirmed, event.final ? '' : text)
+      }
+    } catch (error) {
+      streamError = error
+      child.kill()
+    }
+  }).then(
+    () => {
+      if (pending.trim()) throw new Error('Incomplete Windows dictation update')
+      return confirmed
+    },
+    (error: unknown) => {
+      throw streamError ?? error
+    }
+  )
   const stop = () => {
-    if (!child.stdin.writableEnded && !child.stdin.destroyed) child.stdin.end()
+    if (!child.stdin.writableEnded && !child.stdin.destroyed) {
+      child.stdin.end()
+      stopDeadline = setTimeout(() => child.kill(), 3_000)
+    }
   }
   const timer = setTimeout(stop, 120_000)
-  void result.then(
-    () => clearTimeout(timer),
-    () => clearTimeout(timer)
-  )
+  const cleanup = () => {
+    clearTimeout(timer)
+    clearTimeout(stopDeadline)
+  }
+  void result.then(cleanup, cleanup)
   return { result, stop }
 }

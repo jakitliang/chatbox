@@ -41,15 +41,18 @@ function createBuiltInSpeech(): { playback?: SpeechPlaybackBackend; dictation: D
           languages[0]
         return selected ? { kind: 'ready', language: selected } : { kind: 'language-unavailable' }
       },
-      start(language) {
+      start(language, onUpdate) {
         const id = globalThis.crypto.randomUUID()
+        const unsubscribe = ipc.onDictationUpdate((source, confirmed, interim) => {
+          if (source === id) onUpdate?.({ confirmed, interim })
+        })
         const end = (cancel: boolean) => {
           void ipc
             .invoke(SPEECH_CHANNELS.dictationEnd, id, cancel)
             .catch((error) => console.warn('Could not end Windows dictation', error))
         }
         return {
-          result: ipc.invoke(SPEECH_CHANNELS.dictationStart, id, language),
+          result: ipc.invoke(SPEECH_CHANNELS.dictationStart, id, language).finally(unsubscribe),
           stop: () => end(false),
           cancel: () => end(true),
         }

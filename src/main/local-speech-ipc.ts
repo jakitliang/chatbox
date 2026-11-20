@@ -70,11 +70,16 @@ export function registerLocalSpeechHandlers(getAppContents: () => WebContents | 
     }
     dictation?.abort.abort()
     const abort = new AbortController()
-    const { result, stop } = startWindowsDictation(lang, abort.signal)
+    const sender = event.sender
+    const frame = event.senderFrame
+    const { result, stop } = startWindowsDictation(lang, abort.signal, (confirmed, interim) => {
+      if (!abort.signal.aborted && frame && !frame.isDestroyed() && !frame.detached) {
+        frame.send(SPEECH_CHANNELS.dictationUpdate, id, confirmed, interim)
+      }
+    })
     const current = { id, abort, stop }
     dictation = current
     const cancel = () => abort.abort()
-    const sender = event.sender
     sender.once('destroyed', cancel)
     sender.once('render-process-gone', cancel)
     sender.once('did-navigate', cancel)

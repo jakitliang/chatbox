@@ -35,6 +35,7 @@ import { ScalableIcon } from '@/components/common/ScalableIcon'
 import { ImageModelSelect } from '@/components/ImageModelSelect'
 import { LocalImageBackendInput, type LocalImageBackendInputHandle } from '@/components/LocalImageBackendInput'
 import ModelSelectorV2 from '@/components/ModelSelectorV2'
+import { DefaultModelSettingsCard } from '@/components/settings/DefaultModelSettingsCard'
 import LocalSpeechSettings from '@/components/settings/LocalSpeechSettings'
 import type { ImageModelGroup } from '@/hooks/useImageModelGroups'
 import { useImageModelGroups } from '@/hooks/useImageModelGroups'
@@ -491,11 +492,7 @@ function SlotCard(props: {
   const modelText = displayTextForSlot(props, autoText, t)
 
   return (
-    <Stack
-      gap="sm"
-      p="md"
-      className="border border-solid border-chatbox-border-primary rounded-xl bg-chatbox-background-primary"
-    >
+    <DefaultModelSettingsCard>
       <Flex align="center" gap="sm" wrap="wrap">
         <Flex
           align="center"
@@ -585,7 +582,7 @@ function SlotCard(props: {
           )}
         </Stack>
       )}
-    </Stack>
+    </DefaultModelSettingsCard>
   )
 }
 

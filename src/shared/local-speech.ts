@@ -10,5 +10,6 @@ export const SPEECH_CHANNELS = {
   stop: 'local-speech:stop',
   dictationLanguages: 'local-speech:dictation-languages',
   dictationStart: 'local-speech:dictation-start',
+  dictationUpdate: 'local-speech:dictation-update',
   dictationEnd: 'local-speech:dictation-end',
 } as const

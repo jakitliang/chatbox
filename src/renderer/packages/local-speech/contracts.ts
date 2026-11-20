@@ -10,6 +10,11 @@ export type DictationAvailability =
   | { kind: 'ready'; language: string }
   | { kind: 'unsupported' | 'language-unavailable' }
 
+export interface DictationUpdate {
+  confirmed: string
+  interim: string
+}
+
 export interface DictationSession {
   result: Promise<string>
   stop(): void
@@ -18,5 +23,5 @@ export interface DictationSession {
 
 export interface DictationBackend {
   availability(language: string): Promise<DictationAvailability>
-  start(language: string): DictationSession
+  start(language: string, onUpdate?: (update: DictationUpdate) => void): DictationSession
 }

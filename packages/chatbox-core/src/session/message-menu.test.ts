@@ -15,13 +15,12 @@ const all: MessageMenuAvailability = {
   generateMoreImages: true,
   selectText: true,
   quote: true,
-  report: true,
   viewJson: false,
   delete: true,
 }
 
 describe('getMessageMenuEntries', () => {
-  it('orders assistant entries with report and delete after a divider', () => {
+  it('orders assistant entries with delete after a divider', () => {
     expect(getMessageMenuEntries({ role: 'assistant' }, all)).toEqual([
       'retry',
       'edit',
@@ -29,12 +28,11 @@ describe('getMessageMenuEntries', () => {
       'select-text',
       'quote',
       'divider',
-      'report',
       'delete',
     ])
   })
 
-  it('offers reply again below for user messages and never report', () => {
+  it('offers reply again below for user messages', () => {
     expect(getMessageMenuEntries({ role: 'user' }, all)).toEqual([
       'reply-below',
       'edit',
@@ -64,7 +62,6 @@ describe('getMessageMenuEntries', () => {
       'select-text',
       'quote',
       'divider',
-      'report',
       'delete',
     ])
     expect(getMessageMenuEntries({ role: 'assistant', errorCode: 429 }, all)).not.toContain('edit')
@@ -76,7 +73,6 @@ describe('getMessageMenuEntries', () => {
       'generate-more-images',
       'quote',
       'divider',
-      'report',
       'delete',
     ])
     expect(getMessageMenuEntries({ role: 'user' }, all, { pictureSession: true })).toContain('edit')
@@ -90,7 +86,7 @@ describe('getMessageMenuEntries', () => {
     expect(
       getMessageMenuEntries(
         { role: 'assistant' },
-        { ...all, retry: false, edit: false, report: false, delete: false, viewJson: false }
+        { ...all, retry: false, edit: false, delete: false, viewJson: false }
       )
     ).toEqual(['copy', 'select-text', 'quote'])
     expect(getMessageMenuEntries({ role: 'user' }, { ...all, viewJson: true })).toEqual([

@@ -39,7 +39,6 @@ import {
   IconDotsVertical,
   IconInfoCircle,
   IconLoader2,
-  IconMessageReport,
   IconPencil,
   IconPhotoPlus,
   IconPlayerStopFilled,
@@ -457,10 +456,6 @@ const _Message: FC<Props> = (props) => {
       }
     }
 
-  const onReport = useCallback(async () => {
-    await NiceModal.show('report-content', { contentId: getMessageText(msg) || msg.id })
-  }, [msg])
-
   const onDelMsg = useCallback(async () => {
     const shouldConfirmCacheBreak =
       confirmCacheBreakingDelete || (await shouldConfirmPromptCacheDelete?.(msg.id, 'message')) === true
@@ -732,7 +727,6 @@ const _Message: FC<Props> = (props) => {
           generateMoreImages: true,
           selectText: true,
           quote: true,
-          report: true,
           viewJson: process.env.NODE_ENV === 'development',
           delete: canDeleteMessage,
         },
@@ -798,8 +792,6 @@ const _Message: FC<Props> = (props) => {
             return { text: t('Quote'), icon: IconQuoteFilled, testId: TestId.message.actionQuote, onClick: quoteMsg }
           case 'divider':
             return { divider: true }
-          case 'report':
-            return { text: t('report'), icon: IconMessageReport, onClick: onReport }
           case 'view-json':
             return { text: t('View Message JSON'), icon: IconCode, onClick: onViewMessageJson }
           case 'delete':
@@ -816,15 +808,6 @@ const _Message: FC<Props> = (props) => {
         onClick: quoteMsg,
       },
       { divider: true },
-      ...(msg.role === 'assistant'
-        ? [
-            {
-              text: t('report'),
-              icon: IconMessageReport,
-              onClick: onReport,
-            },
-          ]
-        : []),
       ...(process.env.NODE_ENV === 'development'
         ? [
             {
@@ -838,8 +821,6 @@ const _Message: FC<Props> = (props) => {
     ]
   }, [
     t,
-    msg.role,
-    onReport,
     quoteMsg,
     onViewMessageJson,
     isSmallScreen,
@@ -1163,7 +1144,7 @@ const _Message: FC<Props> = (props) => {
           ))}
         </Box>
         {props.sessionType === 'picture' && contentParts.filter((p) => p.type === 'image').length > 0 && (
-          <PictureGallery pictures={contentParts.filter((p) => p.type === 'image')} onReport={onReport} />
+          <PictureGallery pictures={contentParts.filter((p) => p.type === 'image')} />
         )}
         {isBubbleLayout && errorTipsElement}
         <Modal

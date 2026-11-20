@@ -85,7 +85,6 @@ describe('inert business compatibility', () => {
     ['pricing', () => remote.getPremiumPrice()],
     ['usage', () => remote.recordCopilotUsage({ id: 'private', action: 'use_copilot' })],
     ['share', () => remote.recordCopilotShare({} as CopilotDetail)],
-    ['report', () => remote.reportContent({ id: 'private', type: 'message', details: 'private content' })],
     ['submit image', () => remote.submitImageGeneration({} as remote.ImageCompletionRequest, 'secret')],
     ['poll image', () => remote.pollImageTask('private', 'secret')],
     ['wait image', () => remote.pollTaskUntilComplete('private', 'secret')],

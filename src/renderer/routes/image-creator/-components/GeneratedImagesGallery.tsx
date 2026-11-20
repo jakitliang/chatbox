@@ -1,5 +1,5 @@
 import { ActionIcon, Button, Flex, Image, Paper, Skeleton, Text } from '@mantine/core'
-import { IconDownload, IconMaximize, IconMessageReport, IconPhoto, IconPhotoOff } from '@tabler/icons-react'
+import { IconDownload, IconMaximize, IconPhoto, IconPhotoOff } from '@tabler/icons-react'
 import { useQuery } from '@tanstack/react-query'
 import type PhotoSwipe from 'photoswipe'
 import type { UIElementData } from 'photoswipe'
@@ -17,14 +17,12 @@ export interface GeneratedImagesGalleryProps {
   images: string[] // CDN URLs or local storage keys
   thumbnails?: string[]
   onUseAsReference: (urlOrKey: string) => void
-  onReport?: () => void
 }
 
 export const GeneratedImagesGallery = memo(function GeneratedImagesGallery({
   images,
   thumbnails,
   onUseAsReference,
-  onReport,
 }: GeneratedImagesGalleryProps) {
   const imageKeys = images
   const imageKeysRef = useRef(imageKeys)
@@ -77,7 +75,6 @@ export const GeneratedImagesGallery = memo(function GeneratedImagesGallery({
             keyOrUrl={keyOrUrl}
             thumbnailUrl={thumbnails?.[index]}
             onUseAsReference={() => onUseAsReference(keyOrUrl)}
-            onReport={onReport}
             isSmallScreen={isSmallScreen}
           />
         ))}
@@ -90,7 +87,6 @@ interface GeneratedImageGalleryItemProps {
   keyOrUrl: string
   thumbnailUrl?: string
   onUseAsReference: () => void
-  onReport?: () => void
   isSmallScreen: boolean
 }
 
@@ -127,7 +123,6 @@ function GeneratedImageGalleryItem({
   keyOrUrl,
   thumbnailUrl,
   onUseAsReference,
-  onReport,
   isSmallScreen,
 }: GeneratedImageGalleryItemProps) {
   const { t } = useTranslation()
@@ -242,14 +237,6 @@ function GeneratedImageGalleryItem({
     [onUseAsReference]
   )
 
-  const handleReport = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation()
-      onReport?.()
-    },
-    [onReport]
-  )
-
   if (loadFailed && !imageData) {
     return (
       <Paper
@@ -310,21 +297,6 @@ function GeneratedImageGalleryItem({
               }}
             />
 
-            {onReport && (
-              <Tooltip label={t('report')} withArrow disabled={isSmallScreen}>
-                <ActionIcon
-                  aria-label={t('report')}
-                  color="red"
-                  variant="white"
-                  size="sm"
-                  radius="lg"
-                  onClick={handleReport}
-                  className="absolute right-3 bottom-3 z-[1] !bg-white/70 !text-red-500 shadow-sm opacity-65 transition-opacity hover:opacity-100 pointer-events-auto"
-                >
-                  <IconMessageReport size={14} />
-                </ActionIcon>
-              </Tooltip>
-            )}
 
             {/* Hover Overlay (always visible on mobile) */}
             <div

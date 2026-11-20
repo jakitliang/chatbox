@@ -473,8 +473,6 @@ function Root() {
       {/* IndexedDB schema 与当前版本不匹配时的升级/刷新引导 */}
       <DbSchemaGuardDialog />
       <BackupTaskOverlay />
-      {/* 手机端举报内容 */}
-      {/* <ReportContentDialog /> */}
       {/* 搜索 */}
       <SearchDialog />
       {/* 没有配置模型时的欢迎弹窗 */}

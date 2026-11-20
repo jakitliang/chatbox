@@ -200,9 +200,6 @@ export async function recordCopilotUsage(_params: { id: string; action: 'create_
 export async function recordCopilotShare(_detail: CopilotDetail): Promise<void> {
   unavailable('Copilot sharing')
 }
-export async function reportContent(_params: { id: string; type: string; details: string }): Promise<void> {
-  unavailable('Content reporting')
-}
 export async function getPremiumPrice(): Promise<{ price: number; discount: number; discountLabel: string }> {
   return unavailable('Premium pricing')
 }

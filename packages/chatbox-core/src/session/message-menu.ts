@@ -2,7 +2,7 @@ import type { Message } from '../types'
 
 /**
  * Entries of the long-press message menu shared by small-screen Web/Capacitor and the React Native app. Every
- * platform renders the same entries in the same order; `divider` separates the secondary group (report, delete).
+ * platform renders the same entries in the same order; `divider` separates secondary actions.
  */
 export type MessageMenuEntryId =
   | 'stop'
@@ -14,7 +14,6 @@ export type MessageMenuEntryId =
   | 'select-text'
   | 'quote'
   | 'divider'
-  | 'report'
   | 'view-json'
   | 'delete'
 
@@ -29,7 +28,6 @@ export interface MessageMenuAvailability {
   generateMoreImages: boolean
   selectText: boolean
   quote: boolean
-  report: boolean
   viewJson: boolean
   delete: boolean
 }
@@ -49,10 +47,10 @@ function hasError(message: MessageMenuMessage): boolean {
  * Ordered entries for one message. Availability flags carry the caller's mode/permission rules (work mode, read-only
  * handlers, dev-only JSON); this function applies the per-state rules every platform shares:
  * - generating: stop / copy / select text / quote ── delete
- * - assistant: reply again / edit / copy / select text / quote ── report / delete
+ * - assistant: reply again / edit / copy / select text / quote ── delete
  * - user: reply again below / edit / copy / select text / quote ── delete
- * - failed assistant reply: reply again / copy / select text / quote ── report / delete
- * - image session assistant reply: reply again / generate more images below / quote ── report / delete
+ * - failed assistant reply: reply again / copy / select text / quote ── delete
+ * - image session assistant reply: reply again / generate more images below / quote ── delete
  */
 export function getMessageMenuEntries(
   message: MessageMenuMessage,
@@ -87,7 +85,6 @@ export function getMessageMenuEntries(
   }
   if (availability.quote) primary.push('quote')
 
-  if (isAssistant && !generating && availability.report) secondary.push('report')
   if (availability.viewJson) secondary.push('view-json')
   if (availability.delete) secondary.push('delete')
 

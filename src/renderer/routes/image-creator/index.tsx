@@ -1,4 +1,3 @@
-import NiceModal from '@ebay/nice-modal-react'
 import {
   ActionIcon,
   Box,
@@ -401,20 +400,6 @@ export function ImageCreatorPage() {
     [selectedProvider, selectedModel, isCurrentlyGenerating, t]
   )
 
-  const handleReportGeneratedImage = useCallback(async (record: ImageGeneration) => {
-    const contentId = [
-      `Image generation prompt: ${record.prompt}`,
-      `Record ID: ${record.id}`,
-      record.taskId ? `Task ID: ${record.taskId}` : undefined,
-      record.generatedImages.length > 0 ? `Images: ${record.generatedImages.join(', ')}` : undefined,
-      `Model: ${record.model.provider}/${record.model.modelId}`,
-    ]
-      .filter((item): item is string => Boolean(item))
-      .join('\n')
-
-    await NiceModal.show('report-content', { contentId })
-  }, [])
-
   const handleHistoryClick = useCallback(
     async (record: ImageGeneration) => {
       imageGenerationStore.getState().setCurrentRecordId(record.id)
@@ -522,7 +507,6 @@ export function ImageCreatorPage() {
                         images={currentRecord.generatedImages}
                         thumbnails={currentRecord.generatedImageThumbnails}
                         onUseAsReference={(urlOrKey) => handleUseAsReference(urlOrKey, currentRecord.id)}
-                        onReport={() => void handleReportGeneratedImage(currentRecord)}
                       />
                     </Flex>
                   )}

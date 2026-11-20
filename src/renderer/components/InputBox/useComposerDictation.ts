@@ -72,9 +72,11 @@ export function useComposerDictation(
       return
     }
     if (disabled || availability.kind !== 'ready') return
+    const backend = getBuiltInSpeech().dictation
+    if (!backend) return
     let current: Capture | undefined
     try {
-      const session = getBuiltInSpeech().dictation.start(availability.language, (update) => {
+      const session = backend.start(availability.language, (update) => {
         if (!current || capture.current !== current || current.phase === 'committing') return
         const stopping = current.phase === 'stopping'
         setView({ ...update, interim: stopping ? '' : update.interim, stopping })

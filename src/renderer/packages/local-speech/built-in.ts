@@ -1,19 +1,25 @@
 import { SPEECH_CHANNELS } from '@shared/local-speech'
 import { getOS } from '@/packages/navigator'
+import platform from '@/platform'
 import { createBrowserSpeech } from './browser'
 import type { DictationBackend, SpeechPlaybackBackend } from './contracts'
 import { browserDictation } from './dictation'
 
-function createBuiltInSpeech(): { playback?: SpeechPlaybackBackend; dictation: DictationBackend } {
+export function isDictationEnabled() {
+  return platform.type !== 'web'
+}
+
+function createBuiltInSpeech(): { playback?: SpeechPlaybackBackend; dictation?: DictationBackend } {
   const target = typeof window === 'undefined' ? undefined : window
   const ipc = target?.electronAPI
+  const dictationEnabled = isDictationEnabled()
   if (!ipc || getOS() !== 'Windows') {
     return {
       playback:
         target?.speechSynthesis && typeof SpeechSynthesisUtterance === 'function'
           ? createBrowserSpeech(target, SpeechSynthesisUtterance)
           : undefined,
-      dictation: browserDictation(target),
+      dictation: dictationEnabled ? browserDictation(target) : undefined,
     }
   }
   return {
@@ -31,33 +37,35 @@ function createBuiltInSpeech(): { playback?: SpeechPlaybackBackend; dictation: D
         }
       },
     },
-    dictation: {
-      async availability(language) {
-        const languages: string[] = await ipc.invoke(SPEECH_CHANNELS.dictationLanguages)
-        const lang = language.toLowerCase()
-        const selected =
-          languages.find((entry) => entry.toLowerCase() === lang) ??
-          languages.find((entry) => entry.toLowerCase().split('-')[0] === lang.split('-')[0]) ??
-          languages[0]
-        return selected ? { kind: 'ready', language: selected } : { kind: 'language-unavailable' }
-      },
-      start(language, onUpdate) {
-        const id = globalThis.crypto.randomUUID()
-        const unsubscribe = ipc.onDictationUpdate((source, confirmed, interim) => {
-          if (source === id) onUpdate?.({ confirmed, interim })
-        })
-        const end = (cancel: boolean) => {
-          void ipc
-            .invoke(SPEECH_CHANNELS.dictationEnd, id, cancel)
-            .catch((error) => console.warn('Could not end Windows dictation', error))
+    dictation: dictationEnabled
+      ? {
+          async availability(language) {
+            const languages: string[] = await ipc.invoke(SPEECH_CHANNELS.dictationLanguages)
+            const lang = language.toLowerCase()
+            const selected =
+              languages.find((entry) => entry.toLowerCase() === lang) ??
+              languages.find((entry) => entry.toLowerCase().split('-')[0] === lang.split('-')[0]) ??
+              languages[0]
+            return selected ? { kind: 'ready', language: selected } : { kind: 'language-unavailable' }
+          },
+          start(language, onUpdate) {
+            const id = globalThis.crypto.randomUUID()
+            const unsubscribe = ipc.onDictationUpdate((source, confirmed, interim) => {
+              if (source === id) onUpdate?.({ confirmed, interim })
+            })
+            const end = (cancel: boolean) => {
+              void ipc
+                .invoke(SPEECH_CHANNELS.dictationEnd, id, cancel)
+                .catch((error) => console.warn('Could not end Windows dictation', error))
+            }
+            return {
+              result: ipc.invoke(SPEECH_CHANNELS.dictationStart, id, language).finally(unsubscribe),
+              stop: () => end(false),
+              cancel: () => end(true),
+            }
+          },
         }
-        return {
-          result: ipc.invoke(SPEECH_CHANNELS.dictationStart, id, language).finally(unsubscribe),
-          stop: () => end(false),
-          cancel: () => end(true),
-        }
-      },
-    },
+      : undefined,
   }
 }
 

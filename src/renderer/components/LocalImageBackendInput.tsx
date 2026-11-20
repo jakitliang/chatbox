@@ -1,4 +1,4 @@
-import { Loader, TextInput } from '@mantine/core'
+import { Loader, TextInput, type TextInputProps } from '@mantine/core'
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getLocalImageModels, normalizeLocalImageBackendUrl } from '@/packages/local-image-backend'
@@ -18,10 +18,11 @@ export const LocalImageBackendInput = forwardRef<
   LocalImageBackendInputHandle,
   {
     disabled?: boolean
+    inputContainer?: TextInputProps['inputContainer']
     onValidated?: () => void
     onValidationRequested?: () => void
   }
->(function LocalImageBackendInput({ disabled = false, onValidated, onValidationRequested }, ref) {
+>(function LocalImageBackendInput({ disabled = false, inputContainer, onValidated, onValidationRequested }, ref) {
   const { t } = useTranslation()
   const picture = useLastUsedModelStore((state) => state.picture)
   const savedUrl = useLocalImageBackendStore((state) => state.url)
@@ -84,6 +85,7 @@ export const LocalImageBackendInput = forwardRef<
       label={t('Local SDAPI address', { defaultValue: '本地 SDAPI 绘图地址' })}
       value={value}
       disabled={disabled}
+      inputContainer={inputContainer}
       error={error || undefined}
       rightSection={checking ? <Loader size="xs" /> : undefined}
       onChange={(event) => {

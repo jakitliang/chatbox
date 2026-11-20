@@ -1,4 +1,12 @@
-import { Stack, type StackProps } from '@mantine/core'
+import { type ButtonProps, Stack, type StackProps } from '@mantine/core'
+
+export const defaultModelCardFieldClass = 'w-full min-w-0 sm:w-[320px]'
+export const defaultModelCardAction = { variant: 'default', size: 'sm' } satisfies ButtonProps
+export const defaultModelCardLink = {
+  variant: 'subtle',
+  size: 'compact-xs',
+  className: 'self-start',
+} satisfies ButtonProps
 
 export function DefaultModelSettingsCard({
   children,

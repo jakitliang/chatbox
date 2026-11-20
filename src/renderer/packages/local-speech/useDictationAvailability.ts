@@ -1,9 +1,9 @@
 import { useEffect, useSyncExternalStore } from 'react'
-import { getBuiltInSpeech } from './built-in'
+import { getBuiltInSpeech, isDictationEnabled } from './built-in'
 import type { DictationAvailability } from './contracts'
 
 type Status = DictationAvailability | { kind: 'checking' | 'error' }
-let status: Status = { kind: 'checking' }
+let status: Status = { kind: isDictationEnabled() ? 'checking' : 'unsupported' }
 let request: Promise<void> | undefined
 const listeners = new Set<() => void>()
 
@@ -16,9 +16,11 @@ function subscribe(listener: () => void) {
 
 export function refreshDictationAvailability() {
   if (request) return request
+  const backend = getBuiltInSpeech().dictation
+  if (!backend) return Promise.resolve()
   const language = typeof navigator === 'undefined' ? 'en-US' : navigator.language || 'en-US'
-  request = getBuiltInSpeech()
-    .dictation.availability(language)
+  request = backend
+    .availability(language)
     .then(
       (next) => {
         status = next

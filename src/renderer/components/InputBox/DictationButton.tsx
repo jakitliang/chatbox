@@ -3,6 +3,7 @@ import { IconMicrophone, IconPlayerStopFilled, IconX } from '@tabler/icons-react
 import { useTranslation } from 'react-i18next'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
 import { AppTooltip } from '@/components/ui/tooltip'
+import { isDictationEnabled } from '@/packages/local-speech/built-in'
 import type { useComposerDictation } from './useComposerDictation'
 
 export default function DictationButton({
@@ -13,6 +14,7 @@ export default function DictationButton({
   dictation: ReturnType<typeof useComposerDictation>
 }) {
   const { t } = useTranslation()
+  if (!isDictationEnabled()) return null
   const { availability, view, toggle, cancel } = dictation
   const state = view ? (view.stopping ? 'stopping' : 'listening') : 'idle'
 

@@ -35,7 +35,12 @@ import { ScalableIcon } from '@/components/common/ScalableIcon'
 import { ImageModelSelect } from '@/components/ImageModelSelect'
 import { LocalImageBackendInput, type LocalImageBackendInputHandle } from '@/components/LocalImageBackendInput'
 import ModelSelectorV2 from '@/components/ModelSelectorV2'
-import { DefaultModelSettingsCard } from '@/components/settings/DefaultModelSettingsCard'
+import {
+  DefaultModelSettingsCard,
+  defaultModelCardAction,
+  defaultModelCardFieldClass,
+  defaultModelCardLink,
+} from '@/components/settings/DefaultModelSettingsCard'
 import LocalSpeechSettings from '@/components/settings/LocalSpeechSettings'
 import type { ImageModelGroup } from '@/hooks/useImageModelGroups'
 import { useImageModelGroups } from '@/hooks/useImageModelGroups'
@@ -87,7 +92,7 @@ export async function runDefaultModelSlotTest(
 ): Promise<SlotUiState> {
   if (slotId === 'image' && validateDraft) {
     const started = performance.now()
-    return { ...await validateDraft(), latencyMs: Math.round(performance.now() - started) }
+    return { ...(await validateDraft()), latencyMs: Math.round(performance.now() - started) }
   }
   if (slotId !== 'image' || deps.picture?.provider !== LOCAL_IMAGE_BACKEND_ID) {
     return runSlotTest(slotId, deps)
@@ -184,9 +189,10 @@ export function RouteComponent() {
   const setSettings = settings.setSettings
   const savedPicture = useLastUsedModelStore((state) => state.picture)
   const localDefaultModelId = useLocalImageBackendStore((state) => state.defaultModelId)
-  const picture = savedPicture?.provider === LOCAL_IMAGE_BACKEND_ID || (!savedPicture && localDefaultModelId)
-    ? { provider: LOCAL_IMAGE_BACKEND_ID, modelId: localDefaultModelId }
-    : savedPicture
+  const picture =
+    savedPicture?.provider === LOCAL_IMAGE_BACKEND_ID || (!savedPicture && localDefaultModelId)
+      ? { provider: LOCAL_IMAGE_BACKEND_ID, modelId: localDefaultModelId }
+      : savedPicture
   const setPictureModel = useLastUsedModelStore((state) => state.setPictureModel)
   const imageModelGroups = useImageModelGroups()
   const { group: localImageGroup } = useLocalImageModels()
@@ -246,14 +252,17 @@ export function RouteComponent() {
     [pingChat, providers, picture]
   )
 
-  const checkSlot = useCallback((slotId: ModelRigSlotId, signal: AbortSignal) => {
-    const input = imageBackendInput.current
-    const validateDraft = slotId === 'image' && input &&
-      (picture?.provider === LOCAL_IMAGE_BACKEND_ID || !picture || input.hasDraft())
-      ? () => input.validate(signal)
-      : undefined
-    return runDefaultModelSlotTest(slotId, makeDeps(), signal, validateDraft)
-  }, [makeDeps, picture])
+  const checkSlot = useCallback(
+    (slotId: ModelRigSlotId, signal: AbortSignal) => {
+      const input = imageBackendInput.current
+      const validateDraft =
+        slotId === 'image' && input && (picture?.provider === LOCAL_IMAGE_BACKEND_ID || !picture || input.hasDraft())
+          ? () => input.validate(signal)
+          : undefined
+      return runDefaultModelSlotTest(slotId, makeDeps(), signal, validateDraft)
+    },
+    [makeDeps, picture]
+  )
 
   const testSlot = useCallback(
     async (slotId: ModelRigSlotId) => {
@@ -490,6 +499,21 @@ function SlotCard(props: {
   const selection = modelSlot ? getSlotModelRef(modelSlot, settings) : undefined
   const autoText = autoTextForSlot(props.slotId, t)
   const modelText = displayTextForSlot(props, autoText, t)
+  const isImage = props.slotId === 'image'
+  const connection = isConnectionCheck(props.slotId, selection, props.parser, props.picture?.provider)
+  const checkControls = (
+    <>
+      <Button
+        {...defaultModelCardAction}
+        onClick={props.onTest}
+        disabled={props.running || props.result.status === 'testing'}
+        aria-label={t('Check {{name}}', { name: props.name })}
+      >
+        {t(connection ? 'Test connection' : 'Check configuration')}
+      </Button>
+      <SlotStatus result={props.result} connection={connection} />
+    </>
+  )
 
   return (
     <DefaultModelSettingsCard>
@@ -521,27 +545,33 @@ function SlotCard(props: {
         </Stack>
       </Flex>
 
+      {isImage && (
+        <LocalImageBackendInput
+          ref={props.imageBackendInput}
+          disabled={props.running}
+          onValidationRequested={props.onTest}
+          onValidated={() => {
+            const { defaultModelId } = useLocalImageBackendStore.getState()
+            props.onSelectImage(LOCAL_IMAGE_BACKEND_ID, defaultModelId)
+          }}
+          inputContainer={(input) => (
+            <Flex align="center" gap="xs" wrap="wrap">
+              <div className={defaultModelCardFieldClass}>{input}</div>
+              <Flex align="center" gap="xs" wrap="wrap">
+                {checkControls}
+              </Flex>
+            </Flex>
+          )}
+        />
+      )}
       <Flex align="center" gap="xs" wrap="wrap">
-        <fieldset className={`${props.slotId === 'image' ? 'w-full' : 'w-full sm:w-[320px]'} min-w-0 m-0 p-0 border-0 [&>button]:w-full`} disabled={props.running}>
+        <fieldset
+          className={`${isImage ? 'w-full min-w-0' : defaultModelCardFieldClass} m-0 p-0 border-0 [&>button]:w-full`}
+          disabled={props.running}
+        >
           <SlotSelector {...props} selection={selection} autoText={autoText} modelText={modelText} />
         </fieldset>
-        <Button
-          variant="default"
-          size="sm"
-          onClick={props.onTest}
-          disabled={props.running || props.result.status === 'testing'}
-          aria-label={t('Check {{name}}', { name: props.name })}
-        >
-          {t(
-            isConnectionCheck(props.slotId, selection, props.parser, props.picture?.provider)
-              ? 'Test connection'
-              : 'Check configuration'
-          )}
-        </Button>
-        <SlotStatus
-          result={props.result}
-          connection={isConnectionCheck(props.slotId, selection, props.parser, props.picture?.provider)}
-        />
+        {!isImage && checkControls}
       </Flex>
 
       {props.slotId !== 'image' && (
@@ -550,18 +580,12 @@ function SlotCard(props: {
         </Text>
       )}
       {props.slotId === 'parser' && (
-        <Button
-          component={Link}
-          to="/settings/document-parser"
-          variant="subtle"
-          size="compact-xs"
-          className="self-start"
-        >
+        <Button component={Link} to="/settings/document-parser" {...defaultModelCardLink}>
           {t('Document parser settings')}
         </Button>
       )}
       {props.slotId === 'search' && (
-        <Button component={Link} to="/settings/web-search" variant="subtle" size="compact-xs" className="self-start">
+        <Button component={Link} to="/settings/web-search" {...defaultModelCardLink}>
           {t('Web search settings')}
         </Button>
       )}
@@ -651,50 +675,39 @@ function SlotSelector(
   if (props.slotId === 'image') {
     const groups = props.customImageGroups
     return (
-      <Stack gap="xs">
-        <LocalImageBackendInput
-          ref={props.imageBackendInput}
-          disabled={props.running}
-          onValidationRequested={props.onTest}
-          onValidated={() => {
-            const { defaultModelId } = useLocalImageBackendStore.getState()
-            props.onSelectImage(LOCAL_IMAGE_BACKEND_ID, defaultModelId)
+      <Flex gap="sm" align="flex-end" wrap="wrap">
+        <Stack gap={4} className={`${defaultModelCardFieldClass} [&>button]:w-full`}>
+          <Text size="sm" fw={500}>
+            {t('Model')}
+          </Text>
+          <ImageModelSelect
+            position="bottom-start"
+            width={320}
+            withinPortal
+            modelGroups={groups}
+            onSelect={props.onSelectImage}
+          >
+            <ModelSelectContent autoText={props.autoText} displayText={props.modelText} asDiv />
+          </ImageModelSelect>
+        </Stack>
+        <NumberInput
+          label={t('Steps')}
+          aria-label={t('Steps') as string}
+          disabled={props.running || !localUrl}
+          min={1}
+          max={40}
+          step={1}
+          clampBehavior="strict"
+          allowDecimal={false}
+          allowNegative={false}
+          value={steps}
+          onChange={(value) => {
+            if (typeof value === 'number') useLocalImageBackendStore.getState().setSteps(value)
           }}
+          w={100}
+          className="shrink-0"
         />
-        <Flex gap="sm" align="flex-end" wrap="wrap">
-          <Stack gap={4} className="flex-1 min-w-[160px] [&>button]:w-full">
-            <Text size="sm" fw={500}>
-              {t('Model')}
-            </Text>
-            <ImageModelSelect
-              position="bottom-start"
-              width={320}
-              withinPortal
-              modelGroups={groups}
-              onSelect={props.onSelectImage}
-            >
-              <ModelSelectContent autoText={props.autoText} displayText={props.modelText} asDiv />
-            </ImageModelSelect>
-          </Stack>
-          <NumberInput
-            label={t('Steps')}
-            aria-label={t('Steps') as string}
-            disabled={props.running || !localUrl}
-            min={1}
-            max={40}
-            step={1}
-            clampBehavior="strict"
-            allowDecimal={false}
-            allowNegative={false}
-            value={steps}
-            onChange={(value) => {
-              if (typeof value === 'number') useLocalImageBackendStore.getState().setSteps(value)
-            }}
-            w={100}
-            className="shrink-0"
-          />
-        </Flex>
-      </Stack>
+      </Flex>
     )
   }
 
@@ -786,10 +799,7 @@ function isModelSlot(slotId: ModelRigSlotId): slotId is ModelSlotId {
   return slotId === 'llm' || slotId === 'fast' || slotId === 'ocr' || slotId === 'embedding' || slotId === 'rerank'
 }
 
-function autoTextForSlot(
-  slotId: ModelRigSlotId,
-  t: (key: string) => string
-) {
+function autoTextForSlot(slotId: ModelRigSlotId, t: (key: string) => string) {
   if (slotId === 'llm') return t('Auto (Use Last Used)')
   if (slotId === 'fast') return t('Auto (Use Chat Model)')
   return t('None')

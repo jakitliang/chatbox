@@ -55,6 +55,7 @@ import { AppUpdater } from './app-updater'
 import * as autoLauncher from './autoLauncher'
 import { formatTooLargeFileRead, readRegularFileBytesBounded } from './bounded-file-read'
 import { registerBuiltInBrowserHandlers } from './built-in-browser'
+import { registerLocalSpeechHandlers } from './local-speech-ipc'
 import { handleDeepLink } from './deeplinks'
 import { registerDesktopDirectRequestHandlers } from './desktop-direct-request'
 import { editTextFile, writeTextFile } from './file-mutations'
@@ -1267,4 +1268,5 @@ registerAgentPersonaHandlers()
 if (!IS_HARMONY_BUILD) {
   registerDesktopDirectRequestHandlers()
   registerBuiltInBrowserHandlers()
+  if (process.platform === 'win32') registerLocalSpeechHandlers(() => mainWindow?.webContents)
 }

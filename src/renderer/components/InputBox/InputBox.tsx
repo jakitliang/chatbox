@@ -130,6 +130,8 @@ import {
   INPUT_SURFACE_STYLE,
   SEND_BUTTON_BLOCKED_CLASS,
 } from './inputSurface'
+import { appendDictation } from '@/packages/local-speech/dictation'
+import DictationButton from './DictationButton'
 import { MessageInputField, type MessageInputFieldRef } from './MessageInputField'
 import PendingActionBar from './PendingActionBar'
 import { cleanupFile, markFileProcessing, onFileProcessed, storeFilePromise } from './preprocessState'
@@ -1744,6 +1746,14 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                 onPaste={onPaste}
               />
 
+              <DictationButton
+                key={`${currentSessionId || 'new'}:${headerRead?.activeThreadId ?? ''}`}
+                disabled={submitAvailability.blockReason !== undefined && !compactionQueable}
+                onTranscript={(text) => {
+                  messageInputFieldRef.current?.setValue((draft) => appendDictation(draft, text))
+                  onUserInput()
+                }}
+              />
               <Tooltip
                 // `n` rather than `count`, so i18next does not engage plural resolution for a
                 // label that is only ever shown for more than one reply.

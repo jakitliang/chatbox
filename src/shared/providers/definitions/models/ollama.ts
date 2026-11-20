@@ -27,6 +27,10 @@ function applyNativeCapabilities(model: ProviderModelInfo, capabilities: unknown
 
   // Empty metadata is authoritative; absent metadata must remain unknown.
   model.capabilities = []
+  const input = capabilities.includes('audio')
+  const speech = capabilities.includes('speech')
+  if (input || speech) model.audio = { input, speech }
+  else delete model.audio
   if (capabilities.includes('tools')) model.capabilities.push('tool_use')
   if (capabilities.includes('vision')) model.capabilities.push('vision')
   if (capabilities.includes('thinking')) model.capabilities.push('reasoning')
@@ -163,6 +167,15 @@ export default class Ollama extends OpenAICompatible {
             if (!response.ok) throw new Error(`Ollama show request failed: ${response.status}`)
             const details = await response.json()
             applyNativeCapabilities(model, details.capabilities)
+            if (model.audio?.speech && Array.isArray(details.voices)) {
+              model.audio.voices = [
+                ...new Set<string>(
+                  details.voices.filter(
+                    (voice: unknown): voice is string => typeof voice === 'string' && !!voice.trim()
+                  )
+                ),
+              ]
+            }
             applyThinkingMetadata(model, details.thinking)
 
             const info = details.model_info

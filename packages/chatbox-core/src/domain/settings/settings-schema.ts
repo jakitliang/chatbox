@@ -65,6 +65,14 @@ export const ProviderModelInfoSchema = z.object({
     .optional()
     .catch([]),
   reasoningEffortLevels: z.array(z.string().min(1)).optional().catch(undefined),
+  audio: z
+    .object({
+      input: z.boolean(),
+      speech: z.boolean(),
+      voices: z.array(z.string().min(1)).optional(),
+    })
+    .optional()
+    .catch(undefined),
   contextWindow: z.number().optional().catch(undefined),
   // Published model capacity; distinct from the effective/configured budget window and maxOutput.
   maxContextWindow: z.number().optional().catch(undefined),

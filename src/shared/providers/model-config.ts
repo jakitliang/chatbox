@@ -19,6 +19,9 @@ export function refreshProviderModelCapabilities(
     return {
       ...model,
       ...(fresh.capabilities !== undefined ? { capabilities: fresh.capabilities, type: fresh.type ?? model.type } : {}),
+      ...(fresh.audio !== undefined || (model.audio !== undefined && fresh.capabilities !== undefined)
+        ? { audio: fresh.audio }
+        : {}),
       ...(fresh.maxContextWindow !== undefined ? { maxContextWindow: fresh.maxContextWindow } : {}),
       ...(fresh.reasoningEffortLevels !== undefined ? { reasoningEffortLevels: fresh.reasoningEffortLevels } : {}),
     }

@@ -25,6 +25,28 @@ function dependencies(apiRequest = vi.fn<ModelDependencies['request']['apiReques
 const response = (data: unknown, status = 200) => Promise.resolve(new Response(JSON.stringify(data), { status }))
 
 describe('Ollama native model discovery', () => {
+  it('persists audio and speech independently along with server voice names', async () => {
+    const request = vi
+      .fn<ModelDependencies['request']['apiRequest']>()
+      .mockImplementationOnce(() => response({ models: [{ name: 'voice' }, { name: 'audio' }] }))
+      .mockImplementationOnce(() =>
+        response({ capabilities: ['speech'], voices: ['default', 'female-chinese', 'default', 42] })
+      )
+      .mockImplementationOnce(() => response({ capabilities: ['audio'] }))
+    const discovered = await new Ollama(
+      { ollamaHost: 'http://localhost:11434', model: { modelId: '' } },
+      dependencies(request)
+    ).listModels()
+    const models = refreshProviderModelCapabilities([{ modelId: 'voice' }, { modelId: 'audio' }], discovered).map(
+      (model) => ProviderModelInfoSchema.parse(model)
+    )
+    expect(models.map((model) => model.audio)).toEqual([
+      { input: false, speech: true, voices: ['default', 'female-chinese'] },
+      { input: true, speech: false },
+    ])
+    expect(refreshProviderModelCapabilities(models, [{ modelId: 'voice', capabilities: [] }])[0].audio).toBeUndefined()
+  })
+
   it.each([
     [' http://127.0.0.1:11434/ ', 'http://127.0.0.1:11434'],
     ['http://127.0.0.1:11434/v1', 'http://127.0.0.1:11434'],

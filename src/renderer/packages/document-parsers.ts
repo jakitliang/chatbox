@@ -5,7 +5,7 @@ import storage from '@/storage'
 
 export const documentParsers = {
   local: {
-    label: 'Local',
+    label: 'Built-in parser',
     description: 'Uses built-in document parsing, with no automatic fallback to cloud parsing.',
   },
   mineru: {

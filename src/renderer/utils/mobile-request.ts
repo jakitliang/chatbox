@@ -8,13 +8,28 @@ import {
 import { createNativeResponse } from '@/native/stream-http'
 import { ApiError } from '../../shared/models/errors'
 
+function toHeaderRecord(headers: Headers): Record<string, string> {
+  const record: Record<string, string> = {}
+  headers.forEach((value, key) => {
+    record[key] = value
+  })
+  return record
+}
+
 export function handleMobileRequest(
   url: string,
   method: string,
   headers: Headers,
   body?: RequestInit['body'],
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  responseType?: 'binary'
 ): Promise<Response> {
+  if (responseType === 'binary') {
+    return createNativeResponse(
+      { url, method, headers: toHeaderRecord(headers), body: typeof body === 'string' ? body : undefined },
+      { signal }
+    )
+  }
   if (backgroundStreamPrototypeEnabled && isBackgroundStreamRequest(url, body, headers)) {
     return backgroundStreamFetch(
       backgroundStreamBridge,
@@ -34,11 +49,7 @@ async function handleDefaultMobileRequest(
   body?: RequestInit['body'],
   signal?: AbortSignal
 ): Promise<Response> {
-  // Fix: Convert Headers to plain object without using .entries()
-  const headerObj: Record<string, string> = {}
-  headers.forEach((value, key) => {
-    headerObj[key] = value
-  })
+  const headerObj = toHeaderRecord(headers)
   const isStreaming = body && typeof body === 'string' && JSON.parse(body).stream === true
 
   if (isStreaming) {

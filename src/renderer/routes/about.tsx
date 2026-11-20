@@ -11,7 +11,6 @@ import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import useVersion from '@/hooks/useVersion'
 import platform from '@/platform'
 import iconPNG from '@/static/icon.png'
-import { useLanguage } from '@/stores/settingsStore'
 
 export const Route = createFileRoute('/about')({
   component: RouteComponent,
@@ -20,12 +19,11 @@ export const Route = createFileRoute('/about')({
 function RouteComponent() {
   const { t } = useTranslation()
   const version = useVersion()
-  const language = useLanguage()
   const isSmallScreen = useIsSmallScreen()
   const router = useRouter()
   const navigate = useNavigate()
   const canGoBack = useCanGoBack()
-  const quickReference = getConfigurationQuickReference(language)
+  const quickReference = getConfigurationQuickReference(t)
   const editionTitle = t('about-standalone-title')
   const displayTitle = `${editionTitle}${/\d/.test(version.version) ? ` (v${version.version})` : ''}`
   const closeAbout = useCallback(() => {

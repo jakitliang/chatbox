@@ -1,3 +1,6 @@
+import { MAX_TOOL_CALLS_BEFORE_CONFIRMATION } from '@shared/utils/tool-call-limit-pause'
+import type { TFunction } from 'i18next'
+
 export const recentStandaloneCommits = [
   ['11a81caa', '2026-11-21', 'chore: remove unsupported content reporting from chat and image generation'],
   ['19e79630', '2026-11-21', 'refactor: unify document parsing and remove Chatbox AI cloud fallback'],
@@ -21,90 +24,75 @@ type QuickReference = {
   rows: readonly QuickReferenceRow[]
 }
 
-const quickReferenceZh: QuickReference = {
-  title: '配置速查',
-  headers: ['配置项', '位置', '存储级别', '默认', '关键点'],
-  rows: [
-    [
-      '模型服务商',
-      '设置 → 模型服务商 / 默认模型',
-      '全局',
-      '自行配置',
-      '可连接本地模型服务（如 FastFlowLM、Ollama），或使用自己的 API 密钥',
+export function getConfigurationQuickReference(t: TFunction): QuickReference {
+  const settings = t('Settings')
+  const panel = t('Panel')
+  const global = t('Global')
+  const perChat = t('Per chat')
+  const extensions = `${panel} · ${t('Extensions')}`
+  const builtIn = `${panel} · ${t('Built-in')}`
+  const modelProvider = t('Model Provider')
+  const webSearch = t('Web Search')
+  const parser = t('Document Parser')
+  return {
+    title: t('Configuration Quick Reference'),
+    headers: [t('Setting'), t('Location'), t('Storage scope'), t('Default'), t('Key details')],
+    rows: [
+      [
+        modelProvider,
+        `${settings} → ${modelProvider} / ${t('Default Models')}`,
+        global,
+        t('Configure manually'),
+        t('Connect to FastFlowLM or Ollama, or use your own API key.'),
+      ],
+      [t('Mode'), t('Top of panel'), perChat, t('Chat Mode'), t('Locks after the first message.')],
+      [
+        t('Smart Switching'),
+        `${panel} · ${t('Mode')}`,
+        t('Global default'),
+        t('On'),
+        t('Chat mode only; applies before the first message.'),
+      ],
+      [
+        webSearch,
+        `${builtIn} / ${settings} → ${webSearch}`,
+        t('Per-chat toggle; global provider'),
+        t('Off'),
+        t('Requires tool calling; page reading depends on the search provider.'),
+      ],
+      [t('Command approval'), builtIn, perChat, t('Smart Approval'), t('Full access skips command approvals.')],
+      [
+        t('Skills'),
+        `${extensions} / ${settings}`,
+        global,
+        t('Built-in skills'),
+        t('Compatible with Claude Code skills.'),
+      ],
+      [
+        t('MCP'),
+        `${extensions} / ${settings} → ${t('MCP')}`,
+        global,
+        t('No servers configured'),
+        t('Add a server and enable it; tools require an active connection.'),
+      ],
+      [
+        parser,
+        `${settings} → ${parser}`,
+        t('Global; overridable per knowledge base'),
+        t('Built-in parser'),
+        t('No automatic upload on failure. Desktop users can select MinerU and enter an API token.'),
+      ],
+      [t('Knowledge Base'), extensions, perChat, t('Not linked'), t('One per chat; unavailable on Windows ARM64.')],
+      [t('Working Directory'), extensions, perChat, t('None'), t('Desktop only; no approvals within the directory.')],
+      [
+        t('Pause after every {{count}} steps', { count: MAX_TOOL_CALLS_BEFORE_CONFIRMATION }),
+        `${settings} → ${t('Chat')}`,
+        t('Global default, overridable per chat'),
+        t('On'),
+        t('Pauses after {{count}} tool calls; full access bypasses the pause.', {
+          count: MAX_TOOL_CALLS_BEFORE_CONFIRMATION,
+        }),
+      ],
     ],
-    ['模式', '面板顶部', '会话级', '对话模式', '发出第一条消息后锁定'],
-    ['智能切换', '面板 · 模式', '全局默认', '开启', '仅对话模式；首条消息前生效'],
-    [
-      '联网搜索',
-      '面板 · 内置 / 设置 → 联网搜索',
-      '会话开关；全局服务商',
-      '关闭',
-      '需模型支持工具调用；能否读取网页取决于所选搜索服务商',
-    ],
-    ['命令审批', '面板 · 内置', '会话级', '智能批准', '完全访问会跳过命令审批'],
-    ['技能', '面板 · 扩展 / 设置', '全局', '内置若干', '兼容 Claude Code 技能'],
-    ['MCP', '面板 · 扩展 / 设置 → MCP', '全局', '未配置服务器', '自行添加服务器；工具仅在服务器启用并连接后可用'],
-    [
-      '文档解析器',
-      '设置 → 文档解析器',
-      '全局；知识库可单独设置',
-      '本地',
-      '解析失败不自动上传；桌面端可手动选择 MinerU 并填写 API Token',
-    ],
-    ['知识库', '面板 · 扩展', '会话级', '未绑定', '一会话一库；Win ARM64 不支持'],
-    ['工作目录', '面板 · 扩展', '会话级', '空', '桌面端；目录内免审批'],
-    ['工具调用暂停', '设置 → 聊天', '全局默认，可按对话覆盖', '开启', '工具调用达到 25 次时暂停；完全访问模式不暂停'],
-  ],
-}
-
-const quickReferenceEn: QuickReference = {
-  title: 'Configuration Quick Reference',
-  headers: ['Setting', 'Location', 'Storage scope', 'Default', 'Key details'],
-  rows: [
-    [
-      'Model provider',
-      'Settings → Model Provider / Default Models',
-      'Global',
-      'Configure manually',
-      'Connect to a local model server such as FastFlowLM or Ollama, or use your own API key',
-    ],
-    ['Mode', 'Top of panel', 'Per chat', 'Chat mode', 'Locks after you send the first message'],
-    ['Smart switching', 'Panel · Mode', 'Global default', 'On', 'Chat mode only; applies before the first message'],
-    [
-      'Web search',
-      'Panel · Built-in / Settings → Web Search',
-      'Per-chat toggle; global provider',
-      'Off',
-      'Requires a model with tool calling; page reading depends on the search provider',
-    ],
-    ['Command approval', 'Panel · Built-in', 'Per chat', 'Smart approval', 'Full access skips command approvals'],
-    ['Skills', 'Panel · Extensions / Settings', 'Global', 'Built-in skills', 'Compatible with Claude Code skills'],
-    [
-      'MCP',
-      'Panel · Extensions / Settings → MCP',
-      'Global',
-      'No servers configured',
-      'Add your own servers; tools are available only while the server is enabled and connected',
-    ],
-    [
-      'Document parser',
-      'Settings → Document Parser',
-      'Global; overridable per knowledge base',
-      'Local',
-      'No automatic upload on failure; desktop users can select MinerU and enter an API token',
-    ],
-    ['Knowledge base', 'Panel · Extensions', 'Per chat', 'Not linked', 'One per chat; unavailable on Windows ARM64'],
-    ['Working directory', 'Panel · Extensions', 'Per chat', 'None', 'Desktop only; no approvals within the directory'],
-    [
-      'Pause on tool call limit',
-      'Settings → Chat',
-      'Global default, overridable per chat',
-      'On',
-      'Pauses after 25 tool calls; full access bypasses the pause',
-    ],
-  ],
-}
-
-export function getConfigurationQuickReference(language: string) {
-  return /^zh(?:-|$)/i.test(language) ? quickReferenceZh : quickReferenceEn
+  }
 }

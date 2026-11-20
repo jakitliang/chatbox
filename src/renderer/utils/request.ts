@@ -13,6 +13,7 @@ interface RequestOptions {
   signal?: AbortSignal
   retry?: number
   useProxy?: boolean
+  responseType?: 'binary'
 }
 
 async function retryRequest<T>(fn: () => Promise<T>, retry: number, url: string): Promise<T> {
@@ -59,7 +60,9 @@ async function doRequest(url: string, options: RequestOptions): Promise<Response
   const makeRequest = async () => {
     let res: Response
     if (platform.type === 'mobile' && (useProxy || nativeBackgroundStream)) {
-      res = await handleMobileRequest(url, method, headers, body, signal)
+      res = options.responseType
+        ? await handleMobileRequest(url, method, headers, body, signal, options.responseType)
+        : await handleMobileRequest(url, method, headers, body, signal)
     } else if (platform.type === 'desktop' && useProxy && !isLocalHost(url)) {
       res = await desktopDirectRequestFromWindow(url, method, headers, body, signal)
     } else {

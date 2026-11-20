@@ -47,6 +47,7 @@ import {
   IconReload,
   IconRobot,
   IconTrash,
+  IconVolume,
 } from '@tabler/icons-react'
 import clsx from 'clsx'
 import type React from 'react'
@@ -65,6 +66,7 @@ import { formatElapsedTime } from '@/hooks/useThinkingTimer'
 import { cn } from '@/lib/utils'
 import { navigateToSettings } from '@/modals/settings-navigation'
 import { getAcceptedImageBackgroundTaskResult } from '@/packages/chatbox-cli/background-task-result'
+import { usePlayback } from '@/packages/local-speech/usePlayback'
 import { copyToClipboard } from '@/packages/navigator'
 import { countWord } from '@/packages/word-count'
 import { lockSessionAgentMode, setSessionAgentMode } from '@/stores/session/agent-mode'
@@ -749,6 +751,19 @@ const _Message: FC<Props> = (props) => {
     [confirmCacheBreakingDelete, onDelMsg, t]
   )
 
+  const speechText =
+    !readOnly && buttonGroup !== 'none' && msg.role === 'assistant' && !msg.generating && props.sessionType !== 'picture'
+      ? getMessageText(msg, false)
+      : ''
+  const {
+    available: canReadAloud,
+    playing: readingAloud,
+    toggle: toggleReadAloud,
+  } = usePlayback(`message:${msg.id}`, speechText)
+  const showSpeechAction = canReadAloud || readingAloud
+  const speechLabel = readingAloud ? t('Stop reading') : t('Read aloud')
+  const speechIcon = readingAloud ? IconPlayerStopFilled : IconVolume
+
   const actionMenuItems = useMemo<ActionMenuItemProps[]>(() => {
     if (isSmallScreen) {
       const itemFor = (entry: MessageMenuEntryId): ActionMenuItemProps => {
@@ -798,7 +813,9 @@ const _Message: FC<Props> = (props) => {
             return deleteMenuItem
         }
       }
-      return longPressMenuEntries.map(itemFor)
+      const items = longPressMenuEntries.map(itemFor)
+      if (showSpeechAction) items.unshift({ text: speechLabel, icon: speechIcon, onClick: toggleReadAloud })
+      return items
     }
     return [
       {
@@ -833,6 +850,10 @@ const _Message: FC<Props> = (props) => {
     replyBelowGate.allowed,
     canDeleteMessage,
     deleteMenuItem,
+    showSpeechAction,
+    speechLabel,
+    speechIcon,
+    toggleReadAloud,
   ])
   const actionMenuTitle = useMemo(() => {
     if (!longPressMenuEnabled) return undefined
@@ -1304,6 +1325,9 @@ const _Message: FC<Props> = (props) => {
             tooltip={t('Copy')}
             onClick={onCopyMsg}
           />
+        )}
+        {showSpeechAction && (
+          <MessageActionIcon icon={speechIcon} tooltip={speechLabel} onClick={toggleReadAloud} />
         )}
         {!msg.generating && props.sessionType === 'picture' && msg.role === 'assistant' && (
           <MessageActionIcon icon={IconPhotoPlus} tooltip={t('Generate More Images Below')} onClick={onGenerateMore} />

@@ -25,7 +25,7 @@ This inventory is code-derived from `src/renderer/routes`, `src/renderer/compone
 - Preview links: [Open route preview](/about)
 - Close behavior: `×` or `Esc` returns to the previous in-app page, or home when there is no previous page.
 - Link: Standalone GitHub repository.
-- Content: Accordion panels for `Changelog` and `Configuration Quick Reference`. The changelog is a bundled 12-commit snapshot from [the standalone About content](../src/renderer/components/about/standaloneAboutContent.ts); refresh it when changing the displayed release history. The configuration table scrolls horizontally on narrow screens.
+- Content: Accordion panels for `Changelog` and `Configuration Quick Reference`. The changelog is a bundled 12-commit snapshot from [the standalone About content](../src/renderer/components/about/standaloneAboutContent.ts); refresh it when changing the displayed release history. The configuration table uses the app's active language and scrolls horizontally on narrow screens. Its tool-call pause row reuses the setting label and the runtime limit.
 
 ### routes/copilots/featured
 
@@ -284,6 +284,7 @@ This inventory is code-derived from `src/renderer/routes`, `src/renderer/compone
 - Platform notes: None detected
 - Preview modes: None detected
 - Preview links: [Open route preview](/settings/default-models)
+- Speech: Built-in is the default for dictation and playback. The playback engine dropdown is always shown, even when Built-in is the only option. Playback can also use an explicitly selected Ollama model that advertises `speech` in its model metadata. Settings preview and assistant message actions share the same engine and voice; unavailable selections never fall back to another engine. The `Model Provider` button opens the general provider settings, where users can refresh a provider's model list. The microphone next to Send uses built-in dictation only and appends final text to the draft without sending.
 - States: `isEmbeddingModel`, `isRerankModel`, `selected`
 - Variants: `size:xs`
 - Text: `Auto`, `Auto (Use Chat Model)`, `Auto (Use Chatbox AI)`, `Auto (Use Last Used)`, `Chatbox OCRs images with this model and sends the text to models without image support.`, `Chatbox will automatically use this model to construct search term.`, `Chatbox will automatically use this model to rename threads.`, `Chatbox will use this model as the default for new chats.`, `Default Chat Model`, `Default Embedding Model`, `Default Models`, `Default Reranking Model`, `Default Thread Naming Model`, `None`, `OCR Model`, `Search Term Construction Model`, `When selected, Chatbox will use this model instead of the automatic Chatbox AI embedding model.`, `When selected, Chatbox will use this model instead of the automatic Chatbox AI reranking model.`

@@ -35,6 +35,7 @@ import { ScalableIcon } from '@/components/common/ScalableIcon'
 import { ImageModelSelect } from '@/components/ImageModelSelect'
 import { LocalImageBackendInput, type LocalImageBackendInputHandle } from '@/components/LocalImageBackendInput'
 import ModelSelectorV2 from '@/components/ModelSelectorV2'
+import LocalSpeechSettings from '@/components/settings/LocalSpeechSettings'
 import type { ImageModelGroup } from '@/hooks/useImageModelGroups'
 import { useImageModelGroups } from '@/hooks/useImageModelGroups'
 import { useLocalImageModels } from '@/hooks/useLocalImageModels'
@@ -436,14 +437,7 @@ export function RouteComponent() {
           })}
         </Stack>
       ))}
-      <Stack gap="xs" pt="sm" className="border-0 border-t border-solid border-chatbox-border-primary">
-        <Text size="sm" fw={500}>
-          {t('Speech recognition & speech synthesis')}
-        </Text>
-        <Text size="xs" c="chatbox-tertiary">
-          {t('Not available yet. No setup is needed.')}
-        </Text>
-      </Stack>
+      <LocalSpeechSettings />
       <Button
         variant="subtle"
         color="gray"

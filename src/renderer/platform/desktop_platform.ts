@@ -28,6 +28,7 @@ import DesktopKnowledgeBaseController from './knowledge-base/desktop-controller'
 import DesktopSessionAttachmentRagController from './session-attachment-rag/desktop-controller'
 import DesktopExporter from './desktop_exporter'
 import { desktopResourceFiles } from './desktop-resource-files'
+import { isSupportedFile, isTextFilePath } from '@shared/file-extensions'
 import { parseTextFileLocally } from './web_platform_utils'
 
 const log = getLogger('desktop-platform')
@@ -251,6 +252,10 @@ export default class DesktopPlatform implements Platform {
 
   public async ensureAutoLaunch(enable: boolean) {
     return this.ipc.invoke('ensureAutoLaunch', enable)
+  }
+
+  supportsLocalDocument(file: File): boolean {
+    return isTextFilePath(file.name) || (isSupportedFile(file.name) && !!this.getLocalFilePath(file))
   }
 
   async parseFileLocally(file: File): Promise<{ key?: string; isSupported: boolean; errorCode?: string }> {

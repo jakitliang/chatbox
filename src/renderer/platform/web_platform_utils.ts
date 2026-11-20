@@ -13,6 +13,10 @@ export async function parseTextFileLocally(file: File): Promise<{ text: string; 
   return { text, isSupported: true }
 }
 
+export function supportsBrowserDocument(file: Pick<File, 'name'>): boolean {
+  return isTextFilePath(file.name) || isPdfFilePath(file.name)
+}
+
 export async function parseFileLocallyInBrowser(
   file: File
 ): Promise<{ text: string; isSupported: boolean; errorCode?: string }> {
@@ -20,7 +24,7 @@ export async function parseFileLocallyInBrowser(
     return parseTextFileLocally(file)
   }
 
-  if (!isPdfFilePath(file.name)) {
+  if (!supportsBrowserDocument(file)) {
     return { text: '', isSupported: false }
   }
 

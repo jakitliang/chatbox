@@ -92,24 +92,20 @@ function _errorI18nKeys(t: (key: string) => string) {
   t(
     'The web version temporarily does not support local parsing of this file type. Please use text files (txt, markdown, etc.) or use <LinkToAdvancedFileProcessing>Chatbox AI Service</LinkToAdvancedFileProcessing> for cloud-based document analysis.'
   )
-  t(
-    'Local document parsing failed. You can go to <OpenDocumentParserSettingButton>Settings</OpenDocumentParserSettingButton> and switch to Chatbox AI for cloud-based document parsing.'
-  )
+  t('This file could not be parsed locally. Please try a different file format.')
   t('Chatbox AI document parsing failed. Please try again later.')
   t(
     '<OpenSettingButton>Sign in to Chatbox AI</OpenSettingButton> to use your account license, or choose a different <OpenDocumentParserSettingButton>document parser</OpenDocumentParserSettingButton>.'
   )
+  t('Failed to parse file. Please try again or use a different file format.')
   t(
-    'Document parsing failed. You can go to <OpenDocumentParserSettingButton>Settings</OpenDocumentParserSettingButton> and switch to Chatbox AI for cloud-based document parsing.'
-  )
-  t(
-    'Selected document parser is currently only supported in Knowledge Base. For chat file attachments, please go to <OpenDocumentParserSettingButton>Settings</OpenDocumentParserSettingButton> and switch to Local or Chatbox AI.'
+    'The selected parser is unavailable on this device. Choose Local in <OpenDocumentParserSettingButton>Settings</OpenDocumentParserSettingButton>.'
   )
   t(
     'MinerU API token is required. Please go to <OpenDocumentParserSettingButton>Settings</OpenDocumentParserSettingButton> and configure your MinerU API token.'
   )
   t(
-    'This file type requires a document parser. Please go to <OpenDocumentParserSettingButton>Settings</OpenDocumentParserSettingButton> and enable Chatbox AI document parsing.'
+    'This file type requires a document parser. Choose a parser in <OpenDocumentParserSettingButton>Settings</OpenDocumentParserSettingButton>.'
   )
   t('Storage is full. Delete some old conversations or large attachments, or free up device space, then try again.')
   t(
@@ -215,22 +211,7 @@ function _otherI18nKeys(t: (key: string) => string) {
   // src/renderer/components/settings/DocumentParserSettings.tsx
   t('Local')
   t('MinerU')
-  t('No points consumed')
-  t(
-    'Only supports basic text files (.txt, .md, .json, code files, etc.). For PDF and Office files, please switch to Chatbox AI.'
-  )
-  t(
-    'Uses built-in document parsing feature, supports common file types. Free usage, no compute points will be consumed.'
-  )
-  t(
-    'Uses built-in document parsing feature, supports common file types, and consumes no compute points. If local parsing fails, Chatbox AI cloud parsing will be used when a license is available and compute points will be consumed.'
-  )
-  t(
-    'Cloud-based document parsing service, supports PDF, Office files, EPUB and many other file types. Consumes compute points.'
-  )
-  t(
-    'Tries local parsing first without consuming compute points. If local parsing fails, Chatbox AI cloud parsing will be used and compute points will be consumed.'
-  )
+  t('Uses built-in document parsing, with no automatic fallback to cloud parsing.')
   t('Third-party cloud parsing service, supports PDF and most Office files. Requires API token.')
 
   // src/renderer/modals/FileParseError.tsx

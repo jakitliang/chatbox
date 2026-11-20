@@ -12,7 +12,7 @@ Worker 随应用打包，包含 QuickJS WASM、ExcelJS 和 PptxGenJS；不从 CD
 
 限制为每个文件 10 MiB、执行工作区 20 MiB、128 个文件；QuickJS 堆上限 32 MiB，执行期限 20 秒，宿主额外提供超时和 Worker 销毁。文档库运行在 Worker 内，其内存不属于 QuickJS 堆；额外限制实际 ZIP 解压量、单元格、幻灯片和元素数。切后台、取消或执行进程退出会中断任务；后续执行应检查已保存文件。
 
-Capacitor 工作附件接受文本、PDF、DOC/DOCX、XLS/XLSX 和 PPT/PPTX，保留本地原始字节，添加附件时不调用云端解析。`parse_file` 按需解析：PDF 复用浏览器 PDF 文本提取，DOCX/XLSX/PPTX 使用本地 Worker；旧版 Office、本地解析失败或没有正文时，确认后上传原文件到 Chatbox AI。加密或超限文件直接返回错误。缺少 License、用户拒绝、额度不足和空云端结果均明确报错。取消操作会停止客户端上传/解析请求，并阻止结果提交；已经到达服务端的解析及计费可能继续完成。云端正文也限制为 100000 字符，存入工作区后分页读取。输入及工作区容量限制仍然生效。
+Capacitor 工作附件接受文本、PDF、DOC/DOCX、XLS/XLSX 和 PPT/PPTX，保留本地原始字节。`parse_file` 仅在本地按需解析：PDF 复用浏览器 PDF 文本提取，DOCX/XLSX/PPTX 使用本地 Worker。旧版 Office 仍可作为工作区原始文件，使用解析工具前需转换格式。本地解析失败、没有正文、文件加密或超限时直接报错，不上传，也不要求许可证。输入和工作区容量限制仍然生效，取消操作不会提交解析结果。
 
 工作附件保留本地原始字节。输入目录只读，成果通过 `create_download` 复制并写入共享 Blob 存储。成果引用参与标准会话备份资源收集和恢复映射，因此在另一设备恢复备份后可重建本地成果。删除会话时停止相关执行，等待在途文件操作结束后清理该会话的本地工作区（包括输入、副本和成果）；迟到的写入不能重建已删除目录。导入同 ID 会话后重新启用工作区。中间工作区文件不包含在备份中；恢复后可打开或分享已交付成果，继续执行时从附件重建工作区。
 
@@ -20,7 +20,7 @@ Capacitor 工作附件接受文本、PDF、DOC/DOCX、XLS/XLSX 和 PPT/PPTX，�
 
 默认工具包括文件读写、`parse_file`、代码执行、成果交付与 `load_skill({name})`。`list_files` 可按相对目录过滤；`search_files` 做有结果上限的字面量文本搜索；`edit_file` 按唯一原文依次替换，全部匹配后才写入文件。`read_file` 使用零起点字符分页，二进制文件需交给对应图片或文档工具。
 
-DOCX、XLSX 和 PPTX 的纯文本解析复用 Worker 中的本地解析服务。普通聊天上传附件时也可使用，不要求工作模式、Skill 或 Chatbox license；RN 与 Capacitor 的 Document Parser 设置提供 Local 选项，普通附件的本地解析失败时沿用桌面端的 License 条件回退到 Chatbox AI 云端解析并消耗算力；显式关闭解析或选择第三方解析器的配置仍受尊重。`parse_file({path})` 将正文存到 `parsed/` 下的文本文件，仅返回路径、最多 512 字符预览和截断标记，再通过 `read_file` 分页读取。普通附件正文沿用 Blob 存储与附件上下文机制。解析输入上限 10 MiB、输出上限 100000 字符；超出安全结构限制的文档报错。解析请求与代码执行共用可销毁 Worker 宿主，但不创建 QuickJS VM，也不初始化文档生成器。
+DOCX、XLSX 和 PPTX 的纯文本解析复用 Worker 中的本地解析服务。普通聊天上传附件时也可使用，不要求工作模式、Skill 或许可证；本地解析失败不回退到云端。`parse_file({path})` 将正文存到 `parsed/` 下的文本文件，仅返回路径、最多 512 字符预览和截断标记，再通过 `read_file` 分页读取。普通附件正文沿用 Blob 存储与附件上下文机制。解析输入上限 10 MiB、输出上限 100000 字符；超出安全结构限制的文档报错。解析请求与代码执行共用可销毁 Worker 宿主，但不创建 QuickJS VM，也不初始化文档生成器。
 
 随应用提供 documents、spreadsheets、presentations、websites 四个任务 skill，按需返回 Word 文本、Excel、PPT 和静态网站的运行时说明。所有文件和文档方法均需 await。`docs.readDocument` 读取 DOCX 主文及表格文本，`docs.readPresentation` 按幻灯片顺序读取 PPTX 文本，保留段落、制表符和显式换行；不提供版面渲染、图片提取或 PDF 解析。Excel 支持 xlsx，计算由 JavaScript 完成，不重算公式；读取后写出的是新数据表，不保留原样式、图表及公式。PPT 创建支持文字、图片、表格和形状。
 

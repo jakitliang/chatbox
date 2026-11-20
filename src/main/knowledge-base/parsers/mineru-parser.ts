@@ -2,7 +2,6 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import AdmZip from 'adm-zip'
-import type { DocumentParserType } from '../../../shared/types/settings'
 import { getLogger } from '../../util'
 import type {
   DocumentParser,
@@ -76,9 +75,11 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
  * Uses MinerU batch upload API for file parsing
  */
 export class MineruParser implements DocumentParser {
-  readonly type: DocumentParserType = 'mineru'
-
   constructor(private apiToken: string) {}
+
+  supports(): boolean {
+    return true // MinerU validates supported formats on the server.
+  }
 
   async parse(filePath: string, meta: ParserFileMeta, signal?: AbortSignal): Promise<string> {
     const dataId = `chatbox-${meta.fileId}-${Date.now()}`

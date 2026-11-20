@@ -21,7 +21,8 @@ import MobileExporter from './mobile_exporter'
 import mobileLogger from './mobile_logger'
 import type { SessionAttachmentRagController } from './session-attachment-rag/interface'
 import { MobileSQLiteStorage } from './storages'
-import { parseFileLocallyInBrowser } from './web_platform_utils'
+import { isLocalDocument } from '@shared/mobile-work/document-parser'
+import { parseFileLocallyInBrowser, supportsBrowserDocument } from './web_platform_utils'
 
 export default class MobilePlatform extends MobileSQLiteStorage implements Platform {
   public type: PlatformType = 'mobile'
@@ -266,8 +267,12 @@ export default class MobilePlatform extends MobileSQLiteStorage implements Platf
     return
   }
 
+  supportsLocalDocument(file: File): boolean {
+    return isLocalDocument(file.name) || supportsBrowserDocument(file)
+  }
+
   async parseFileLocally(file: File): Promise<{ key?: string; isSupported: boolean; errorCode?: string }> {
-    if (/\.(docx|xlsx|pptx)$/i.test(file.name)) {
+    if (isLocalDocument(file.name)) {
       const { capacitorExecution } = await import('@/packages/mobile-work-mode/execution-service')
       if (file.size > 10 * 1024 * 1024) return { isSupported: false, errorCode: 'local_parser_file_too_large' }
       const bytes = new Uint8Array(await file.arrayBuffer())

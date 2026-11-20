@@ -11,7 +11,7 @@ interface LocalBuiltinSkill {
   capability?: LocalWorkCapabilityId
 }
 
-const DOCUMENT_RUNTIME = `Use parse_file for document text extraction in the formats listed by its tool description, and read_file to inspect its paginated output; parsing does not require a skill. When cloud fallback is available, uploading the original file to Chatbox AI requires user confirmation and consumes compute points. Use code_execution. ${QUICKJS_ENVIRONMENT} ${QUICKJS_FILES} Keep logs and results bounded. Deliver final files with create_download.`
+const DOCUMENT_RUNTIME = `Use parse_file for local document text extraction in the formats listed by its tool description, and read_file to inspect its paginated output; parsing does not require a skill. Use code_execution. ${QUICKJS_ENVIRONMENT} ${QUICKJS_FILES} Keep logs and results bounded. Deliver final files with create_download.`
 
 const skills: readonly LocalBuiltinSkill[] = [
   {

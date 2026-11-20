@@ -6,14 +6,10 @@ import {
   type PickedAsset,
 } from '@chatbox/core/application/attachments'
 import { projectSessionMeta, SessionSearchService, type SessionSearchOptions } from '@chatbox/core/application/session'
+import { DocumentParseError, parseDocument, selectDocumentParser } from '@shared/document-parsing'
 import { isActionAvailableInMode, resolveSessionMode } from '@chatbox/core/session/mode-policy'
 import { isSessionAttachmentRagSupportedFilePath, isSupportedFile, isTextFilePath } from '@shared/file-extensions'
-import {
-  CHATBOX_AI_PARSER_LICENSE_KEY_REQUIRED_ERROR,
-  EMPTY_ATTACHMENT_CONTENT_ERROR,
-  NON_RECOVERABLE_LOCAL_PARSER_ERROR_CODES,
-} from '@shared/file-parse-errors'
-import { ChatboxAIAPIError } from '@shared/models/errors'
+import { EMPTY_ATTACHMENT_CONTENT_ERROR, NON_RECOVERABLE_LOCAL_PARSER_ERROR_CODES } from '@shared/file-parse-errors'
 import type { SessionHeader, SessionMeta, SessionSettings, Settings } from '@shared/types'
 import type { DocumentParserConfig } from '@shared/types/settings'
 import { BrowserAttachmentAdapter } from '@/adapters/BrowserAttachmentAdapter'
@@ -22,6 +18,7 @@ import { DesktopAttachmentAdapter } from '@/adapters/DesktopAttachmentAdapter'
 import { rendererApplication } from '@/app/renderer-application'
 import { getLogger } from '@/lib/utils'
 import { PREVIEW_LINES } from '@/packages/context-management/attachment-payload'
+import { createAttachmentParsers } from '@/packages/document-parsers'
 import * as localParser from '@/packages/local-parser'
 import { prepareLocalWorkAttachment } from '@/packages/mobile-work-mode/attachments'
 import * as remote from '@/packages/remote'
@@ -31,7 +28,6 @@ import storage from '@/storage'
 import { nonSessionStorageKey } from '@/storage/non-session-key'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
 import { authInfoStore } from '@/stores/authInfoStore'
-import { getChatboxAIParserAccountError } from '@/utils/file-parse-error'
 import { reportError } from '@/utils/sentry'
 import * as defaults from '../../shared/defaults'
 import { SESSION_ATTACHMENT_RAG_LOG_PREFIX } from '../../shared/session-attachment-rag/logging'
@@ -80,7 +76,6 @@ type ContentStats = {
 
 type FilePreprocessStage =
   | 'cache_read'
-  | 'cloud_parse'
   | 'content_analysis'
   | 'local_parse'
   | 'metadata_storage'
@@ -99,11 +94,8 @@ class FilePreprocessFailure extends Error {
 }
 
 const EXPECTED_FILE_PREPROCESS_ERROR_CODES = new Set([
-  'chatbox_ai_parser_failed',
-  CHATBOX_AI_PARSER_LICENSE_KEY_REQUIRED_ERROR,
   'document_parser_not_configured',
   EMPTY_ATTACHMENT_CONTENT_ERROR,
-  'license_key_required',
   'local_parser_failed',
   'mineru_api_token_required',
   'parsing_cancelled',
@@ -206,7 +198,7 @@ function normalizeFilePreprocessFailure(error: unknown, stage: FilePreprocessSta
   }
 
   const errorCode = error instanceof Error ? error.message : ''
-  if (EXPECTED_FILE_PREPROCESS_ERROR_CODES.has(errorCode) || getChatboxAIParserAccountError(errorCode)) return undefined
+  if (EXPECTED_FILE_PREPROCESS_ERROR_CODES.has(errorCode)) return undefined
   return new FilePreprocessFailure(FILE_PREPROCESS_FAILED_ERROR, stage, error)
 }
 
@@ -265,27 +257,6 @@ export function computePreviewMetadata(
 function getEffectiveDocumentParserConfig(): DocumentParserConfig {
   const globalConfig = settingsStore.getState().extension?.documentParser
   return globalConfig ?? getPlatformDefaultDocumentParser()
-}
-
-function hasParsedText(content: string): boolean {
-  return content.trim().length > 0
-}
-
-type LocalParserFallbackOptions = {
-  allowChatboxAIFallback?: boolean
-  forceChatboxAIFallback?: boolean
-}
-
-function canFallbackToChatboxAI(): boolean {
-  return Boolean(settingActions.getLicenseKey())
-}
-
-function isChatboxAIFallbackAllowed(options: LocalParserFallbackOptions): boolean {
-  return Boolean(options.forceChatboxAIFallback) || options.allowChatboxAIFallback !== false
-}
-
-function requireChatboxAIParserLicense(): never {
-  throw new Error(CHATBOX_AI_PARSER_LICENSE_KEY_REQUIRED_ERROR)
 }
 
 function hasUsableSessionAttachmentRagLicense(): boolean {
@@ -350,164 +321,6 @@ async function canUseSessionAttachmentRag(): Promise<boolean> {
   return value
 }
 
-/**
- * Parse file using local parser
- */
-async function parseFileWithLocalParser(file: File): Promise<ParsedAttachmentContent> {
-  const result = await platform.parseFileLocally(file)
-
-  if (!result.isSupported || !result.key) {
-    // Preserve a specific parser error code (password-protected / too large) so the
-    // UI can explain it; otherwise fall back to the generic failure.
-    throw new Error(result.errorCode || 'local_parser_failed')
-  }
-
-  // Get content from temporary storage
-  const content = (await storage.getBlob(result.key).catch(() => '')) || ''
-
-  try {
-    return { content, tokenCountMap: {}, parserType: 'local' }
-  } finally {
-    await storage.delBlob(result.key).catch(() => undefined)
-  }
-}
-
-async function fallbackToChatboxAIParser(
-  file: File,
-  reason: 'local_parser_failed' | 'empty_content'
-): Promise<ParsedAttachmentContent> {
-  log.warn(`Falling back to Chatbox AI parser for "${file.name}" due to ${reason}`)
-
-  try {
-    return await parseFileWithChatboxAI(file)
-  } catch (error) {
-    log.error(`Chatbox AI fallback parsing failed for "${file.name}":`, error)
-    if (isStorageQuotaError(error)) {
-      throw new FilePreprocessFailure(FILE_STORAGE_QUOTA_EXCEEDED_ERROR, 'cloud_parse', error)
-    }
-    if (error instanceof ChatboxAIAPIError && getChatboxAIParserAccountError(error.detail.name)) {
-      throw new Error(error.detail.name)
-    }
-    if (
-      error instanceof Error &&
-      (error.message === EMPTY_ATTACHMENT_CONTENT_ERROR ||
-        error.message === CHATBOX_AI_PARSER_LICENSE_KEY_REQUIRED_ERROR ||
-        error.message === 'license_key_required')
-    ) {
-      throw error
-    }
-    throw new Error('chatbox_ai_parser_failed')
-  }
-}
-
-function shouldFallbackToChatboxAI(options: LocalParserFallbackOptions): boolean {
-  return isChatboxAIFallbackAllowed(options) && canFallbackToChatboxAI()
-}
-
-async function parseFileWithLocalFallback(
-  file: File,
-  options: LocalParserFallbackOptions = {}
-): Promise<ParsedAttachmentContent> {
-  try {
-    const result = await parseFileWithLocalParser(file)
-    if (!hasParsedText(result.content)) {
-      if (shouldFallbackToChatboxAI(options)) {
-        return await fallbackToChatboxAIParser(file, 'empty_content')
-      }
-      if (isChatboxAIFallbackAllowed(options)) {
-        requireChatboxAIParserLicense()
-      }
-      throw new FilePreprocessFailure(
-        EMPTY_ATTACHMENT_CONTENT_ERROR,
-        'local_parse',
-        new Error('Local parser returned empty content')
-      )
-    }
-    return result
-  } catch (error) {
-    log.error(`Local parsing failed for "${file.name}":`, error)
-
-    if (error instanceof FilePreprocessFailure) {
-      throw error
-    }
-
-    if (error instanceof Error && error.message === CHATBOX_AI_PARSER_LICENSE_KEY_REQUIRED_ERROR) {
-      throw error
-    }
-
-    // Encrypted or oversized PDFs cannot be recovered by the cloud parser either,
-    // so surface the specific error directly instead of wasting a fallback upload.
-    const errorCode = error instanceof Error ? error.message : ''
-    if (NON_RECOVERABLE_LOCAL_PARSER_ERROR_CODES.has(errorCode)) {
-      throw error
-    }
-
-    if (isStorageQuotaError(error)) {
-      throw new FilePreprocessFailure(FILE_STORAGE_QUOTA_EXCEEDED_ERROR, 'local_parse', error)
-    }
-
-    if (shouldFallbackToChatboxAI(options)) {
-      return await fallbackToChatboxAIParser(file, 'local_parser_failed')
-    }
-
-    if (isChatboxAIFallbackAllowed(options)) {
-      requireChatboxAIParserLicense()
-    }
-
-    if (errorCode === 'local_parser_failed') {
-      throw error
-    }
-    throw new FilePreprocessFailure('local_parser_failed', 'local_parse', error)
-  }
-}
-
-/**
- * Parse file using Chatbox AI cloud service
- */
-async function parseFileWithChatboxAI(file: File): Promise<ParsedAttachmentContent> {
-  const licenseKey = settingActions.getLicenseKey()
-  if (!licenseKey) {
-    requireChatboxAIParserLicense()
-  }
-  const uploadedKey = await remote.uploadAndCreateUserFile(licenseKey, file)
-
-  // Get uploaded file content
-  const content = (await storage.getBlob(uploadedKey).catch(() => '')) || ''
-
-  try {
-    if (!hasParsedText(content)) {
-      throw new Error(EMPTY_ATTACHMENT_CONTENT_ERROR)
-    }
-    return { content, tokenCountMap: {}, parserType: 'chatbox-ai' }
-  } finally {
-    await storage.delBlob(uploadedKey).catch(() => undefined)
-  }
-}
-
-/**
- * Parse file using MinerU service (Desktop only)
- */
-async function parseFileWithMineruService(file: File, apiToken: string): Promise<ParsedAttachmentContent> {
-  // Check if platform supports MinerU parsing
-  if (!platform.parseFileWithMineru) {
-    throw new Error('third_party_parser_not_supported_in_chat')
-  }
-
-  // Call platform method to parse file
-  const result = await platform.parseFileWithMineru(file, apiToken)
-
-  // Handle cancellation - throw a special error that will be caught silently
-  if (result.cancelled) {
-    throw new Error('parsing_cancelled')
-  }
-
-  if (!result.success || !result.content || !hasParsedText(result.content)) {
-    throw new Error(EMPTY_ATTACHMENT_CONTENT_ERROR)
-  }
-
-  return { content: result.content, tokenCountMap: {}, parserType: 'mineru' }
-}
-
 function createPickedAssetAdapter(): BrowserAttachmentAdapter {
   if (platform.type === 'mobile') {
     return new CapacitorAttachmentAdapter()
@@ -526,14 +339,11 @@ async function parsePickedAsset(
 ): Promise<ParsedAttachmentContent> {
   const file = pickedAssetAdapter.getFile(asset)
   const isTextFile = isTextFilePath(asset.name)
+  const config = getEffectiveDocumentParserConfig()
 
   // In agent mode, skip content parsing when no parser can produce text. The
   // shared service has already stored the raw bytes for sandbox execution.
-  if (
-    options.agentMode &&
-    !isTextFile &&
-    (!isSupportedFile(asset.name) || getEffectiveDocumentParserConfig().type === 'none')
-  ) {
+  if (options.agentMode && !isTextFile && (!isSupportedFile(asset.name) || config.type === 'none')) {
     log.debug(`Agent mode: skipping content parsing for sandbox-only file: ${asset.name}`)
     return {
       content: `[File: ${asset.name} (${(asset.size / 1024).toFixed(1)} KB)]`,
@@ -543,42 +353,36 @@ async function parsePickedAsset(
     }
   }
 
-  if (isTextFile) {
-    log.debug(`Text file detected, using local parser: ${asset.name}`)
-    return parseFileWithLocalFallback(file, {
-      allowChatboxAIFallback: options.source !== 'pasted-text',
-    })
-  }
-
-  const parserConfig = getEffectiveDocumentParserConfig()
-  log.debug(`Using document parser: ${parserConfig.type} for file: ${asset.name}`)
-  switch (parserConfig.type) {
-    case 'none':
-      throw new Error('document_parser_not_configured')
-    case 'local':
-      return parseFileWithLocalFallback(file)
-    case 'chatbox-ai':
-      return parseFileWithLocalFallback(file, { forceChatboxAIFallback: true })
-    case 'mineru': {
-      const apiToken = parserConfig.mineru?.apiToken
-      if (!apiToken) {
-        throw new Error('mineru_api_token_required')
-      }
-      try {
-        return await parseFileWithMineruService(file, apiToken)
-      } catch (error) {
-        log.error(`MinerU parsing failed for "${asset.name}":`, error)
-        if (
-          error instanceof Error &&
-          (error.message === EMPTY_ATTACHMENT_CONTENT_ERROR || error.message.startsWith('third_party_parser'))
-        ) {
-          throw error
-        }
-        throw new Error('third_party_parser_failed')
+  const parsers = createAttachmentParsers(platform, config)
+  let stage: FilePreprocessStage = 'parse'
+  try {
+    const parser = selectDocumentParser(parsers, config.type, file, 'text-local')
+    stage = parser.id === 'local' ? 'local_parse' : 'parse'
+    const result = await parseDocument(parser, file)
+    return { content: result.text, tokenCountMap: {}, parserType: result.parserId }
+  } catch (error) {
+    log.error(`Document parsing failed for "${asset.name}":`, error)
+    if (error instanceof DocumentParseError) {
+      switch (error.code) {
+        case 'not-configured':
+          throw new Error('document_parser_not_configured')
+        case 'unavailable':
+          throw new Error('third_party_parser_not_supported_in_chat')
+        case 'unsupported':
+          throw new Error('local_parser_failed')
+        case 'empty':
+          throw new FilePreprocessFailure(EMPTY_ATTACHMENT_CONTENT_ERROR, stage, error)
       }
     }
-    default:
-      throw new Error('document_parser_not_configured')
+    if (isStorageQuotaError(error)) {
+      throw new FilePreprocessFailure(FILE_STORAGE_QUOTA_EXCEEDED_ERROR, stage, error)
+    }
+    if (error instanceof Error && EXPECTED_FILE_PREPROCESS_ERROR_CODES.has(error.message)) throw error
+    throw new FilePreprocessFailure(
+      stage === 'local_parse' ? 'local_parser_failed' : 'third_party_parser_failed',
+      stage,
+      error
+    )
   }
 }
 

@@ -6,7 +6,6 @@ import {
   isOfficeFilePath,
   isTextFilePath,
 } from '../../../shared/file-extensions'
-import type { DocumentParserType } from '../../../shared/types/settings'
 import { parseFile } from '../../file-parser'
 import { getVisionProvider } from '../model-providers'
 import type { DocumentParser, ParserFileMeta } from './types'
@@ -17,14 +16,22 @@ import type { DocumentParser, ParserFileMeta } from './types'
  * Supports: Office files, images (via vision model), EPUB, text files
  */
 export class LocalParser implements DocumentParser {
-  readonly type: DocumentParserType = 'local'
-
   constructor(private kbId?: number) {}
+
+  supports(filePath: string, meta: ParserFileMeta): boolean {
+    return (
+      !isLegacyOfficeFilePath(filePath) &&
+      (isOfficeFilePath(filePath) ||
+        isEpubFilePath(filePath) ||
+        isTextFilePath(filePath) ||
+        meta.mimeType.startsWith('image/'))
+    )
+  }
 
   async parse(filePath: string, meta: ParserFileMeta): Promise<string> {
     if (isLegacyOfficeFilePath(filePath)) {
       throw new Error(
-        'Legacy Office formats (.doc/.xls/.ppt) are not supported by local parser. Please convert to .docx/.xlsx/.pptx or switch document parser to Chatbox AI.'
+        'Legacy Office formats (.doc/.xls/.ppt) are not supported by local parser. Please convert to .docx/.xlsx/.pptx.'
       )
     }
 

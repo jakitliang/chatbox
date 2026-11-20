@@ -1,29 +1,10 @@
-import type { DocumentParserType } from '@shared/types/settings'
-import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AdaptiveSelect } from '@/components/AdaptiveSelect'
 import { CheckedFieldRow } from '@/components/settings/CheckedFieldRow'
 import { SettingRow, SettingsSection } from '@/components/settings/SettingsLayout'
+import { documentParsers, getAvailableDocumentParsers, isActiveDocumentParser } from '@/packages/document-parsers'
 import platform from '@/platform'
 import { getPlatformDefaultDocumentParser, useSettingsStore } from '@/stores/settingsStore'
-
-const ALL_PARSER_OPTIONS: {
-  value: DocumentParserType
-  label: string
-  desktopOnly?: boolean
-}[] = [
-  { value: 'local', label: 'Local' },
-  { value: 'mineru', label: 'MinerU', desktopOnly: true }, // Only available on desktop (requires IPC)
-]
-
-const PARSER_DESCRIPTIONS: Record<DocumentParserType, string> = {
-  none: 'Only supports basic text files (.txt, .md, .json, code files, etc.).',
-  local:
-    'Uses built-in document parsing feature, supports common file types, and consumes no compute points. If local parsing fails, Chatbox AI cloud parsing will be used when a license is available and compute points will be consumed.',
-  'chatbox-ai':
-    'Uses local document parsing.',
-  mineru: 'Third-party cloud parsing service, supports PDF and most Office files. Requires API token.',
-}
 
 /** Parser choice and its credentials, as one settings section. */
 export function DocumentParserSettings() {
@@ -35,16 +16,8 @@ export function DocumentParserSettings() {
   const documentParser = extension?.documentParser
   const mineruToken = documentParser?.mineru?.apiToken || ''
 
-  const parserOptions = useMemo(() => {
-    const isDesktop = platform.type === 'desktop'
-    return ALL_PARSER_OPTIONS.filter((opt) => {
-      if (opt.desktopOnly && !isDesktop) return false
-      return true
-    })
-  }, [])
-
-  const storedParserType = documentParser?.type || getPlatformDefaultDocumentParser().type
-  const currentParserType = storedParserType === 'none' || storedParserType === 'chatbox-ai' ? 'local' : storedParserType
+  const parserOptions = getAvailableDocumentParsers(platform)
+  const currentParserType = resolveDocumentParserType(documentParser?.type ?? getPlatformDefaultDocumentParser().type)
 
   return (
     <SettingsSection title={t('Parser')}>
@@ -52,11 +25,9 @@ export function DocumentParserSettings() {
         id="parser-type"
         label={t('Parser Type')}
         description={
-          currentParserType === 'local' && platform.type === 'mobile'
-            ? t(
-                'Parses supported text and Office files locally. Unsupported files are not sent to a cloud parser.'
-              )
-            : t(PARSER_DESCRIPTIONS[currentParserType])
+          currentParserType === 'none'
+            ? t('Only supports basic text files (.txt, .md, .json, code files, etc.).')
+            : t(documentParsers[currentParserType].description)
         }
         controlLayout="block"
         control={(fieldId) => (
@@ -64,21 +35,24 @@ export function DocumentParserSettings() {
             id={fieldId}
             comboboxProps={{ withinPortal: true, withArrow: true }}
             aria-label={t('Parser Type') ?? undefined}
-            data={parserOptions.map((opt) => ({
-              value: opt.value,
-              label: t(opt.label),
-            }))}
+            data={[
+              ...parserOptions.map((value) => ({ value, label: t(documentParsers[value].label) })),
+              ...(currentParserType === 'none' ? [{ value: 'none', label: t('None'), disabled: true }] : []),
+              ...(currentParserType === 'mineru' && !parserOptions.includes('mineru')
+                ? [{ value: 'mineru', label: t(documentParsers.mineru.label), disabled: true }]
+                : []),
+            ]}
             value={currentParserType}
             onChange={(value) => {
-              if (!value) return
+              if (!isActiveDocumentParser(value) || !parserOptions.includes(value)) return
               setSettings({
-                extension: { ...extension, documentParser: { ...documentParser, type: value as DocumentParserType } },
+                extension: { ...extension, documentParser: { ...documentParser, type: value } },
               })
             }}
           />
         )}
       />
-      {currentParserType === 'mineru' && (
+      {currentParserType === 'mineru' && parserOptions.includes('mineru') && (
         <CheckedFieldRow
           id="mineru-api-token"
           label={t('MinerU API Token')}
@@ -88,7 +62,7 @@ export function DocumentParserSettings() {
             setSettings({
               extension: {
                 ...extension,
-                documentParser: { ...documentParser, type: documentParser?.type || 'mineru', mineru: { apiToken } },
+                documentParser: { ...documentParser, type: 'mineru', mineru: { apiToken } },
               },
             })
           }
@@ -106,3 +80,4 @@ export function DocumentParserSettings() {
 }
 
 export default DocumentParserSettings
+import { resolveDocumentParserType } from '@chatbox/core/domain/settings'

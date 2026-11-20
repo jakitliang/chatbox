@@ -16,18 +16,21 @@ export { ModelProviderType } from '../../types/provider'
 /**
  * Document parser service type
  * - none: No parsing service, only supports basic text files (legacy mobile/web setting)
- * - local: Local parsing using built-in libraries (desktop default)
- * - chatbox-ai: Local-first parsing with Chatbox cloud fallback (mobile/web default)
+ * - local: Local parsing using built-in libraries (default)
+ * - chatbox-ai: Historical value, treated as local for new parsing
  * - mineru: Third-party MinerU parsing service (desktop only)
  */
 export type DocumentParserType = 'none' | 'local' | 'chatbox-ai' | 'mineru'
 
+export function resolveDocumentParserType(type: DocumentParserType): Exclude<DocumentParserType, 'chatbox-ai'> {
+  return type === 'chatbox-ai' ? 'local' : type
+}
+
 export const DocumentParserConfigSchema = z.object({
   // Accept the historical value on import, but never execute cloud fallback.
-  type: z.preprocess(
-    (type) => (type === 'chatbox-ai' ? 'local' : type),
-    z.enum(['none', 'local', 'chatbox-ai', 'mineru'])
-  ),
+  type: z
+    .enum(['none', 'local', 'chatbox-ai', 'mineru'])
+    .transform((type): DocumentParserType => resolveDocumentParserType(type)),
   mineru: z
     .object({
       apiToken: z.string(),

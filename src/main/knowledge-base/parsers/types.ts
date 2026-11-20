@@ -13,7 +13,7 @@ export interface ParserFileMeta {
  * 策略模式统一解析器接口
  */
 export interface DocumentParser {
-  readonly type: DocumentParserType
+  supports(filePath: string, meta: ParserFileMeta): boolean
 
   /**
    * Parse a file and return its text content
@@ -21,7 +21,7 @@ export interface DocumentParser {
    * @param meta - File metadata
    * @returns Parsed text content
    */
-  parse(filePath: string, meta: ParserFileMeta): Promise<string>
+  parse(filePath: string, meta: ParserFileMeta, signal?: AbortSignal): Promise<string>
 }
 
 /**

@@ -1,3 +1,4 @@
+import { resolveDocumentParserType } from '@chatbox/core/domain/settings'
 import { Button, Group, Input, PasswordInput, Pill, Radio, Select, Stack, Text } from '@mantine/core'
 import type { DocumentParserConfig, DocumentParserType } from '@shared/types/settings'
 import { IconCheck, IconTrash, IconX } from '@tabler/icons-react'
@@ -5,6 +6,7 @@ import type React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { documentParsers, getAvailableDocumentParsers, isActiveDocumentParser } from '@/packages/document-parsers'
 import { toastError } from '@/packages/toast'
 import platform from '@/platform'
 import { ScalableIcon } from '../common/ScalableIcon'
@@ -97,9 +99,7 @@ export const KnowledgeBaseChatboxAIInfo: React.FC<KnowledgeBaseChatboxAIInfoProp
         </Group>
       )}
       <Text size="sm" c="dimmed">
-        {t(
-          'This legacy provider has been removed. Choose a configured provider and recreate this knowledge base.'
-        )}
+        {t('This legacy provider has been removed. Choose a configured provider and recreate this knowledge base.')}
       </Text>
       {hasError && (
         <Text size="sm" c="red">
@@ -214,20 +214,6 @@ export const KnowledgeBaseNameInput: React.FC<KnowledgeBaseNameInputProps> = ({
   )
 }
 
-const PARSER_OPTIONS: { value: DocumentParserType; label: string; description: string }[] = [
-  {
-    value: 'local',
-    label: 'Local',
-    description:
-      'Uses built-in document parsing feature, supports common file types. Free usage, no compute points will be consumed.',
-  },
-  {
-    value: 'mineru',
-    label: 'MinerU',
-    description: 'Third-party cloud parsing service, supports PDF and most Office files. Requires API token.',
-  },
-]
-
 interface DocumentParserSelectorProps {
   parserConfig: DocumentParserConfig
   onParserConfigChange: (config: DocumentParserConfig) => void
@@ -247,7 +233,8 @@ export const DocumentParserSelector: React.FC<DocumentParserSelectorProps> = ({
   const handleParserTypeChange = useCallback(
     (value: string | null) => {
       if (!value) return
-      const newType = value as DocumentParserType
+      if (!isActiveDocumentParser(value) || !getAvailableDocumentParsers(platform).includes(value)) return
+      const newType = value
 
       const newConfig: DocumentParserConfig = { type: newType }
 
@@ -301,18 +288,19 @@ export const DocumentParserSelector: React.FC<DocumentParserSelectorProps> = ({
     }
   }, [mineruToken, t])
 
-  const selectedOption = PARSER_OPTIONS.find((opt) => opt.value === parserConfig.type)
+  const currentType = resolveDocumentParserType(parserConfig.type)
+  const selectedOption = isActiveDocumentParser(currentType) ? documentParsers[currentType] : undefined
 
   return (
     <Stack gap="xs">
       <Select
         label={t('Document Parser')}
         description={t('Parser used to process uploaded documents')}
-        data={PARSER_OPTIONS.map((opt) => ({
-          value: opt.value,
-          label: t(opt.label),
+        data={getAvailableDocumentParsers(platform).map((value) => ({
+          value,
+          label: t(documentParsers[value].label),
         }))}
-        value={parserConfig.type}
+        value={currentType}
         onChange={handleParserTypeChange}
         allowDeselect={false}
         disabled={disabled}
@@ -373,15 +361,15 @@ interface DocumentParserDisplayProps {
 
 export const DocumentParserDisplay: React.FC<DocumentParserDisplayProps> = ({ parserType }) => {
   const { t } = useTranslation()
-  const currentType = parserType || 'local'
+  const currentType = resolveDocumentParserType(parserType ?? 'local')
 
   return (
     <Select
       label={t('Document Parser')}
       description={t('Parser used to process uploaded documents')}
-      data={PARSER_OPTIONS.map((opt) => ({
-        value: opt.value,
-        label: t(opt.label),
+      data={Object.entries(documentParsers).map(([value, parser]) => ({
+        value,
+        label: t(parser.label),
       }))}
       value={currentType}
       disabled

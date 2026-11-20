@@ -15,7 +15,7 @@ import type { SessionAttachmentRagController } from './session-attachment-rag/in
 import { IndexedDBStorage } from './storages'
 import WebExporter from './web_exporter'
 import webLogger from './web_logger'
-import { parseFileLocallyInBrowser } from './web_platform_utils'
+import { parseFileLocallyInBrowser, supportsBrowserDocument } from './web_platform_utils'
 
 export default class WebPlatform extends IndexedDBStorage implements Platform {
   public type: PlatformType = 'web'
@@ -149,6 +149,8 @@ export default class WebPlatform extends IndexedDBStorage implements Platform {
   public async ensureAutoLaunch(enable: boolean) {
     return
   }
+
+  supportsLocalDocument = supportsBrowserDocument
 
   async parseFileLocally(file: File): Promise<{ key?: string; isSupported: boolean; errorCode?: string }> {
     const result = await parseFileLocallyInBrowser(file)

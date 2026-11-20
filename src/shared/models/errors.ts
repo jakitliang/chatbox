@@ -314,8 +314,7 @@ export class ChatboxAIAPIError extends BaseError {
     local_parser_failed: {
       name: 'local_parser_failed',
       code: 20029,
-      i18nKey:
-        'Local document parsing failed. You can go to <OpenDocumentParserSettingButton>Settings</OpenDocumentParserSettingButton> and switch to Chatbox AI for cloud-based document parsing.',
+      i18nKey: 'This file could not be parsed locally. Please try a different file format.',
     },
     chatbox_ai_parser_failed: {
       name: 'chatbox_ai_parser_failed',
@@ -331,14 +330,13 @@ export class ChatboxAIAPIError extends BaseError {
     third_party_parser_failed: {
       name: 'third_party_parser_failed',
       code: 20031,
-      i18nKey:
-        'Document parsing failed. You can go to <OpenDocumentParserSettingButton>Settings</OpenDocumentParserSettingButton> and switch to Chatbox AI for cloud-based document parsing.',
+      i18nKey: 'Failed to parse file. Please try again or use a different file format.',
     },
     third_party_parser_not_supported_in_chat: {
       name: 'third_party_parser_not_supported_in_chat',
       code: 20032,
       i18nKey:
-        'Selected document parser is currently only supported in Knowledge Base. For chat file attachments, please go to <OpenDocumentParserSettingButton>Settings</OpenDocumentParserSettingButton> and switch to Local or Chatbox AI.',
+        'The selected parser is unavailable on this device. Choose Local in <OpenDocumentParserSettingButton>Settings</OpenDocumentParserSettingButton>.',
     },
     mineru_api_token_required: {
       name: 'mineru_api_token_required',
@@ -350,7 +348,7 @@ export class ChatboxAIAPIError extends BaseError {
       name: 'document_parser_not_configured',
       code: 20034,
       i18nKey:
-        'This file type requires a document parser. Please go to <OpenDocumentParserSettingButton>Settings</OpenDocumentParserSettingButton> and enable Chatbox AI document parsing.',
+        'This file type requires a document parser. Choose a parser in <OpenDocumentParserSettingButton>Settings</OpenDocumentParserSettingButton>.',
     },
     file_storage_quota_exceeded: {
       name: 'file_storage_quota_exceeded',

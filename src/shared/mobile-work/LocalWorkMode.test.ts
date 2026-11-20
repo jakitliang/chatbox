@@ -109,7 +109,7 @@ it('makes product information discoverable and loadable in the shared mobile wor
   const { tools } = await work.createTools(context)
   expect(tools.load_skill.description).toContain('chatbox-product-info:')
   expect(await execute(tools, 'load_skill', { name: 'chatbox-product-info' })).toMatchObject({
-    instructions: expect.stringContaining('https://chatboxai.app/llms.txt'),
+    instructions: expect.stringContaining('## Local self-host manual'),
   })
   expect(tools.chatbox_cli).toBeUndefined()
   const disabled = await work.createTools({ ...context, skillPreferences: { 'chatbox-product-info': false } })

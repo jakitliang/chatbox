@@ -17,6 +17,7 @@ import {
   SESSION_ATTACHMENT_RAG_REQUIRES_TOOL_USE_MODEL_ERROR,
 } from '@/stores/sessionHelpers'
 import { getChatboxAIParserAccountErrorLabel, getFileParseErrorI18nKey } from '@/utils/file-parse-error'
+import { documentParsers, isActiveDocumentParser } from '@/packages/document-parsers'
 import MiniButton from '../common/MiniButton'
 import FileIcon from '../FileIcon'
 import { ImageInStorage } from '../Image'
@@ -161,9 +162,7 @@ export function FileMiniCard(props: {
   // 获取翻译后的错误消息
   const translatedError = getTranslatedErrorMessage(errorMessage, t, recoveryAction)
   // 解析完成后展示解析结果和点数消耗提示；处理中/错误时优先展示状态文案
-  const miniCardParserLabel = getParserDisplayName(parserType, t)
-  const parserCostLabel = getParserCostLabel(parserType, t)
-  const parserLabel = [miniCardParserLabel, parserCostLabel].filter(Boolean).join('\n')
+  const parserLabel = getParserDisplayName(parserType, t)
   const displayedStatusText =
     status === 'error'
       ? (statusText ?? getErrorStatusLabel(errorMessage, t))
@@ -302,43 +301,22 @@ function getFileTypeLabel(filename: string, fileType?: string): string {
   return ''
 }
 
-// 展示文档使用的解析器和点数消耗提示。
+// 展示文档实际使用过的解析器，包括历史记录。
 // 'sandbox-raw'（Agent 模式原文件）、'none' 及未知值不展示。
 export function getParserDisplayName(
   parserType: string | undefined,
   t: (key: string, options?: Record<string, unknown>) => string
 ): string | undefined {
-  switch (parserType) {
-    case 'local':
-      return t('Parser: Local')
-    case 'chatbox-ai':
-      return t('Parser: {{parser}}', { parser: 'Chatbox AI' })
-    case 'mineru':
-      return t('Parser: {{parser}}', { parser: 'MinerU' })
-    default:
-      return undefined
-  }
-}
-
-function getParserCostLabel(
-  parserType: string | undefined,
-  t: (key: string, options?: Record<string, unknown>) => string
-): string | undefined {
-  switch (parserType) {
-    case 'local':
-      return t('No points consumed')
-    default:
-      return undefined
-  }
+  if (parserType === 'chatbox-ai') return t('Parser: {{parser}}', { parser: 'Chatbox AI' })
+  if (!isActiveDocumentParser(parserType)) return undefined
+  return t('Parser: {{parser}}', { parser: t(documentParsers[parserType].label) })
 }
 
 export function getParserTypeLabel(
   parserType: string | undefined,
   t: (key: string, options?: Record<string, unknown>) => string
 ): string | undefined {
-  const parserName = getParserDisplayName(parserType, t)
-  const costLabel = getParserCostLabel(parserType, t)
-  return [parserName, costLabel].filter(Boolean).join(' · ') || undefined
+  return getParserDisplayName(parserType, t)
 }
 
 function getIndexingStageLabel(stage: SessionAttachmentIndexingStage | undefined, t: (key: string) => string) {

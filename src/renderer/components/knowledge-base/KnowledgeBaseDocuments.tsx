@@ -53,12 +53,7 @@ import { useSettingsStore } from '@/stores/settingsStore'
 import { trackEvent } from '@/utils/track'
 import ChunksPreviewModal from './ChunksPreviewModal'
 import { KnowledgeBaseFileErrorButton } from './KnowledgeBaseFileErrorButton'
-import {
-  getKnowledgeBaseFileErrorStatusLabel,
-  getKnowledgeBaseFileErrorTooltip,
-  isChatboxAIParserLicenseRequired,
-} from './knowledge-base-file-error'
-import { RemoteRetryModal } from './RemoteRetryModal'
+import { getKnowledgeBaseFileErrorStatusLabel, getKnowledgeBaseFileErrorTooltip } from './knowledge-base-file-error'
 
 interface KnowledgeBaseDocumentsProps {
   knowledgeBase: KnowledgeBase | null
@@ -75,7 +70,6 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
   const [showScrollIndicator, setShowScrollIndicator] = useState(true)
   const [isDragOver, setIsDragOver] = useState(false)
   const [showUploadArea, setShowUploadArea] = useState(false)
-  const [showRemoteRetryModal, setShowRemoteRetryModal] = useState(false)
   const [sizeRejectedFiles, setSizeRejectedFiles] = useState<RejectedFile[]>([])
 
   const scrollAreaRef = useRef<HTMLDivElement>(null)
@@ -122,23 +116,6 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
   }, [knowledgeBase?.id, allFiles, refetch, refetchCount])
 
   // Failed files for remote retry feature
-  const failedFiles = useMemo(() => allFiles.filter((file) => file.status === 'failed'), [allFiles])
-
-  // Parser types that should NOT show the "use Chatbox AI" suggestion when they fail
-  const PARSER_NO_SUGGESTION_LIST: string[] = ['mineru', 'chatbox-ai']
-
-  // Check if we should show the Chatbox AI suggestion for failed files
-  // Show suggestion only if there are failed files that are NOT in the exception list
-  const shouldShowChatboxAISuggestion = useMemo(() => {
-    if (failedFiles.length === 0) return false
-    // Check if any failed file used a parser that should show the suggestion
-    return failedFiles.some(
-      (file) =>
-        file.error !== KNOWLEDGE_BASE_PARSED_CONTENT_TOO_LARGE_ERROR &&
-        !PARSER_NO_SUGGESTION_LIST.includes(file.parser_type || 'local')
-    )
-  }, [failedFiles])
-
   // MIME type correction for Windows compatibility
   const correctMimeType = useCallback((file: File): FileMeta => {
     const filename = file.name.toLowerCase()
@@ -478,10 +455,10 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
 
   // Handle file retry
   const handleRetryFile = useCallback(
-    async (fileId: number, useRemoteParsing = false) => {
+    async (fileId: number) => {
       try {
         const knowledgeBaseController = platform.getKnowledgeBaseController()
-        await knowledgeBaseController.retryFile(fileId, useRemoteParsing)
+        await knowledgeBaseController.retryFile(fileId)
         if (knowledgeBase?.id) {
           // Refresh data to show updated status
           refetch()
@@ -850,7 +827,6 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
               </Box>
             )}
 
-
             {/* Scrollable Document List with Scroll Indicator */}
             {allFiles.length > 0 && (
               <Box style={{ position: 'relative' }}>
@@ -953,12 +929,8 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
                                 variant="subtle"
                                 color="blue"
                                 size="sm"
-                                onClick={() => handleRetryFile(doc.id, isChatboxAIParserLicenseRequired(doc.error))}
-                                title={
-                                  isChatboxAIParserLicenseRequired(doc.error)
-                                    ? t('Retry with server parsing')
-                                    : t('Retry locally')
-                                }
+                                onClick={() => handleRetryFile(doc.id)}
+                                title={t('Retry')}
                               >
                                 <IconRefresh size={14} />
                               </ActionIcon>
@@ -1055,17 +1027,6 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
         onClose={chunksPreview.closePreview}
         file={chunksPreview.selectedFile}
         knowledgeBaseId={knowledgeBase?.id}
-      />
-
-      {/* Remote Retry Modal */}
-      <RemoteRetryModal
-        opened={showRemoteRetryModal}
-        onClose={() => setShowRemoteRetryModal(false)}
-        failedFiles={failedFiles}
-        onSuccess={() => {
-          refetch()
-          refetchCount()
-        }}
       />
     </Stack>
   )

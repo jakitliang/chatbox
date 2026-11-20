@@ -8,7 +8,10 @@ describe('parse_file', () => {
     const files: WorkspaceFiles = { 'input/report.pdf': { base64: 'UEs=' } }
     const execution = new MobileExecutionService()
     const local = vi.spyOn(execution, 'parseDocument')
-    const parser = { parse: vi.fn().mockResolvedValue({ text: 'long document '.repeat(2000), truncated: true }) }
+    const parser = {
+      formats: ['.pdf'],
+      parse: vi.fn().mockResolvedValue({ text: 'long document '.repeat(2000), truncated: true }),
+    }
     const mode = new LocalWorkMode(
       {
         snapshot: async () => files,
@@ -31,6 +34,8 @@ describe('parse_file', () => {
       modelName: 'test',
     })
     expect(active.has('parse_file')).toBe(true)
+    expect(tools.parse_file.description).toContain('from PDF.')
+    expect(tools.parse_file.description).not.toContain('DOCX')
     const output = await tools.parse_file.execute?.(
       { path: 'input/report.pdf' },
       { toolCallId: 'p', messages: [], context: undefined }
@@ -71,6 +76,7 @@ describe('parse_file', () => {
       undefined,
       undefined,
       {
+        formats: ['.doc'],
         parse: async () => {
           controller.abort(new Error('Stopped during parsing'))
           return { text: 'Late cloud text', truncated: false }

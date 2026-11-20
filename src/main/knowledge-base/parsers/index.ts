@@ -1,35 +1,26 @@
-import { isTextFilePath } from '../../../shared/file-extensions'
-import type { DocumentParserConfig, DocumentParserType } from '../../../shared/types/settings'
-import { getLogger } from '../../util'
-import { ChatboxParser } from './chatbox-parser'
+import {
+  DocumentParseError,
+  parseDocument,
+  type ParserId,
+  type DocumentParser as SharedDocumentParser,
+  selectDocumentParser,
+} from '../../../shared/document-parsing'
+import { isLegacyOfficeFilePath } from '../../../shared/file-extensions'
+import type { DocumentParserConfig } from '../../../shared/types/settings'
 import { LocalParser } from './local-parser'
 import { MineruParser } from './mineru-parser'
 import type { DocumentParser, ParserFileMeta, ParserResult } from './types'
 
-const log = getLogger('knowledge-base:parser-router')
-
 export { MineruParser, testMineruConnection } from './mineru-parser'
 export * from './types'
 
-/**
- * Create a parser instance based on configuration
- * @param config - Parser configuration
- * @param kbId - Knowledge base ID (required for local parser's vision model)
- */
-export function createParser(config: DocumentParserConfig, kbId?: number): DocumentParser {
-  switch (config.type) {
-    case 'local':
-      return new LocalParser(kbId)
-    case 'chatbox-ai':
-      return new ChatboxParser()
-    case 'mineru':
-      if (!config.mineru?.apiToken) {
-        throw new Error('MinerU API token is required')
-      }
-      return new MineruParser(config.mineru.apiToken)
-    default:
-      log.warn(`Unknown parser type: ${config.type}, falling back to local parser`)
-      return new LocalParser(kbId)
+type KnowledgeBaseInput = { name: string; path: string; meta: ParserFileMeta }
+
+function adaptParser(id: ParserId, parser: DocumentParser): SharedDocumentParser<KnowledgeBaseInput> {
+  return {
+    id,
+    supports: ({ path, meta }) => parser.supports(path, meta),
+    parse: async ({ path, meta }, signal) => ({ text: await parser.parse(path, meta, signal) }),
   }
 }
 
@@ -66,33 +57,32 @@ export async function parseFileWithRouter(
   config: DocumentParserConfig,
   kbId?: number
 ): Promise<ParserResult> {
-  // 文本文件始终使用本地解析
-  if (isTextFilePath(filePath)) {
-    log.debug(`[ROUTER] Using local parser for text file: ${meta.filename}`)
-    const localParser = new LocalParser(kbId)
-    const content = await localParser.parse(filePath, meta)
-    return { content, parserUsed: 'local' }
-  }
-
-  // 非文本文件使用配置的解析器
-  log.debug(`[ROUTER] Using ${config.type} parser for: ${meta.filename}`)
-  const parser = createParser(config, kbId)
-  const content = await parser.parse(filePath, meta)
-  return { content, parserUsed: config.type }
-}
-
-/**
- * Get display name for parser type
- */
-export function getParserDisplayName(type: DocumentParserType): string {
-  switch (type) {
-    case 'local':
-      return 'Local'
-    case 'chatbox-ai':
-      return 'Chatbox AI'
-    case 'mineru':
-      return 'MinerU'
-    default:
-      return type
+  const input = { name: filePath, path: filePath, meta }
+  try {
+    const parser = selectDocumentParser(
+      {
+        local: () => adaptParser('local', new LocalParser(kbId)),
+        mineru: () => {
+          if (!config.mineru?.apiToken) throw new Error('MinerU API token is required')
+          return adaptParser('mineru', new MineruParser(config.mineru.apiToken))
+        },
+      },
+      config.type,
+      input,
+      'text-local'
+    )
+    const result = await parseDocument(parser, input)
+    return { content: result.text, parserUsed: result.parserId }
+  } catch (error) {
+    if (error instanceof DocumentParseError) {
+      if (error.code === 'empty') throw new Error('No content extracted from file', { cause: error })
+      if (error.code === 'unsupported') {
+        const message = isLegacyOfficeFilePath(filePath)
+          ? 'Legacy Office formats (.doc/.xls/.ppt) are not supported by local parser. Please convert to .docx/.xlsx/.pptx.'
+          : `Unsupported file type: ${meta.mimeType}`
+        throw new Error(message, { cause: error })
+      }
+    }
+    throw error
   }
 }

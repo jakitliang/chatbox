@@ -2,43 +2,51 @@
 
 import { afterEach, expect, test, vi } from 'vitest'
 
-const platform = vi.hoisted(() => ({ type: 'web' }))
-vi.mock('@/platform', () => ({ default: platform }))
-vi.mock('@/packages/navigator', () => ({ getOS: () => 'Linux' }))
+import { SPEECH_CHANNELS } from '@shared/local-speech'
+
+const getOS = vi.hoisted(() => vi.fn(() => 'Linux'))
+vi.mock('@/packages/navigator', () => ({ getOS }))
 
 afterEach(() => {
   vi.unstubAllGlobals()
   vi.resetModules()
 })
 
-test.each([
-  ['web', false],
-  ['desktop', true],
-  ['mobile', true],
-] as const)('keeps synthesis available and gates recognition on %s', async (type, enabled) => {
-  platform.type = type
-  const recognize = vi.fn()
-  class Recognition {
-    static available = vi.fn(async () => 'available')
-    processLocally = false
-    constructor() {
-      recognize()
-    }
-  }
-  const synthesis = { addEventListener: vi.fn(), getVoices: vi.fn(() => []) }
-  vi.stubGlobal('SpeechRecognition', Recognition)
+test('uses browser synthesis when Windows speech IPC is not available', async () => {
+  const voices = [{ voiceURI: 'local', name: 'Local voice', lang: 'en-US', localService: true, default: true }]
+  const synthesis = { addEventListener: vi.fn(), getVoices: vi.fn(() => voices) }
   vi.stubGlobal('speechSynthesis', synthesis)
   vi.stubGlobal('SpeechSynthesisUtterance', class {})
   const { getBuiltInSpeech } = await import('./built-in')
-  const { playback, dictation } = getBuiltInSpeech()
+  expect(getBuiltInSpeech()?.getVoices()).toEqual([expect.objectContaining({ id: 'local', name: 'Local voice' })])
+})
+
+test('keeps Windows voice discovery, playback and cancellation on the synthesis IPC channels', async () => {
+  getOS.mockReturnValueOnce('Windows')
+  const voice = { id: 'local', name: 'Local voice', lang: 'en-US' }
+  let finishPlayback: (() => void) | undefined
+  const invoke = vi.fn((channel: string) =>
+    channel === SPEECH_CHANNELS.voices
+      ? Promise.resolve([voice])
+      : channel === SPEECH_CHANNELS.speak
+        ? new Promise<void>((resolve) => {
+            finishPlayback = resolve
+          })
+        : Promise.resolve()
+  )
+  vi.stubGlobal('electronAPI', { invoke })
+  const { getBuiltInSpeech } = await import('./built-in')
+  const playback = getBuiltInSpeech()
   expect(playback).toBeDefined()
-  if (enabled) {
-    await expect(dictation?.availability('en-US')).resolves.toEqual({ kind: 'ready', language: 'en-US' })
-  } else {
-    expect(dictation).toBeUndefined()
-    const { refreshDictationAvailability } = await import('./useDictationAvailability')
-    await refreshDictationAvailability()
-    expect(recognize).not.toHaveBeenCalled()
-    expect(Recognition.available).not.toHaveBeenCalled()
-  }
+  await expect(playback?.getVoices()).resolves.toEqual([voice])
+  const abort = new AbortController()
+  const reading = playback?.speak(voice, 'Hello', abort.signal)
+  abort.abort()
+  finishPlayback?.()
+  await reading
+  expect(invoke.mock.calls).toEqual([
+    [SPEECH_CHANNELS.voices],
+    [SPEECH_CHANNELS.speak, 'local', 'Hello'],
+    [SPEECH_CHANNELS.stop],
+  ])
 })

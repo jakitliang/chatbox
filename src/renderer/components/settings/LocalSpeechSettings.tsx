@@ -1,8 +1,6 @@
 import { Button, Flex, Select, Stack, Text } from '@mantine/core'
 import { Link } from '@tanstack/react-router'
-import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { isDictationEnabled } from '@/packages/local-speech/built-in'
 import { builtInPlaybackId, listSpeechModels, speechProviderId } from '@/packages/local-speech/playback-backends'
 import {
   refreshLocalSpeech,
@@ -11,10 +9,6 @@ import {
   setSpeechEngine,
   useLocalSpeech,
 } from '@/packages/local-speech/store'
-import {
-  refreshDictationAvailability,
-  useDictationAvailability,
-} from '@/packages/local-speech/useDictationAvailability'
 import { usePlayback } from '@/packages/local-speech/usePlayback'
 import { useSettingsStore } from '@/stores/settingsStore'
 import * as toastActions from '@/stores/toastActions'
@@ -26,29 +20,6 @@ import {
 } from './DefaultModelSettingsCard'
 
 const preview = 'settings:speech-preview'
-const builtInDictationId = 'built-in'
-
-function SpeechSettingsCard({
-  title,
-  description,
-  children,
-}: {
-  title: string
-  description: string
-  children: ReactNode
-}) {
-  return (
-    <DefaultModelSettingsCard role="group" aria-label={title}>
-      <Stack gap={2}>
-        <Text fw={600}>{title}</Text>
-        <Text size="xs" c="chatbox-tertiary">
-          {description}
-        </Text>
-      </Stack>
-      {children}
-    </DefaultModelSettingsCard>
-  )
-}
 
 export default function LocalSpeechSettings() {
   const { t, i18n } = useTranslation()
@@ -60,17 +31,7 @@ export default function LocalSpeechSettings() {
   const { available, playing, toggle } = usePlayback(preview, t('This is a preview of the selected voice.'))
   const canRefreshVoices = builtIn && state.status !== 'unsupported'
   const showPreviewControl = available || playing
-  const dictation = useDictationAvailability()
-  const dictationStatus =
-    dictation.kind === 'ready'
-      ? t('Voice input language: {{language}}', { language: dictation.language })
-      : dictation.kind === 'checking'
-        ? t('Checking for local dictation…')
-        : dictation.kind === 'language-unavailable'
-          ? t('No compatible local dictation language is installed.')
-          : dictation.kind === 'error'
-            ? t('Could not check local dictation.')
-            : t('Local dictation is not available in this environment.')
+  const title = t('Speech synthesis', { defaultValue: 'Speech synthesis' })
 
   const statusText = {
     loading: t('Checking for local voices…'),
@@ -87,30 +48,13 @@ export default function LocalSpeechSettings() {
 
   return (
     <Stack gap="sm">
-      <Text fw={600}>{t('Speech recognition & speech synthesis')}</Text>
-      {isDictationEnabled() && (
-        <SpeechSettingsCard title={t('Speech recognition')} description={t('Convert speech to text.')}>
-          <Select
-            aria-label={t('Speech recognition') || 'Speech recognition'}
-            className={defaultModelCardFieldClass}
-            data={[{ value: builtInDictationId, label: t('Built-in') }]}
-            value={builtInDictationId}
-            allowDeselect={false}
-          />
-          <Button
-            size="compact-sm"
-            variant="subtle"
-            className="self-start"
-            onClick={() => void refreshDictationAvailability()}
-          >
-            {t('Refresh')}
-          </Button>
-          <Text size="xs" c="chatbox-tertiary" role="status">
-            {dictationStatus}
-          </Text>
-        </SpeechSettingsCard>
-      )}
-      <SpeechSettingsCard title={t('Speech synthesis')} description={t('Read replies aloud.')}>
+      <Stack gap={2}>
+        <Text fw={600}>{title}</Text>
+        <Text size="xs" c="chatbox-tertiary">
+          {t('Read replies aloud.')}
+        </Text>
+      </Stack>
+      <DefaultModelSettingsCard role="group" aria-label={title}>
         <Select
           label={t('Speech engine')}
           className={defaultModelCardFieldClass}
@@ -177,7 +121,7 @@ export default function LocalSpeechSettings() {
             )}
           </Flex>
         )}
-      </SpeechSettingsCard>
+      </DefaultModelSettingsCard>
     </Stack>
   )
 }

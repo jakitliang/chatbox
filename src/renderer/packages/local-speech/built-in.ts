@@ -1,75 +1,34 @@
 import { SPEECH_CHANNELS } from '@shared/local-speech'
 import { getOS } from '@/packages/navigator'
-import platform from '@/platform'
 import { createBrowserSpeech } from './browser'
-import type { DictationBackend, SpeechPlaybackBackend } from './contracts'
-import { browserDictation } from './dictation'
+import type { SpeechPlaybackBackend } from './contracts'
 
-export function isDictationEnabled() {
-  return platform.type !== 'web'
-}
-
-function createBuiltInSpeech(): { playback?: SpeechPlaybackBackend; dictation?: DictationBackend } {
+function createBuiltInSpeech(): SpeechPlaybackBackend | undefined {
   const target = typeof window === 'undefined' ? undefined : window
   const ipc = target?.electronAPI
-  const dictationEnabled = isDictationEnabled()
   if (!ipc || getOS() !== 'Windows') {
-    return {
-      playback:
-        target?.speechSynthesis && typeof SpeechSynthesisUtterance === 'function'
-          ? createBrowserSpeech(target, SpeechSynthesisUtterance)
-          : undefined,
-      dictation: dictationEnabled ? browserDictation(target) : undefined,
-    }
+    return target?.speechSynthesis && typeof SpeechSynthesisUtterance === 'function'
+      ? createBrowserSpeech(target, SpeechSynthesisUtterance)
+      : undefined
   }
   return {
-    playback: {
-      getVoices: () => ipc.invoke(SPEECH_CHANNELS.voices),
-      async speak(voice, text, signal) {
-        signal.throwIfAborted()
-        const stop = () =>
-          void ipc.invoke(SPEECH_CHANNELS.stop).catch((error) => console.warn('Speech stop failed', error))
-        signal.addEventListener('abort', stop, { once: true })
-        try {
-          await ipc.invoke(SPEECH_CHANNELS.speak, voice.id, text)
-        } finally {
-          signal.removeEventListener('abort', stop)
-        }
-      },
+    getVoices: () => ipc.invoke(SPEECH_CHANNELS.voices),
+    async speak(voice, text, signal) {
+      signal.throwIfAborted()
+      const stop = () =>
+        void ipc.invoke(SPEECH_CHANNELS.stop).catch((error) => console.warn('Speech stop failed', error))
+      signal.addEventListener('abort', stop, { once: true })
+      try {
+        await ipc.invoke(SPEECH_CHANNELS.speak, voice.id, text)
+      } finally {
+        signal.removeEventListener('abort', stop)
+      }
     },
-    dictation: dictationEnabled
-      ? {
-          async availability(language) {
-            const languages: string[] = await ipc.invoke(SPEECH_CHANNELS.dictationLanguages)
-            const lang = language.toLowerCase()
-            const selected =
-              languages.find((entry) => entry.toLowerCase() === lang) ??
-              languages.find((entry) => entry.toLowerCase().split('-')[0] === lang.split('-')[0]) ??
-              languages[0]
-            return selected ? { kind: 'ready', language: selected } : { kind: 'language-unavailable' }
-          },
-          start(language, onUpdate) {
-            const id = globalThis.crypto.randomUUID()
-            const unsubscribe = ipc.onDictationUpdate((source, confirmed, interim) => {
-              if (source === id) onUpdate?.({ confirmed, interim })
-            })
-            const end = (cancel: boolean) => {
-              void ipc
-                .invoke(SPEECH_CHANNELS.dictationEnd, id, cancel)
-                .catch((error) => console.warn('Could not end Windows dictation', error))
-            }
-            return {
-              result: ipc.invoke(SPEECH_CHANNELS.dictationStart, id, language).finally(unsubscribe),
-              stop: () => end(false),
-              cancel: () => end(true),
-            }
-          },
-        }
-      : undefined,
   }
 }
 
-let builtIn: ReturnType<typeof createBuiltInSpeech> | undefined
+let builtIn: SpeechPlaybackBackend | null | undefined
 export function getBuiltInSpeech() {
-  return (builtIn ??= createBuiltInSpeech())
+  if (builtIn === undefined) builtIn = createBuiltInSpeech() ?? null
+  return builtIn ?? undefined
 }

@@ -5,23 +5,3 @@ export interface SpeechPlaybackBackend {
   subscribe?(refresh: () => void): void
   speak(voice: LocalSpeechVoice, text: string, signal: AbortSignal): Promise<void>
 }
-
-export type DictationAvailability =
-  | { kind: 'ready'; language: string }
-  | { kind: 'unsupported' | 'language-unavailable' }
-
-export interface DictationUpdate {
-  confirmed: string
-  interim: string
-}
-
-export interface DictationSession {
-  result: Promise<string>
-  stop(): void
-  cancel(): void
-}
-
-export interface DictationBackend {
-  availability(language: string): Promise<DictationAvailability>
-  start(language: string, onUpdate?: (update: DictationUpdate) => void): DictationSession
-}

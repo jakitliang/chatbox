@@ -62,7 +62,7 @@ export async function refreshLocalSpeech() {
 function initialize() {
   if (initialized) return
   initialized = true
-  getBuiltInSpeech().playback?.subscribe?.(() => {
+  getBuiltInSpeech()?.subscribe?.(() => {
     if (store.getState().engineId === builtInPlaybackId) void refreshLocalSpeech()
   })
   settingsStore.subscribe((next, prev) => {

@@ -6,7 +6,6 @@ export interface ElectronIPC {
   onSystemThemeChange: (callback: () => void) => () => void
   onWindowMaximizedChanged: (callback: (_: Electron.IpcRendererEvent, windowMaximized: boolean) => void) => () => void
   onTaskCloseRequest: (callback: () => void) => () => void
-  onDictationUpdate: (callback: (id: string, confirmed: string, interim: string) => void) => () => void
   onWindowShow: (callback: () => void) => () => void
   onWindowFocused: (callback: () => void) => () => void
   onUpdateDownloaded: (callback: () => void) => () => void

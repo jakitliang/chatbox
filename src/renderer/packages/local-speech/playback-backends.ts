@@ -17,7 +17,7 @@ export function listSpeechModels(settings?: ProviderSettings) {
 }
 
 export function resolvePlayback(id: string, settings?: ProviderSettings) {
-  if (id === builtInPlaybackId) return getBuiltInSpeech().playback
+  if (id === builtInPlaybackId) return getBuiltInSpeech()
   const model = listSpeechModels(settings).find((candidate) => candidate.id === id)
   if (!settings || !model) return undefined
   return createOllamaSpeech(settings, model.modelId, model.voices ?? [])

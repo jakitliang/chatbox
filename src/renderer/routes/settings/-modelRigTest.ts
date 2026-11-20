@@ -40,9 +40,6 @@ function ok(latencyMs: number): SlotTestResult {
 export async function runSlotTest(slotId: ModelRigSlotId, deps: ModelRigTestDeps): Promise<SlotTestResult> {
   try {
     switch (slotId) {
-      case 'asr':
-      case 'tts':
-        return fail('This feature is not available yet', 'No setup is needed.')
       case 'llm':
       case 'fast':
         return await testChatSlot(slotId, deps)

@@ -16,14 +16,12 @@ import {
   IconFileText,
   IconLoader2,
   IconMessages,
-  IconMicrophone,
   IconPhoto,
   IconPlayerPlay,
   IconScan,
   IconSelector,
   IconSortDescending,
   IconSparkles,
-  IconVolume,
   IconWorldWww,
 } from '@tabler/icons-react'
 import { createFileRoute, Link } from '@tanstack/react-router'
@@ -63,7 +61,6 @@ import {
   effectiveParserType,
   extensionWithParserType,
   extensionWithSearchProvider,
-  FUTURE_SLOT_IDS,
   getSlotModelRef,
   MODEL_RIG_SLOT_IDS,
   type ModelRef,
@@ -110,8 +107,6 @@ export async function runDefaultModelSlotTest(
   }
 }
 
-const ACTIVE_SLOT_IDS = MODEL_RIG_SLOT_IDS.filter((id) => !FUTURE_SLOT_IDS.has(id))
-
 const GROUPS: { title: string; hint: string; slotIds: ModelRigSlotId[] }[] = [
   { title: 'Conversations', hint: 'Default models for chats and everyday tasks.', slotIds: ['llm', 'fast'] },
   { title: 'Images & documents', hint: 'Make attachments readable by your models.', slotIds: ['ocr', 'parser'] },
@@ -137,7 +132,6 @@ const SLOT_COPY: Record<ModelRigSlotId, { name: string; desc: string }> = {
     name: 'Document parsing',
     desc: 'Extracts content from uploaded files. Supported formats depend on the selected service.',
   },
-  asr: { name: 'Speech recognition', desc: 'Convert speech to text.' },
   embedding: {
     name: 'Knowledge search (Embedding)',
     desc: 'Converts text into vectors to find related content in your documents.',
@@ -151,7 +145,6 @@ const SLOT_COPY: Record<ModelRigSlotId, { name: string; desc: string }> = {
     name: 'Image generation',
     desc: 'Used in Image Creator. Temporary local model changes there do not change this default.',
   },
-  tts: { name: 'Speech synthesis', desc: 'Read replies aloud.' },
 }
 
 const SLOT_ICONS = {
@@ -159,12 +152,10 @@ const SLOT_ICONS = {
   fast: IconBolt,
   ocr: IconScan,
   parser: IconFileText,
-  asr: IconMicrophone,
   embedding: IconDatabase,
   rerank: IconSortDescending,
   search: IconWorldWww,
   image: IconPhoto,
-  tts: IconVolume,
 } as const
 
 const PARSER_OPTION_LABELS: Record<string, string> = {
@@ -288,7 +279,7 @@ export function RouteComponent() {
     runningRef.current = true
     setRunning(true)
     setResults(idleResults())
-    for (const slotId of ACTIVE_SLOT_IDS) {
+    for (const slotId of MODEL_RIG_SLOT_IDS) {
       setResults((prev) => ({ ...prev, [slotId]: { status: 'testing', latencyMs: 0 } }))
       const result = await checkSlot(slotId, signal)
       if (signal.aborted) return
@@ -316,10 +307,10 @@ export function RouteComponent() {
     [setSettings]
   )
 
-  const tested = ACTIVE_SLOT_IDS.filter((id) => results[id].status === 'ok' || results[id].status === 'fail')
-  const okCount = ACTIVE_SLOT_IDS.filter((id) => results[id].status === 'ok').length
-  const failCount = ACTIVE_SLOT_IDS.filter((id) => results[id].status === 'fail').length
-  const progressWidth = `${Math.round((tested.length / ACTIVE_SLOT_IDS.length) * 100)}%`
+  const tested = MODEL_RIG_SLOT_IDS.filter((id) => results[id].status === 'ok' || results[id].status === 'fail')
+  const okCount = MODEL_RIG_SLOT_IDS.filter((id) => results[id].status === 'ok').length
+  const failCount = MODEL_RIG_SLOT_IDS.filter((id) => results[id].status === 'fail').length
+  const progressWidth = `${Math.round((tested.length / MODEL_RIG_SLOT_IDS.length) * 100)}%`
 
   return (
     <Stack p="md" gap="xl" className="max-w-[880px]">
@@ -373,7 +364,7 @@ export function RouteComponent() {
           <Stack gap={6} role="status" aria-live="polite">
             <Text size="xs" c="chatbox-secondary">
               {running
-                ? t('Checking {{done}} of {{total}}…', { done: tested.length, total: ACTIVE_SLOT_IDS.length })
+                ? t('Checking {{done}} of {{total}}…', { done: tested.length, total: MODEL_RIG_SLOT_IDS.length })
                 : t('{{ok}} passed · {{fail}} need attention', { ok: okCount, fail: failCount })}
             </Text>
             <div className="h-1 rounded-full bg-chatbox-background-secondary overflow-hidden">
@@ -396,7 +387,6 @@ export function RouteComponent() {
           </Stack>
           {group.slotIds.map((slotId) => {
             const copy = SLOT_COPY[slotId]
-            const future = FUTURE_SLOT_IDS.has(slotId)
             const parserDefault = getPlatformDefaultDocumentParser().type
             const parser = effectiveParserType(settings, parserDefault)
             const result = results[slotId]
@@ -407,7 +397,6 @@ export function RouteComponent() {
                 slotId={slotId}
                 name={t(copy.name)}
                 desc={t(copy.desc)}
-                future={future}
                 result={result}
                 parser={parser}
                 search={search}
@@ -478,7 +467,6 @@ function SlotCard(props: {
   slotId: ModelRigSlotId
   name: string
   desc: string
-  future: boolean
   result: SlotUiState
   parser: DocumentParserType
   search: WebSearchProviderValue
@@ -528,17 +516,7 @@ function SlotCard(props: {
           <ScalableIcon icon={Icon} size={20} className="text-chatbox-tint-secondary" />
         </Flex>
         <Stack gap={2} className="flex-1 min-w-[160px]">
-          <Flex align="center" gap="xs" wrap="wrap">
-            <Text fw={600}>{props.name}</Text>
-            {props.future && (
-              <Text
-                size="xs"
-                className="px-2 py-px rounded-full bg-[var(--chatbox-background-warning-secondary)] text-[var(--chatbox-tint-warning)]"
-              >
-                {t('Coming soon')}
-              </Text>
-            )}
-          </Flex>
+          <Text fw={600}>{props.name}</Text>
           <Text size="xs" c="chatbox-tertiary">
             {props.desc}
           </Text>
@@ -616,24 +594,6 @@ function SlotSelector(
   const { t } = useTranslation()
   const steps = useLocalImageBackendStore((state) => state.steps)
   const localUrl = useLocalImageBackendStore((state) => state.url)
-  if (props.future) {
-    return (
-      <Flex
-        px={12}
-        py={6}
-        align="center"
-        c="chatbox-tertiary"
-        w={320}
-        className="border-solid border border-chatbox-border-primary rounded-lg bg-transparent opacity-70"
-      >
-        <Text span flex={1} className="text-left">
-          {t('Not available yet')}
-        </Text>
-        <ScalableIcon icon={IconSelector} className="text-inherit" />
-      </Flex>
-    )
-  }
-
   if (props.slotId === 'parser') {
     const options = withCurrentOption(
       customParserTypes(parserHost()).map((value) => ({

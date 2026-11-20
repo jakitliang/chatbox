@@ -3,19 +3,14 @@
 import { MantineProvider } from '@mantine/core'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import DictationButton from '@/components/InputBox/DictationButton'
-import { TooltipProvider } from '@/components/ui/tooltip'
 import LocalSpeechSettings from './LocalSpeechSettings'
 
-const refreshDictationAvailability = vi.hoisted(() => vi.fn())
 const speech = vi.hoisted(() => ({
   hasVoice: false,
   voice: { id: 'local', name: 'Local test voice', lang: 'en-US' },
   refresh: vi.fn(),
   toggle: vi.fn(),
 }))
-const platform = vi.hoisted(() => ({ type: 'desktop' }))
-vi.mock('@/platform', () => ({ default: platform }))
 vi.mock('@tanstack/react-router', async () => {
   const { forwardRef } = await import('react')
   return {
@@ -26,7 +21,7 @@ vi.mock('@tanstack/react-router', async () => {
 })
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: { language: string }) => key.replace('{{language}}', options?.language ?? ''),
+    t: (key: string) => key,
     i18n: { language: 'en-US' },
   }),
 }))
@@ -47,10 +42,6 @@ vi.mock('@/packages/local-speech/store', () => ({
 vi.mock('@/packages/local-speech/usePlayback', () => ({
   usePlayback: () => ({ available: speech.hasVoice, playing: false, toggle: speech.toggle }),
 }))
-vi.mock('@/packages/local-speech/useDictationAvailability', () => ({
-  useDictationAvailability: () => ({ kind: 'ready', language: 'en-US' }),
-  refreshDictationAvailability,
-}))
 vi.mock('@/stores/settingsStore', () => ({ useSettingsStore: () => undefined }))
 vi.mock('@/stores/toastActions', () => ({ add: vi.fn() }))
 
@@ -63,7 +54,6 @@ afterEach(() => {
 })
 
 beforeEach(() => {
-  platform.type = 'desktop'
   speech.hasVoice = false
   vi.clearAllMocks()
   vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
@@ -78,30 +68,27 @@ beforeEach(() => {
   Object.defineProperty(Element.prototype, 'scrollIntoView', { configurable: true, value: vi.fn() })
 })
 
-test('opens the built-in recognition selector independently of playback engines', async () => {
+test('shows only synthesis settings with built-in and Ollama playback options', async () => {
   render(
     <MantineProvider>
       <LocalSpeechSettings />
     </MantineProvider>
   )
 
-  const recognitionCard = within(screen.getByRole('group', { name: 'Speech recognition' }))
-  const synthesisCard = within(screen.getByRole('group', { name: 'Speech synthesis' }))
-  const recognition = recognitionCard.getByRole('textbox', { name: 'Speech recognition' })
-  expect(recognition).toHaveProperty('value', 'Built-in')
-  fireEvent.click(recognition)
-  const options = within(await screen.findByRole('listbox')).getAllByRole('option')
-  expect(options.map((option) => option.textContent)).toEqual(['Built-in'])
-  fireEvent.click(options[0])
-  expect(recognition).toHaveProperty('value', 'Built-in')
-
-  fireEvent.click(synthesisCard.getByRole('textbox', { name: 'Speech engine' }))
+  expect(screen.queryByRole('group', { name: 'Speech recognition' })).toBeNull()
+  const card = screen.getByRole('group', { name: 'Speech synthesis' })
+  for (const text of ['Speech synthesis', 'Read replies aloud.']) {
+    const header = screen.getByText(text, { exact: true })
+    expect(card.contains(header)).toBe(false)
+    expect(header.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  }
+  const synthesisCard = within(card)
+  const engine = synthesisCard.getByRole('textbox', { name: 'Speech engine' })
+  expect(engine).toHaveProperty('value', 'Built-in')
+  fireEvent.click(engine)
   const playback = await screen.findByRole('listbox', { name: 'Speech engine' })
   expect(within(playback).getByRole('option', { name: 'Voice model' })).toBeTruthy()
-  expect(recognitionCard.getByRole('status').textContent).toBe('Voice input language: en-US')
   expect(synthesisCard.getByRole('link', { name: 'Model Provider' }).getAttribute('href')).toBe('/settings/provider')
-  fireEvent.click(recognitionCard.getByRole('button', { name: 'Refresh' }))
-  expect(refreshDictationAvailability).toHaveBeenCalledOnce()
 })
 
 test('puts voice actions beside the selector with the default-model action style', () => {
@@ -129,34 +116,4 @@ test('puts voice actions beside the selector with the default-model action style
   fireEvent.click(preview)
   expect(speech.refresh).toHaveBeenCalledOnce()
   expect(speech.toggle).toHaveBeenCalledOnce()
-})
-
-test.each([
-  ['web', false],
-  ['desktop', true],
-  ['mobile', true],
-] as const)('shows dictation only on clients and keeps synthesis on %s', (type, showDictation) => {
-  platform.type = type
-  render(
-    <MantineProvider>
-      <LocalSpeechSettings />
-      <TooltipProvider>
-        <DictationButton
-          disabled={false}
-          dictation={{
-            view: null,
-            availability: { kind: 'ready', language: 'en-US' },
-            toggle: vi.fn(async () => {}),
-            cancel: vi.fn(),
-            isActive: () => false,
-          }}
-        />
-      </TooltipProvider>
-    </MantineProvider>
-  )
-
-  expect(Boolean(screen.queryByRole('group', { name: 'Speech recognition' }))).toBe(showDictation)
-  expect(Boolean(screen.queryByRole('button', { name: 'Start voice input' }))).toBe(showDictation)
-  const synthesis = within(screen.getByRole('group', { name: 'Speech synthesis' }))
-  expect(synthesis.getByRole('textbox', { name: 'Speech engine' })).toBeTruthy()
 })

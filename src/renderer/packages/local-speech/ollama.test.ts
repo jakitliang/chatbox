@@ -4,7 +4,7 @@ import { createOllamaSpeech, normalizeSpeechWav } from './ollama'
 import { listSpeechModels, resolvePlayback } from './playback-backends'
 
 vi.mock('@/utils/request', () => ({ apiRequest: { post: vi.fn() } }))
-vi.mock('./built-in', () => ({ getBuiltInSpeech: () => ({}) }))
+vi.mock('./built-in', () => ({ getBuiltInSpeech: () => undefined }))
 
 describe('Ollama speech playback', () => {
   it('only lists models advertising speech, without requiring audio input', () => {

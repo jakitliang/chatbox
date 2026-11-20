@@ -237,8 +237,6 @@ function _otherI18nKeys(t: (key: string) => string) {
   t('Extracts text from images when the chat model cannot read them directly.')
   t('Document parsing')
   t('Extracts content from uploaded files. Supported formats depend on the selected service.')
-  t('Speech recognition')
-  t('Convert speech to text.')
   t('Knowledge search (Embedding)')
   t('Converts text into vectors to find related content in your documents.')
   t('Search ranking (Rerank)')
@@ -295,8 +293,6 @@ function _otherI18nKeys(t: (key: string) => string) {
   t('Check the selected model and provider settings.')
   t('Needs attention')
   t('Suggested action')
-  t('This feature is not available yet')
-  t('No setup is needed.')
 
   // src/renderer/components/ModelList.tsx
   t('Embedding')

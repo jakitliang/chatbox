@@ -4,26 +4,13 @@ import { ModelProviderEnum } from '@shared/types'
 import type { DocumentParserType } from '@shared/types/settings'
 import type { WebSearchProviderValue } from '@/packages/web-search/constants'
 
-export const MODEL_RIG_SLOT_IDS = [
-  'llm',
-  'fast',
-  'ocr',
-  'parser',
-  'asr',
-  'embedding',
-  'rerank',
-  'search',
-  'image',
-  'tts',
-] as const
+export const MODEL_RIG_SLOT_IDS = ['llm', 'fast', 'ocr', 'parser', 'embedding', 'rerank', 'search', 'image'] as const
 
 export type ModelRigSlotId = (typeof MODEL_RIG_SLOT_IDS)[number]
 
 export type ModelRef = { provider: string; model: string }
 
 export type PictureRef = { provider: string; modelId: string }
-
-export const FUTURE_SLOT_IDS: ReadonlySet<ModelRigSlotId> = new Set(['asr', 'tts'])
 
 export const MODEL_SLOTS = ['llm', 'fast', 'ocr', 'embedding', 'rerank'] as const
 export type ModelSlotId = (typeof MODEL_SLOTS)[number]
@@ -47,7 +34,8 @@ export function modelRefsEqual(a?: ModelRef, b?: ModelRef) {
 
 export function effectiveParserType(settings: Settings, platformDefault: DocumentParserType): DocumentParserType {
   const type = settings.extension?.documentParser?.type
-  if (!type || type === 'none' || type === 'chatbox-ai') return platformDefault === 'chatbox-ai' ? 'local' : platformDefault
+  if (!type || type === 'none' || type === 'chatbox-ai')
+    return platformDefault === 'chatbox-ai' ? 'local' : platformDefault
   return type
 }
 
@@ -81,9 +69,6 @@ export function isSlotPresetOn(
       return searchProvider(settings) === 'bing'
     case 'image':
       return !picture || isChatboxProvider(picture.provider)
-    case 'asr':
-    case 'tts':
-      return false
   }
 }
 

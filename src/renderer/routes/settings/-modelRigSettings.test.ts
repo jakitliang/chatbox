@@ -135,11 +135,6 @@ describe('model rig slot settings', () => {
     expect(applyAllPresetsExtension(current).webSearch.tavilyApiKey).toBe('secret')
   })
 
-  test('coming-soon slots stay off the Chatbox preset', () => {
-    expect(isSlotPresetOn('asr', settings())).toBe(false)
-    expect(isSlotPresetOn('tts', settings())).toBe(false)
-  })
-
   test('custom fallbacks for parser and search do not require extra keys', () => {
     expect(PARSER_CUSTOM_FALLBACK).toBe('local')
     expect(SEARCH_CUSTOM_FALLBACK).toBe('bing')
@@ -147,20 +142,6 @@ describe('model rig slot settings', () => {
 })
 
 describe('model rig slot tests', () => {
-  test('future slots fail immediately with a coming-soon hint', async () => {
-    const result = await runSlotTest('asr', {
-      settings: settings(),
-      configuredProviderIds: new Set(),
-      hasLicense: true,
-      isDesktopLike: true,
-      pingChat: async () => undefined,
-      testMineru: async () => true,
-      searchWeb: async () => undefined,
-    })
-    expect(result.status).toBe('fail')
-    expect(result.error).toMatch(/not available/i)
-  })
-
   test('fast helper auto mode passes without a network ping', async () => {
     const result = await runSlotTest('fast', {
       settings: settings(),

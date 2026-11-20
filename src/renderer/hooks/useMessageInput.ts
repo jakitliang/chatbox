@@ -34,17 +34,30 @@ export function useMessageInput(initialMessage = '', _options: Partial<Options> 
     [draftStorageKey, options.timeout]
   )
 
-  const setMessageInput: Dispatch<SetStateAction<string>> = useCallback(
-    (newMessage) => {
-      const message = typeof newMessage === 'string' ? newMessage : newMessage(draftRef.current)
+  const storeDraft = useCallback(
+    (newMessage: SetStateAction<string>) => {
+      let message: string
+      if (typeof newMessage === 'string') {
+        message = newMessage
+      } else {
+        // if setMessageInput is called with callback function
+        message = newMessage(draftRef.current)
+      }
+
+      // should update draftRef outside _debouncedStoreDraft
       draftRef.current = message
-      _setMessageInput(message)
       _debouncedStoreDraft(message)
     },
     [_debouncedStoreDraft]
   )
 
-  const getMessageInput = useCallback(() => draftRef.current, [])
+  const setMessageInput: Dispatch<SetStateAction<string>> = useCallback(
+    (newMessage) => {
+      _setMessageInput(newMessage)
+      storeDraft(newMessage)
+    },
+    [storeDraft]
+  )
 
   const clearDraft = useCallback(() => {
     _setMessageInput('')
@@ -69,7 +82,7 @@ export function useMessageInput(initialMessage = '', _options: Partial<Options> 
     messageInput,
     setMessageInput,
     clearDraft,
-    getMessageInput,
+    storeDraft,
     restoreDraft,
   }
 }

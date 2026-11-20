@@ -123,7 +123,6 @@ import AgentModeButton from './AgentModeButton'
 import { FileMiniCard, getParserTypeLabel, ImageMiniCard } from './Attachments'
 import { getAgentModeUIState } from './agentModeState'
 import { ComposerSettingsMenu } from './ComposerSettingsMenu'
-import DictationButton from './DictationButton'
 import { ImageUploadInput } from './ImageUploadInput'
 import {
   INPUT_SURFACE_CLASS_NAME,
@@ -140,7 +139,6 @@ import { mergeSessionAttachmentStatesIntoFiles, shouldRefetchSessionAttachmentSt
 import { getTrailingSkillCommand, insertSkillCommandText } from './skillCommand'
 import { getComposerPlaceholder, getSubmitAction, getSubmitControl } from './submitAction'
 import TokenCountMenu from './TokenCountMenu'
-import { useComposerDictation } from './useComposerDictation'
 import { useModelToolCapabilities } from './useModelToolCapabilities'
 import { useReasoningControlState } from './useReasoningControlState'
 import { useSessionContextWindowTier } from './useSessionContextWindowTier'
@@ -778,15 +776,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     // keeps the hard block.
     const compactionBlocking = submitAvailability.blockReason === 'compaction'
     const compactionQueable = compactionBlocking && queueEnabled
-    const dictationDisabled = isSubmitting || (submitAvailability.blockReason !== undefined && !compactionQueable)
-    const dictation = useComposerDictation(
-      `${currentSessionId || 'new'}:${headerRead?.activeThreadId ?? ''}`,
-      dictationDisabled,
-      (text, signal) => messageInputFieldRef.current?.commitDictation(text, signal)
-    )
-    const isDictationActive = dictation.isActive
     const submitBlocked =
-      dictation.view !== null ||
       disableSubmit ||
       isPreprocessing ||
       submitInProgress ||
@@ -941,7 +931,6 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const insertFilesRef = useRef<(files: File[], options?: InsertFilesOptions) => void>(() => {})
 
     const handleSubmit = async (needGenerating = true, options: SubmitOptions = {}) => {
-      if (isDictationActive()) return
       const contextTarget = needGenerating ? contextWindowControl?.getTarget(sessionContext.tier) : undefined
       const contextWindowOverride =
         contextTarget && model?.provider && model.modelId
@@ -1023,7 +1012,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         // Build the message with the latest input text, bypassing debounce delay
         const latestMessage = sessionHelpers.constructUserMessage(
           preConstructedMessage.draftMessageId,
-          messageInputFieldRef.current?.getCommittedValue() ?? latestInputRef.current,
+          latestInputRef.current,
           pictureKeys,
           preprocessedFilesForSubmit,
           []
@@ -1185,7 +1174,6 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         const isSteerShortcut = isPressedHash['CommandOrControl+Enter']
         if (isSteerShortcut && steeringEnabled && generating && currentSessionId) {
           event.preventDefault()
-          if (isDictationActive()) return
           if (!disableSubmit) {
             handleSubmitRef.current(true, { steer: true })
           } else {
@@ -1251,7 +1239,6 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         insertSkillCommand,
         isSmallScreen,
         matchingInputSkills,
-        isDictationActive,
         shortcuts,
         skillCommandQuery,
         skillCommandSelectedIndex,
@@ -1751,14 +1738,12 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                 }
                 ariaLabel={t('Type your question here...') || ''}
                 autoFocus={!isSmallScreen}
-                dictationPreview={dictation.view ?? undefined}
                 onValueChange={onMessageInputValueChange}
                 onUserInput={onUserInput}
                 onKeyDown={onKeyDown}
                 onPaste={onPaste}
               />
 
-              <DictationButton disabled={dictationDisabled} dictation={dictation} />
               <Tooltip
                 // `n` rather than `count`, so i18next does not engage plural resolution for a
                 // label that is only ever shown for more than one reply.

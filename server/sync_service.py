@@ -78,12 +78,15 @@ def create_app(data_dir=None, *, trusted_proxy_peers=None, allowed_hosts=None, a
     dev_cors = setting("CHATBOX_SYNC_DEV_CORS") == "1" and not hosts and not peers
     integrated_origin = setting("CHATBOX_INTEGRATED_ORIGIN")
     if integrated_origin:
+        from web_search_relay import register_web_search_relay
+
         parsed = urlsplit(integrated_origin)
         if integrated_origin != f"{parsed.scheme}://{parsed.netloc}" or not authority(parsed.netloc) or not (parsed.scheme == "https" or (parsed.scheme == "http" and (parsed.hostname == "localhost" or loopback(parsed.hostname)))):
             raise ValueError("Integrated origin must be exact HTTPS or loopback HTTP origin")
         if hosts or peers:
             raise ValueError("Integrated origin cannot be combined with standalone proxy settings")
         origins = origins | {integrated_origin}
+        register_web_search_relay(app)
 
     def permitted_origin(origin):
         if origin in origins:
@@ -158,7 +161,7 @@ def create_app(data_dir=None, *, trusted_proxy_peers=None, allowed_hosts=None, a
         elif origin is not None and not permitted_origin(origin):
             abort(403, "Origin is not allowlisted")
         if request.method == "OPTIONS":
-            if request.path.startswith("/admin"):
+            if request.path.startswith(("/admin", "/web-search-relay/")):
                 abort(403)
             headers = {v.strip().lower() for v in request.headers.get("Access-Control-Request-Headers", "").split(",") if v.strip()}
             if request.headers.get("Access-Control-Request-Method", "GET") not in {"GET", "POST"} or headers - CORS_HEADERS:
@@ -180,7 +183,7 @@ def create_app(data_dir=None, *, trusted_proxy_peers=None, allowed_hosts=None, a
                                  "Content-Security-Policy": "default-src 'none'; img-src 'self'; style-src 'self' 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"})
         response.vary.add("Origin")
         origin = request.headers.get("Origin")
-        if not request.path.startswith("/admin") and permitted_origin(origin) and hasattr(g, "external_origin"):
+        if not request.path.startswith(("/admin", "/web-search-relay/")) and permitted_origin(origin) and hasattr(g, "external_origin"):
             response.headers["Access-Control-Allow-Origin"] = origin
             response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
             response.headers["Access-Control-Allow-Headers"] = ", ".join(sorted(CORS_HEADERS))

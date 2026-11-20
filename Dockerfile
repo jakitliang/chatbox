@@ -46,6 +46,7 @@ WORKDIR /app
 COPY server/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 COPY server/app.py server/sync_service.py server/sync_store.py server/snapshot_validation.py server/settings_forms.py server/snapshot_avatars.py ./
+COPY server/web_search_relay.py src/shared/services/web-search/web-relay-routes.json ./
 COPY server/templates/sync_*.html ./templates/
 COPY server/docker-entrypoint.py server/gunicorn.conf.py ./
 COPY deploy/integrated.py ./

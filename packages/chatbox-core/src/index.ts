@@ -45,6 +45,7 @@ export {
   reportNativeContent,
 } from '@shared/services/native-report'
 export {
+  getNativeWebSearchProvider,
   hasNativeWebSearchConfiguration,
   type NativeWebSearchOptions,
   type NativeWebSearchProvider,

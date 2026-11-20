@@ -45,7 +45,7 @@ import {
   requestUserExecApproval,
   UserExecApprovalPausedError,
 } from '@/packages/user-exec-approval'
-import { PROVIDERS_WITH_PARSE_LINK } from '@/packages/web-search'
+import { getRendererWebSearchProvider } from '@/packages/web-search/provider'
 import platform from '@/platform'
 import * as settingActions from '@/stores/settingActions'
 import { settingsStore } from '@/stores/settingsStore'
@@ -357,8 +357,8 @@ export async function buildToolsForSession(
   const needSessionAttachmentRagToolSet = sessionAttachmentIds.length > 0 && model.isSupportToolUse('read-file')
   const kbSupported = Boolean(knowledgeBase) && model.isSupportToolUse('knowledge-base')
   const webSupported = webBrowsing && model.isSupportToolUse('web-browsing')
-  const searchProvider = settingActions.getExtensionSettings().webSearch.provider
-  const includeParseLinkTool = webSupported && PROVIDERS_WITH_PARSE_LINK.has(searchProvider)
+  const includeParseLinkTool =
+    webSupported && Boolean(getRendererWebSearchProvider(settingActions.getExtensionSettings().webSearch).parseLink)
 
   let kbToolSet: Awaited<ReturnType<typeof getKBToolSet>> | null = null
   if (knowledgeBase && kbSupported) {

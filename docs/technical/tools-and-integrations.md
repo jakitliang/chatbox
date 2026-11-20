@@ -66,35 +66,13 @@ Chatbox Pro 预置了一组云端 MCP 服务器（`src/renderer/packages/mcp/bui
 
 ### 多供应商架构
 
-Web Search 采用抽象基类模式（`src/renderer/packages/web-search/base.ts`），定义统一的 `search(query, signal)` 与可选的 `parseLink(url, signal)` 接口，各供应商实现具体逻辑：
+桌面、Web、Capacitor 和 React Native 入口共用 [Provider 注册表](../../src/shared/services/web-search-providers.ts) 和 [Provider 实现](../../src/shared/services/web-search/)。平台适配层只转换各自保存的设置并注入 HTTP 请求实现：桌面和 Web 使用 `ofetch`，Capacitor 使用 HTTP 插件，React Native 使用 `fetch`。现有设置格式不变。
 
-| 供应商 | 文件 | 网页搜索 | 读取网页（parseLink） | 特点 |
-|--------|------|---------|----------------------|------|
-| Chatbox Search | `chatbox-search.ts` | ✓ | ✓ | 内置搜索，需许可证密钥（任意 tier 均可使用 parse_link） |
-| Bing | `bing.ts` | ✓ | ✗ | 免费使用，国际覆盖 |
-| Bing News | `bing-news.ts` | ✓ | ✗ | 新闻专项搜索，非中文环境自动启用 |
-| Tavily | `tavily.ts` | ✓ | ✓（调用 `/extract`） | 高质量 AI 搜索，需用户自备 API Key |
-| BoCha | `bocha.ts` | ✓ | ✗ | 国内搜索 API |
-| Querit | `querit.ts` | ✓ | ✗ | 多源聚合搜索 |
-
-每个供应商通过 `supportsParseLink` 实例标志声明自己是否实现了 `parseLink`。基类默认返回 `false`，需要的子类用 `override supportsParseLink = true` 显式声明。
-
-基类还封装了跨平台的 HTTP 请求能力：移动端通过 Capacitor HTTP 插件发起请求（绕过 CORS 限制），桌面端和 Web 端使用 `ofetch`。
-
-### parse_link 能力的双源一致性
-
-`parse_link` 工具的注入逻辑用静态集合 `PROVIDERS_WITH_PARSE_LINK`（在 `web-search/index.ts` 中导出）作为单一数据源，被 `tools-builder.ts`（决定是否注入工具）和设置 UI（展示能力勾选）共享。
-
-为防止该集合与各 provider 类的 `supportsParseLink` 标志漂移，`parse-link-consistency.test.ts` 在每次测试时实例化所有 provider 并断言两边一致。新增 provider 或为现有 provider 启用 parseLink 时，**必须同时更新两处**，否则测试失败。
+注册表根据保存的 ID 构造 Provider；认证、参数、请求和响应解析都由 Provider 自己负责。设置页、工具注入和执行层通过实例的 `parseLink()` 是否存在判断能否读取网页，与凭据是否配置好无关。新增实现后注册即可；如果新增持久化字段，还需声明对应的设置字段，不需要修改共享执行流程或维护能力名单。
 
 ### 搜索执行流程
 
-搜索入口（`src/renderer/packages/web-search/index.ts`）实现了以下设计：
-
-1. **供应商选择**：根据用户设置（`extensionSettings.webSearch.provider`）动态实例化搜索供应商
-2. **并行搜索**：同时调用所有选中的供应商，结果交替合并（round-robin），确保多源覆盖
-3. **结果缓存**：使用 5 分钟 TTL 缓存（`cachified`），避免重复搜索相同查询
-4. **结果截断**：最多返回 10 条结果，每条摘要截断至 150 字符，控制上下文窗口消耗
+[共享搜索服务](../../src/shared/services/web-search/service.ts) 执行实例的 `search()`，透传取消信号，并按调用方策略缓存及裁剪。渲染端保留 5 分钟缓存、最多 10 条结果和 150 字符摘要限制；原生入口仍不缓存。同一个 Provider 如有多个数据源，可复用通用的交替合并函数；哪些数据源启用只由该 Provider 决定。
 
 ## Tool 系统（内置工具集）
 
@@ -134,7 +112,7 @@ Web Search 采用抽象基类模式（`src/renderer/packages/web-search/base.ts`
 - **web_search**：调用上述 Web Search 系统执行搜索
 - **parse_link**：抓取并解析指定 URL 的可读内容
 
-`parse_link` 在 `execute` 中按所选搜索提供方分派：
+`parse_link` 在 `execute` 中调用所选 Provider 实例的 `parseLink()`，不按 Provider ID 分派：
 
 | 提供方 | 执行路径 | 失败模式 |
 |--------|---------|---------|

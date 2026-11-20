@@ -19,10 +19,12 @@ import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { dvhToVh, injectBaseTag } from './electron.vite.config'
+import { webSearchRelay } from './scripts/web-search-relay'
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   root: 'src/renderer',
   plugins: [
+    webSearchRelay(),
     TanStackRouterVite({
       target: 'react',
       autoCodeSplitting: true,
@@ -56,6 +58,9 @@ export default defineConfig({
     'process.env.CHATBOX_SKIP_GUIDE': JSON.stringify(process.env.CHATBOX_SKIP_GUIDE || ''),
     'process.env.CHATBOX_START_PAGE': JSON.stringify(process.env.CHATBOX_START_PAGE || ''),
     'import.meta.env.VITE_INTEGRATED_DEPLOYMENT': JSON.stringify(process.env.CHATBOX_INTEGRATED_BUILD === '1'),
+    'import.meta.env.VITE_WEB_SEARCH_RELAY': JSON.stringify(
+      command === 'serve' || process.env.CHATBOX_INTEGRATED_BUILD === '1'
+    ),
   },
   css: {
     modules: {
@@ -69,4 +74,4 @@ export default defineConfig({
       target: 'es2015',
     },
   },
-})
+}))

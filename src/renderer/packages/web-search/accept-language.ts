@@ -1,5 +1,4 @@
 import type { Language } from '@shared/types'
-import { getLanguage } from '@/stores/settingActions'
 
 const ACCEPT_LANGUAGE_BY_APP_LANGUAGE: Record<Language, string> = {
   en: 'en-US,en;q=0.9',
@@ -19,6 +18,6 @@ const ACCEPT_LANGUAGE_BY_APP_LANGUAGE: Record<Language, string> = {
   tr: 'tr-TR,tr;q=0.9,en;q=0.8',
 }
 
-export function getSearchAcceptLanguage() {
-  return ACCEPT_LANGUAGE_BY_APP_LANGUAGE[getLanguage()] ?? ACCEPT_LANGUAGE_BY_APP_LANGUAGE.en
+export function getSearchAcceptLanguage(language: Language) {
+  return ACCEPT_LANGUAGE_BY_APP_LANGUAGE[language] ?? ACCEPT_LANGUAGE_BY_APP_LANGUAGE.en
 }

@@ -41,7 +41,7 @@ http {{
       proxy_set_header Host {parsed.netloc};
       proxy_set_header X-Forwarded-Proto {parsed.scheme};
     }}
-    location ~ ^/(admin|api)(/|$) {{
+    location ~ ^/(admin|api|web-search-relay)(/|$) {{
       proxy_pass http://127.0.0.1:4567;
       proxy_set_header Host $http_host;
       proxy_set_header X-Forwarded-Proto {parsed.scheme};

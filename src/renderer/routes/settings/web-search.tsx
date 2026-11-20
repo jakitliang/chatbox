@@ -1,17 +1,15 @@
 import { Flex, Select, Text } from '@mantine/core'
+import { getWebSearchRegistration } from '@shared/services/web-search-providers'
 import type { Settings } from '@shared/types'
 import { IconCheck, IconX } from '@tabler/icons-react'
 import { createFileRoute } from '@tanstack/react-router'
-import { ofetch } from 'ofetch'
 import { useTranslation } from 'react-i18next'
 import { AdaptiveSelect } from '@/components/AdaptiveSelect'
 import { CheckedFieldRow } from '@/components/settings/CheckedFieldRow'
 import { SettingRow, SettingsPage, SettingsSection } from '@/components/settings/SettingsLayout'
-import { PROVIDERS_WITH_PARSE_LINK } from '@/packages/web-search'
-import { BochaSearch } from '@/packages/web-search/bocha'
+import { checkWebSearchProviderConnection } from '@/packages/web-search'
 import { WEB_SEARCH_PROVIDERS, type WebSearchProviderValue } from '@/packages/web-search/constants'
-import { QUERIT_SEARCH_URL } from '@/packages/web-search/querit'
-import { SearxngSearch } from '@/packages/web-search/searxng'
+import { getRendererWebSearchProvider } from '@/packages/web-search/provider'
 import { useSettingsStore } from '@/stores/settingsStore'
 
 export const Route = createFileRoute('/settings/web-search')({
@@ -20,29 +18,13 @@ export const Route = createFileRoute('/settings/web-search')({
 
 type WebSearchSettings = Settings['extension']['webSearch']
 
-const QUERIT_MAX_RESULTS = Array.from({ length: 10 }, (_, index) => String(index + 1))
+const MAX_RESULTS_OPTIONS = Array.from({ length: 10 }, (_, index) => String(index + 1))
 
-async function checkTavily(apiKey: string) {
-  await ofetch('https://api.tavily.com/search', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body: { query: 'Chatbox', search_depth: 'basic', include_domains: [], exclude_domains: [] },
-  })
-}
-
-async function checkQuerit(apiKey: string) {
-  await ofetch(QUERIT_SEARCH_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body: { query: 'Chatbox' },
-  })
-}
-
-function ProvidedTools({ provider }: { provider: WebSearchProviderValue }) {
+function ProvidedTools({ settings }: { settings: WebSearchSettings }) {
   const { t } = useTranslation()
   const tools = [
     { label: t('Web Search'), supported: true },
-    { label: t('Read Webpage'), supported: PROVIDERS_WITH_PARSE_LINK.has(provider) },
+    { label: t('Read Webpage'), supported: Boolean(getRendererWebSearchProvider(settings).parseLink) },
   ]
   return (
     <Flex gap="sm" wrap="wrap" align="center" mt={2}>
@@ -75,10 +57,8 @@ export function RouteComponent() {
   const updateWebSearch = (patch: Partial<WebSearchSettings>) =>
     setSettings({ extension: { ...extension, webSearch: { ...webSearch, ...patch } } })
 
-  const providerNote =
-    provider === 'bing'
-        ? t('Bing Search is provided for free use, but it may have limitations and is subject to change by Microsoft.')
-        : undefined
+  const { credential, options, note } = getWebSearchRegistration(provider)
+  const values: Record<string, unknown> = webSearch
 
   return (
     <SettingsPage title={t('Web Search')} description={t('The search service used when a model searches the web.')}>
@@ -86,8 +66,8 @@ export function RouteComponent() {
         <SettingRow
           id="search-provider"
           label={t('Search Provider')}
-          description={providerNote}
-          status={<ProvidedTools provider={provider} />}
+          description={note && t(note)}
+          status={<ProvidedTools settings={webSearch} />}
           controlLayout="block"
           control={(fieldId) => (
             <AdaptiveSelect
@@ -100,69 +80,27 @@ export function RouteComponent() {
             />
           )}
         />
-        {provider === 'searxng' && (
+        {credential && (
           <CheckedFieldRow
-            key="searxng"
-            id="searxng-url"
-            label={t('SearXNG Instance URL')}
-            description={t('The SearXNG instance must enable JSON output format in search settings.')}
-            value={webSearch.searxngBaseUrl}
-            onChange={(searxngBaseUrl) => updateWebSearch({ searxngBaseUrl })}
-            placeholder="https://searx.example.com"
-            check={async (url) => {
-              await new SearxngSearch(url).search('Chatbox')
-            }}
-            failureMessage={t('Connection failed!')}
-          />
-        )}
-        {provider === 'tavily' && (
-          <CheckedFieldRow
-            key="tavily"
-            id="tavily-api-key"
-            label={t('Tavily API Key')}
-            secret
-            value={webSearch.tavilyApiKey}
-            onChange={(tavilyApiKey) => updateWebSearch({ tavilyApiKey })}
-            check={checkTavily}
-            failureMessage={t('API key invalid!')}
-            getKeyUrl="https://app.tavily.com?utm_source=chatbox"
-          />
-        )}
-        {provider === 'bocha' && (
-          <CheckedFieldRow
-            key="bocha"
-            id="bocha-api-key"
-            label={t('BoCha API Key')}
-            secret
-            value={webSearch.bochaApiKey}
-            onChange={(bochaApiKey) => updateWebSearch({ bochaApiKey })}
-            check={async (apiKey) => {
-              await new BochaSearch(apiKey).search('Chatbox')
-            }}
-            failureMessage={t('API key invalid!')}
-            getKeyUrl="https://open.bochaai.com"
-          />
-        )}
-        {provider === 'querit' && (
-          <CheckedFieldRow
-            key="querit"
-            id="querit-api-key"
-            label={t('Querit API Key')}
-            secret
-            value={webSearch.queritApiKey}
-            onChange={(queritApiKey) => updateWebSearch({ queritApiKey })}
-            placeholder={t('Enter your Querit API Key') ?? undefined}
-            check={checkQuerit}
-            failureMessage={t('API key invalid!')}
-            getKeyUrl="https://www.querit.ai"
+            key={credential.key}
+            id={`${provider}-${credential.type === 'apiKey' ? 'api-key' : 'url'}`}
+            label={t(credential.label)}
+            description={credential.description && t(credential.description)}
+            secret={credential.type === 'apiKey'}
+            value={String(values[credential.key] ?? '')}
+            onChange={(value) => updateWebSearch({ [credential.key]: value })}
+            placeholder={credential.placeholder ? (t(credential.placeholder) ?? undefined) : undefined}
+            check={(value) => checkWebSearchProviderConnection({ ...webSearch, [credential.key]: value })}
+            failureMessage={credential.type === 'apiKey' ? t('API key invalid!') : t('Connection failed!')}
+            getKeyUrl={credential.getKeyUrl}
           />
         )}
       </SettingsSection>
 
-      {provider === 'querit' && (
-        <SettingsSection title={t('Querit Search Options')}>
+      {options && (
+        <SettingsSection title={t(options.title)}>
           <SettingRow
-            id="querit-max-results"
+            id={`${provider}-max-results`}
             label={t('Max Results')}
             description={t('Maximum number of results to return.')}
             control={(fieldId) => (
@@ -171,14 +109,14 @@ export function RouteComponent() {
                 w={120}
                 comboboxProps={{ withinPortal: true, withArrow: true }}
                 aria-label={t('Max Results') ?? undefined}
-                data={QUERIT_MAX_RESULTS}
-                value={String(webSearch.queritMaxResults || 5)}
-                onChange={(value) => value && updateWebSearch({ queritMaxResults: Number.parseInt(value, 10) })}
+                data={MAX_RESULTS_OPTIONS}
+                value={String(values[options.maxResults] || 5)}
+                onChange={(value) => value && updateWebSearch({ [options.maxResults]: Number.parseInt(value, 10) })}
               />
             )}
           />
           <SettingRow
-            id="querit-time-range"
+            id={`${provider}-time-range`}
             label={t('Time Range')}
             description={t('Time range of the search. For example, the last month.')}
             control={(fieldId) => (
@@ -194,14 +132,13 @@ export function RouteComponent() {
                   { value: 'm1', label: 'Month' },
                   { value: 'y1', label: 'Year' },
                 ]}
-                value={webSearch.queritTimeRange || 'none'}
-                onChange={(value) => value && updateWebSearch({ queritTimeRange: value })}
+                value={String(values[options.timeRange] || 'none')}
+                onChange={(value) => value && updateWebSearch({ [options.timeRange]: value })}
               />
             )}
           />
         </SettingsSection>
       )}
-
     </SettingsPage>
   )
 }

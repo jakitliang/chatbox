@@ -14,6 +14,8 @@ Open http://127.0.0.1:1212 for the Web client and http://127.0.0.1:1212/admin fo
 
 The container proxies `/admin` and `/api` to an unpublished loopback backend. Web sync settings suggest the current browser origin, but saving the address and uploading/downloading remain explicit manual actions. No automatic login, sync, or restore occurs.
 
+The Web client sends allowlisted public search queries to `/web-search-relay/` on the same origin; the backend fetches the search page without forwarding browser cookies or API keys. Only the fixed routes in [the relay manifest](../src/shared/services/web-search/web-relay-routes.json) are accepted. API-key providers and custom SearXNG URLs continue to use their existing direct connection. A static-only deployment has no relay and needs a CORS-enabled search endpoint; the Vite Web dev server includes a relay for preview.
+
 Configuration is mounted read-only from the root `.env`; private server data persists in the root `data/` directory. This is separate from standalone deployment's `server/data/`; no implicit migration occurs. Back up the data directory with the service stopped. Do not commit credentials or data.
 
 If changing CHATBOX_WEB_PORT, update CHATBOX_PUBLIC_ORIGIN to the matching exact browser origin (no trailing slash). Port 1212 must be free; a development server using it must first be stopped. Remote use requires an external HTTPS reverse proxy and CHATBOX_PUBLIC_ORIGIN set to its exact HTTPS origin. The default published port is loopback-only.

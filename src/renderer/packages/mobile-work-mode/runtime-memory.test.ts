@@ -38,7 +38,7 @@ vi.mock('@/packages/model-calls/toolsets/web-search', () => ({
   parseLinkTool: {},
   webSearchTool: {},
 }))
-vi.mock('@/packages/web-search', () => ({ PROVIDERS_WITH_PARSE_LINK: new Set() }))
+vi.mock('@/packages/web-search/provider', () => ({ getRendererWebSearchProvider: () => ({}) }))
 vi.mock('@/stores/settingActions', () => ({ getExtensionSettings: () => ({ webSearch: { provider: 'test' } }) }))
 vi.mock('./CapacitorWorkspace', () => ({
   CapacitorWorkspace: class {

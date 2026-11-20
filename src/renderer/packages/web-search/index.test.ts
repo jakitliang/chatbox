@@ -6,52 +6,26 @@ vi.mock('@/stores/settingActions', () => ({
   getLanguage: vi.fn(() => 'en'),
 }))
 
-// Mock the search providers to avoid actual network calls
-vi.mock('./bing', () => {
-  return {
-    BingSearch: class {
-      search = vi.fn().mockResolvedValue({
-        items: [{ title: 'Bing Result', snippet: 'test', link: 'https://example.com' }],
-      })
-    },
-  }
-})
-
-vi.mock('./bing-news', () => {
-  return {
-    BingNewsSearch: class {
-      search = vi.fn().mockResolvedValue({ items: [] })
-    },
-  }
-})
-
-vi.mock('./tavily', () => {
-  return {
-    TavilySearch: class {
-      constructor(private readonly apiKey: string) {}
-      search = vi.fn().mockImplementation(async () => {
-        if (this.apiKey === 'failing-key') throw new Error('Tavily unavailable')
-        return { items: [{ title: 'Tavily Result', snippet: 'test', link: 'https://example.com' }] }
-      })
-    },
-  }
-})
-
-vi.mock('./searxng', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./searxng')>()
-  return {
-    ...actual,
-    SearxngSearch: class {
-      constructor(private readonly baseUrl: string) {}
-      search = vi.fn().mockImplementation(async () => ({
-        items: [{ title: `SearXNG Result ${this.baseUrl}`, snippet: 'test', link: 'https://example.com' }],
-      }))
-    },
-  }
-})
+vi.mock('./transport', () => ({
+  rendererSearchRequest: vi.fn(async (url: string, init?: RequestInit) => {
+    if (url.startsWith('https://www.bing.com')) {
+      const html = url.includes('/news/')
+        ? ''
+        : '<ol id="b_results"><li class="b_algo"><h2><a href="https://example.com">Bing Result</a></h2></li></ol>'
+      return new Response(html)
+    }
+    if (url.startsWith('https://api.tavily.com')) {
+      if (new Headers(init?.headers).get('authorization') === 'Bearer failing-key')
+        throw new Error('Tavily unavailable')
+      return Response.json({ results: [{ title: 'Tavily Result', url: 'https://example.com', content: 'test' }] })
+    }
+    return Response.json({ results: [{ title: `SearXNG Result ${new URL(url).origin}`, url: 'https://example.com' }] })
+  }),
+}))
 
 import { getExtensionSettings } from '@/stores/settingActions'
 import { testWebSearchConnection, webSearchExecutor } from './index'
+import { rendererSearchRequest } from './transport'
 
 const mockGetExtensionSettings = vi.mocked(getExtensionSettings)
 
@@ -86,10 +60,12 @@ describe('webSearchExecutor', () => {
     } as ReturnType<typeof getExtensionSettings>)
 
     const result1 = await webSearchExecutor({ query: 'cached query' }, {})
+    const requestCount = vi.mocked(rendererSearchRequest).mock.calls.length
     const result2 = await webSearchExecutor({ query: 'cached query' }, {})
 
     // Both should return same results (cached)
     expect(result1.searchResults).toEqual(result2.searchResults)
+    expect(rendererSearchRequest).toHaveBeenCalledTimes(requestCount)
   })
 
   it('uses a distinct cache key for the SearXNG provider', async () => {

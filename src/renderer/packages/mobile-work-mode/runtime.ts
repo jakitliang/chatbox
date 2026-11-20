@@ -16,7 +16,7 @@ import { currentBlobStorage } from '@/adapters/CurrentBlobStorage'
 import { rendererApplication } from '@/app/renderer-application'
 import { prepareMobileMCPTools } from '@/packages/mcp/mobile-tools'
 import { parseLinkTool, webSearchTool } from '@/packages/model-calls/toolsets/web-search'
-import { PROVIDERS_WITH_PARSE_LINK } from '@/packages/web-search'
+import { getRendererWebSearchProvider } from '@/packages/web-search/provider'
 import platform from '@/platform'
 import * as settingActions from '@/stores/settingActions'
 import { settingsStore } from '@/stores/settingsStore'
@@ -58,7 +58,9 @@ export const capacitorWorkMode = new LocalWorkMode(
 export function buildMobileWebTools(model: ModelInterface, enabled: boolean) {
   const tools: ToolSet = {}
   if (!enabled || !model.isSupportToolUse('web-browsing')) return { tools }
-  const includeParseLink = PROVIDERS_WITH_PARSE_LINK.has(settingActions.getExtensionSettings().webSearch.provider)
+  const includeParseLink = Boolean(
+    getRendererWebSearchProvider(settingActions.getExtensionSettings().webSearch).parseLink
+  )
   tools.web_search = webSearchTool
   if (includeParseLink) tools.parse_link = parseLinkTool
   return { tools }

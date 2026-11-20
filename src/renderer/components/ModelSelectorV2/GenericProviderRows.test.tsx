@@ -3,9 +3,6 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 import { GenericProviderRows } from './GenericProviderRows'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
-}))
 vi.mock('./ModelRow', () => ({
   ModelRow: ({ detail }: { detail: { name: string } }) => <button>{detail.name}</button>,
 }))
@@ -13,22 +10,19 @@ vi.mock('./ProviderRowHeader', () => ({
   ProviderRowHeader: ({ provider }: { provider: { name: string } }) => <header>{provider.name}</header>,
 }))
 
-const provider = { id: ModelProviderEnum.ChatboxAI, name: 'Chatbox AI' }
-const model = { modelId: 'cached-chat', nickname: 'Cached Chat' }
+const provider = { id: ModelProviderEnum.FastFlowLM, name: 'FastFlowLM' }
+const model = { modelId: 'qwen3.5:4b', nickname: 'Local Qwen' }
+const otherModel = { modelId: 'qwen3.5:9b' }
 const noop = () => undefined
 
-function renderRows(favoriteOnly: boolean, hasChatboxCatalog: boolean, withByok = false) {
+function renderRows(favoriteOnly: boolean, search = '', collapsed = false) {
   return renderToStaticMarkup(
     <GenericProviderRows
       favoriteOnly={favoriteOnly}
-      hasChatboxCatalog={hasChatboxCatalog}
-      genericProviders={[
-        { ...provider, models: [model] },
-        ...(withByok ? [{ id: 'custom', name: 'Custom', models: [{ modelId: 'byok-chat' }] }] : []),
-      ]}
+      genericProviders={[{ ...provider, models: [model, otherModel] }]}
       favoritedModels={[{ provider, model }]}
-      collapsedProviders={{}}
-      search=""
+      collapsedProviders={{ [provider.id]: collapsed }}
+      search={search}
       isMobile={false}
       isFavorited={() => true}
       onToggleProvider={noop}
@@ -42,20 +36,25 @@ function renderRows(favoriteOnly: boolean, hasChatboxCatalog: boolean, withByok 
   )
 }
 
-describe('Chatbox AI cached model rows', () => {
-  it.each([false, true])('renders cached models without a catalog, favoriteOnly=%s', (favoriteOnly) => {
-    const html = renderRows(favoriteOnly, false)
-    expect(html).toContain('Cached Chat')
+describe('Generic provider model rows', () => {
+  it.each([false, true])('shows provider and models without a divider, favoriteOnly=%s', (favoriteOnly) => {
+    const html = renderRows(favoriteOnly)
+    expect(html).toContain('FastFlowLM')
+    expect(html).toContain('Local Qwen')
+    expect(html).not.toContain('More Providers')
     expect(html).not.toContain('BYOK')
   })
 
-  it.each([false, true])('leaves catalog-backed models to catalog rows, favoriteOnly=%s', (favoriteOnly) => {
-    expect(renderRows(favoriteOnly, true)).not.toContain('Cached Chat')
+  it('keeps favorite filtering and search available', () => {
+    expect(renderRows(false)).toContain(otherModel.modelId)
+    expect(renderRows(true, 'Local Qwen')).toContain('Local Qwen')
+    expect(renderRows(true, 'Local Qwen')).not.toContain(otherModel.modelId)
+    expect(renderRows(true, 'no match')).toBe('')
   })
 
-  it('places the BYOK section after cached Chatbox models', () => {
-    const html = renderRows(false, false, true)
-    expect(html.indexOf('Cached Chat')).toBeLessThan(html.indexOf('BYOK'))
-    expect(html.indexOf('BYOK')).toBeLessThan(html.indexOf('byok-chat'))
+  it('keeps provider headers when models are collapsed', () => {
+    const html = renderRows(false, '', true)
+    expect(html).toContain('FastFlowLM')
+    expect(html).not.toContain('Local Qwen')
   })
 })

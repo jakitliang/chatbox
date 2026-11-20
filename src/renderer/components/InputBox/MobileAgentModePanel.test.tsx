@@ -69,7 +69,7 @@ vi.mock('@/stores/uiStore', () => ({
 vi.mock('@/stores/settingsStore', () => ({
   useSettingsStore: (selector: (state: unknown) => unknown) =>
     selector({
-      extension: { webSearch: { provider: 'build-in' } },
+      extension: { webSearch: { provider: 'bing' } },
       licenseKey: '',
       ...mocks.settings,
       setSettings: mocks.setSettings,

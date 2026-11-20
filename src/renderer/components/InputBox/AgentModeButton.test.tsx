@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   platform: { type: 'desktop', isDesktopLike: true },
   addBackButtonListener: vi.fn(),
   settingsState: {
-    extension: { webSearch: { provider: 'build-in' as const } },
+    extension: { webSearch: { provider: 'tavily' as const } },
     licenseKey: '',
   },
 }))
@@ -106,7 +106,7 @@ describe('AgentModeButton', () => {
     agentModeValue = 'on'
     mocks.platform.type = 'desktop'
     mocks.platform.isDesktopLike = true
-    mocks.settingsState.extension.webSearch.provider = 'build-in'
+    mocks.settingsState.extension.webSearch.provider = 'tavily'
     mocks.settingsState.licenseKey = ''
     mocks.addBackButtonListener.mockReset()
     window.localStorage.clear()

@@ -273,7 +273,7 @@ export const groqProvider = defineProvider({
 4. **Verify in the app:**
    - Provider appears in Settings > Provider
    - API key can be configured
-   - Models are listed in model selector
+   - In the standalone chat model selector, models appear directly under their provider name. The selector still supports search and favorites.
    - Chat functionality works
 
 ## Migration Notes

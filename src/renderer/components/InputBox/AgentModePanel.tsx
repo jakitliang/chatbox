@@ -219,7 +219,6 @@ const AgentModePanel = forwardRef<AgentModePanelHandle, AgentModePanelProps>(fun
   // Web Search state
   const webSearchProvider = useSettingsStore((s) => s.extension.webSearch.provider)
   const setSettings = useSettingsStore((s) => s.setSettings)
-  const licenseKey = useSettingsStore((s) => s.licenseKey)
   const tavilyApiKey = useSettingsStore((s) => s.extension.webSearch.tavilyApiKey)
   const bochaApiKey = useSettingsStore((s) => s.extension.webSearch.bochaApiKey)
   const queritApiKey = useSettingsStore((s) => s.extension.webSearch.queritApiKey)
@@ -227,16 +226,13 @@ const AgentModePanel = forwardRef<AgentModePanelHandle, AgentModePanelProps>(fun
   const webSearchProviderLabel =
     WEB_SEARCH_PROVIDERS.find((p) => p.value === webSearchProvider)?.label ?? webSearchProvider
   const webSearchConfigurationIssue = webBrowsingMode
-    ? getWebSearchConfigurationIssue(
-        {
-          provider: webSearchProvider,
-          tavilyApiKey,
-          bochaApiKey,
-          queritApiKey,
-          searxngBaseUrl,
-        },
-        licenseKey
-      )
+    ? getWebSearchConfigurationIssue({
+        provider: webSearchProvider,
+        tavilyApiKey,
+        bochaApiKey,
+        queritApiKey,
+        searxngBaseUrl,
+      })
     : null
 
   const memory = useAgentMemorySettings({
@@ -252,14 +248,9 @@ const AgentModePanel = forwardRef<AgentModePanelHandle, AgentModePanelProps>(fun
 
   const isProviderAvailable = useCallback(
     (provider: WebSearchProviderValue) => {
-      return (
-        getWebSearchConfigurationIssue(
-          { provider, tavilyApiKey, bochaApiKey, queritApiKey, searxngBaseUrl },
-          licenseKey
-        ) === null
-      )
+      return getWebSearchConfigurationIssue({ provider, tavilyApiKey, bochaApiKey, queritApiKey, searxngBaseUrl }) === null
     },
-    [bochaApiKey, licenseKey, queritApiKey, searxngBaseUrl, tavilyApiKey]
+    [bochaApiKey, queritApiKey, searxngBaseUrl, tavilyApiKey]
   )
 
   // MCP state
@@ -1106,13 +1097,11 @@ const AgentModePanel = forwardRef<AgentModePanelHandle, AgentModePanelProps>(fun
               }
               label={t('Web Search')}
               subtitle={
-                webSearchConfigurationIssue === 'chatbox-ai-sign-in'
-                  ? (t('Sign in required') ?? undefined)
-                  : webSearchConfigurationIssue
-                    ? (t('Setup required') ?? undefined)
-                    : webBrowsingMode
-                      ? webSearchProviderLabel
-                      : undefined
+                webSearchConfigurationIssue
+                  ? (t('Setup required') ?? undefined)
+                  : webBrowsingMode
+                    ? webSearchProviderLabel
+                    : undefined
               }
               danger={Boolean(webSearchConfigurationIssue)}
               active={page === 'web-search'}
@@ -1165,23 +1154,16 @@ const AgentModePanel = forwardRef<AgentModePanelHandle, AgentModePanelProps>(fun
                 <IconAlertCircle size={14} color="var(--chatbox-tint-error)" className="mt-0.5 shrink-0" />
                 <Stack gap={3} className="min-w-0">
                   <Text size="xs" c="chatbox-secondary" className="leading-snug">
-                    {webSearchConfigurationIssue === 'chatbox-ai-sign-in'
-                      ? t('Chatbox AI Search needs sign-in. Web Search will be skipped while this setting is on.')
-                      : t('The selected Web Search provider needs to be configured before it can run.')}
+                    {t('The selected Web Search provider needs to be configured before it can run.')}
                   </Text>
                   <UnstyledButton
                     className="w-fit text-xs font-semibold text-[var(--chatbox-tint-brand)]"
                     onClick={() => {
                       onClose()
-                      navigateToSettings(
-                        webSearchConfigurationIssue === 'chatbox-ai-sign-in' ? undefined : '/web-search'
-                      )
+                      navigateToSettings('/web-search')
                     }}
                   >
-                    {webSearchConfigurationIssue === 'chatbox-ai-sign-in'
-                      ? t('Sign in to Chatbox AI')
-                      : t('Open Web Search settings')}{' '}
-                    →
+                    {t('Open Web Search settings')} →
                   </UnstyledButton>
                 </Stack>
               </Flex>

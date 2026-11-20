@@ -1,10 +1,4 @@
-export const WEB_SEARCH_PROVIDERS = [
-  { value: 'build-in', label: 'Chatbox AI' },
-  { value: 'bing', label: 'Bing Search' },
-  { value: 'tavily', label: 'Tavily' },
-  { value: 'bocha', label: 'BoCha' },
-  { value: 'querit', label: 'Querit' },
-  { value: 'searxng', label: 'SearXNG' },
-] as const
+import { type WebSearchProviderId, webSearchProviders } from '@shared/services/web-search-providers'
 
-export type WebSearchProviderValue = (typeof WEB_SEARCH_PROVIDERS)[number]['value']
+export const WEB_SEARCH_PROVIDERS = webSearchProviders.map(({ id, label }) => ({ value: id, label }))
+export type WebSearchProviderValue = WebSearchProviderId

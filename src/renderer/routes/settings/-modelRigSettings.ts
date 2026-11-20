@@ -1,3 +1,4 @@
+import { defaultWebSearchProvider } from '@shared/services/web-search-providers'
 import type { Settings } from '@shared/types'
 import { ModelProviderEnum } from '@shared/types'
 import type { DocumentParserType } from '@shared/types/settings'
@@ -117,8 +118,7 @@ export function settingsPatchForModelSlot(slotId: ModelSlotId, selection: ModelR
 }
 
 export function searchProvider(settings: Settings): WebSearchProviderValue {
-  const provider = settings.extension?.webSearch?.provider
-  return !provider || (provider as string) === 'build-in' ? 'bing' : provider
+  return settings.extension?.webSearch?.provider ?? defaultWebSearchProvider
 }
 
 export function applyAllPresetsSettings(): Pick<

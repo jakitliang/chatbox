@@ -143,7 +143,6 @@ import { useModelToolCapabilities } from './useModelToolCapabilities'
 import { useReasoningControlState } from './useReasoningControlState'
 import { useSessionContextWindowTier } from './useSessionContextWindowTier'
 import { useThreadCreation } from './useThreadCreation'
-import { WebSearchUnavailableBanner } from './WebSearchUnavailableBanner'
 import WorkModeStatusRow from './WorkModeStatusRow'
 
 export type InputBoxPayload = {
@@ -1627,13 +1626,6 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         <Stack className={cn('overflow-visible', paddedContentColumnClassName(widthFull))} gap="xs">
           {currentSessionId && (
             <CompactionStatus sessionId={currentSessionId} onViewSummary={onViewCompactionSummary} />
-          )}
-          {!isNewSession && headerRead && (
-            <WebSearchUnavailableBanner
-              sessionId={headerRead.header.id}
-              errorCount={headerRead.summary.webSearchSignInErrorCount}
-              latestHasError={controls.data?.latestMessageHasWebSearchSignInError}
-            />
           )}
           {currentSessionId && !isNewSession && <QueuedMessagesBar sessionId={currentSessionId} />}
           {currentSession && !isNewSession && (

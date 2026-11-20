@@ -138,13 +138,12 @@ Web Search 采用抽象基类模式（`src/renderer/packages/web-search/base.ts`
 
 | 提供方 | 执行路径 | 失败模式 |
 |--------|---------|---------|
-| `build-in` (Chatbox AI) | 检查 `licenseKey` → 调用 `remote.parseUserLinkPro` | 缺 license 抛 `chatbox_search_license_key_required`（后端不限制 tier，任意 license 均可调用） |
 | `tavily` | `getParseLinkProvider().parseLink()` → Tavily `/extract` API | 缺 API key 抛 `tavily_api_key_required`；提取空抛 `parse_link_failed` |
-| 其他（`bing` / `bocha` / `querit`） | 不会注入 `parse_link`，模型看不到此工具 | — |
+| 其他（`bing` / `bocha` / `querit` / `searxng`） | 不会注入 `parse_link`，模型看不到此工具 | — |
 
 错误抛出采用 AI/用户双层结构：`Error.message`（传给 `ChatboxAIAPIError` 构造器的第一参数）携带技术原因供 AI 推理（例如 "Tavily extract API returned no results for {url}"），`detail.i18nKey` 则给用户渲染本地化的友好提示。
 
-工具的 `execute` 函数同时透传 `abortSignal`，使内置和第三方两条路径在用户取消工具执行时都能中止底层 HTTP 请求。`remote.parseUserLinkPro` 接收可选的 `abortSignal`，并通过 `afetch` 的 `RequestInit.signal` 透传到底层 fetch。
+工具的 `execute` 函数透传 `abortSignal`，使用户取消工具执行时能中止底层 HTTP 请求。
 
 ### 工具错误的用户可见渲染
 

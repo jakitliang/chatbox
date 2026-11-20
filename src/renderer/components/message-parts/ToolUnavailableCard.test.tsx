@@ -45,7 +45,7 @@ describe('ToolUnavailableCard', () => {
     mocks.navigateToSettings.mockReset()
   })
 
-  it('guides a signed-out user to Chatbox AI or Web Search settings', async () => {
+  it('guides legacy search errors to Web Search settings without a sign-in action', async () => {
     render(
       <MantineProvider>
         <ToolUnavailableCard toolLabel="Web Search" toolName="web_search" errorCode={20024} />
@@ -53,13 +53,11 @@ describe('ToolUnavailableCard', () => {
     )
 
     expect(screen.getByRole('status')).toBeTruthy()
-    expect(screen.getByText('Web Search was not run: sign in to use Chatbox AI Search')).toBeTruthy()
-    expect(screen.getByText(/does not require an API key/)).toBeTruthy()
+    expect(screen.getByText('Web Search could not run')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Sign in to Chatbox AI' })).toBeNull()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Sign in to Chatbox AI' }))
-    await waitFor(() => expect(mocks.navigateToSettings).toHaveBeenNthCalledWith(1))
     fireEvent.click(screen.getByRole('button', { name: 'Web Search settings' }))
-    await waitFor(() => expect(mocks.navigateToSettings).toHaveBeenNthCalledWith(2, '/web-search'))
+    await waitFor(() => expect(mocks.navigateToSettings).toHaveBeenCalledWith('/web-search'))
   })
 
   it('uses the known localized error detail for other Chatbox AI tool failures', () => {
@@ -73,7 +71,7 @@ describe('ToolUnavailableCard', () => {
     expect(screen.getByText('Known error 20025')).toBeTruthy()
   })
 
-  it('stacks full-width actions on small screens', () => {
+  it('uses a full-width settings action on small screens', () => {
     mocks.isSmallScreen = true
     render(
       <MantineProvider>
@@ -81,7 +79,6 @@ describe('ToolUnavailableCard', () => {
       </MantineProvider>
     )
 
-    expect(screen.getByRole('button', { name: 'Sign in to Chatbox AI' }).getAttribute('data-block')).toBe('true')
     expect(screen.getByRole('button', { name: 'Web Search settings' }).getAttribute('data-block')).toBe('true')
   })
 })

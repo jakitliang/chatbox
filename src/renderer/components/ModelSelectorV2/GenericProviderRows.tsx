@@ -1,36 +1,12 @@
 import type { ProviderModelInfo } from '@shared/types'
-import { ModelProviderEnum } from '@shared/types'
-import clsx from 'clsx'
-import { useTranslation } from 'react-i18next'
 import { modelMatchesSearch } from './chatboxCatalog'
 import { groupFavorites } from './helpers'
 import { ModelRow } from './ModelRow'
 import { ProviderRowHeader } from './ProviderRowHeader'
 import type { DetailModel, FavoriteModel, FilteredProvider } from './types'
 
-function ByokSectionDivider({ mobile }: { mobile: boolean }) {
-  const { t, i18n } = useTranslation()
-  const language = i18n.language.toLowerCase()
-  const byokLabel = language === 'zh-hans' || language.startsWith('zh-cn') ? '自带API KEY' : 'BYOK'
-
-  return (
-    <div
-      className={clsx(
-        'sticky top-0 z-20 flex h-9 items-center gap-2 border-0 border-y border-solid border-chatbox-border-primary bg-chatbox-background-secondary px-2.5',
-        mobile ? 'mt-1 px-3' : 'mt-1'
-      )}
-    >
-      <span className="min-w-0 flex-1 truncate text-xs font-semibold text-chatbox-tint-secondary">
-        {t('More Providers')}
-      </span>
-      <span className="text-[11px] font-semibold text-chatbox-tint-tertiary">{byokLabel}</span>
-    </div>
-  )
-}
-
 export function GenericProviderRows({
   favoriteOnly,
-  hasChatboxCatalog,
   favoritedModels,
   genericProviders,
   collapsedProviders,
@@ -50,7 +26,6 @@ export function GenericProviderRows({
   onDisabledSelect,
 }: {
   favoriteOnly: boolean
-  hasChatboxCatalog: boolean
   favoritedModels?: FavoriteModel[]
   genericProviders: FilteredProvider[]
   collapsedProviders: Record<string, boolean>
@@ -72,10 +47,9 @@ export function GenericProviderRows({
   const source = favoriteOnly
     ? Object.entries(groupFavorites(favoritedModels))
     : genericProviders.map((p) => [p.id, { provider: p, models: [] }] as const)
-  let byokDividerShown = false
   const rows = source.map(([_providerId, group]) => {
     const provider = favoriteOnly ? group.provider : (group.provider as FilteredProvider)
-    if (!provider || (hasChatboxCatalog && provider.id === ModelProviderEnum.ChatboxAI)) return null
+    if (!provider) return null
     const collapsed = collapsedProviders[provider.id] || false
     const models = favoriteOnly
       ? group.models
@@ -89,11 +63,8 @@ export function GenericProviderRows({
           })
       : (provider as FilteredProvider).models || []
     if (models.length === 0) return null
-    const showByokDivider = !favoriteOnly && provider.id !== ModelProviderEnum.ChatboxAI && !byokDividerShown
-    if (showByokDivider) byokDividerShown = true
     return (
       <div key={provider.id}>
-        {showByokDivider && <ByokSectionDivider mobile={isMobile} />}
         <ProviderRowHeader
           provider={provider}
           modelCount={models.length}

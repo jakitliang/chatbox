@@ -521,7 +521,7 @@ function SeedInputSettings() {
         ...state.extension,
         webSearch: {
           ...state.extension.webSearch,
-          provider: 'build-in',
+          provider: 'bing',
           tavilyApiKey: 'storybook-tavily',
         },
       },

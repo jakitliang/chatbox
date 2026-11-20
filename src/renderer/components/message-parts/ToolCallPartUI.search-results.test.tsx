@@ -260,6 +260,7 @@ describe('tool call search result overflow', () => {
     )
 
     expect(screen.getByRole('status')).toBeTruthy()
-    expect(screen.getByText('Web Search was not run: sign in to use Chatbox AI Search')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Web Search settings' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Sign in to Chatbox AI' })).toBeNull()
   })
 })

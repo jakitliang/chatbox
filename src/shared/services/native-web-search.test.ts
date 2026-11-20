@@ -32,20 +32,23 @@ describe('native web search', () => {
     const fetchFn = vi.fn<typeof fetch>()
     await expect(searchNativeWeb('private query', {
       provider: 'build-in', licenseKey: 'secret', chatboxApiOrigin: 'http://127.0.0.1:4567', fetchFn,
-    })).rejects.toThrow('built-in web search is disabled')
+    })).rejects.toThrow('saved web search provider is no longer available')
     await expect(searchNativeWeb('private query', {
       provider: 'build-in',
       get licenseKey(): string { throw new Error('Read credentials') },
       get chatboxApiOrigin(): string { throw new Error('Read origin') },
       get headers(): Record<string, string> { throw new Error('Read headers') },
       get fetchFn(): typeof fetch { throw new Error('Read fetch') },
-    })).rejects.toThrow('built-in web search is disabled')
+    })).rejects.toThrow('saved web search provider is no longer available')
     expect(fetchFn).not.toHaveBeenCalled()
   })
 
   it('disables persisted built-in settings without disabling BYOK settings', () => {
-    expect(normalizeNativeWebSearchSettings(undefined)).toMatchObject({ provider: 'build-in', enabled: false })
-    expect(normalizeNativeWebSearchSettings({ provider: 'build-in', enabled: true })).toMatchObject({ enabled: false })
+    expect(normalizeNativeWebSearchSettings(undefined)).toMatchObject({ provider: 'bing', enabled: false })
+    expect(normalizeNativeWebSearchSettings({ provider: 'build-in', enabled: true })).toMatchObject({
+      provider: 'bing',
+      enabled: false,
+    })
     expect(normalizeNativeWebSearchSettings({ provider: 'tavily', enabled: true, apiKey: 'key' })).toMatchObject({
       provider: 'tavily', enabled: true, apiKey: 'key',
     })

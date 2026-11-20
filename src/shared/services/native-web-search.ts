@@ -1,4 +1,5 @@
 import type { AbortSignalLike } from '../types/adapters'
+import { defaultWebSearchProvider, type WebSearchProviderId, webSearchProviders } from './web-search-providers'
 
 type NativeFetchInit = NonNullable<Parameters<typeof fetch>[1]>
 type NativeFetch = (input: string, init?: NativeFetchInit) => Promise<Response>
@@ -18,16 +19,9 @@ export interface NativeWebSearchResultItem {
 }
 
 /** Same provider set the renderer's Web Search settings expose. */
-export type NativeWebSearchProvider = 'build-in' | 'bing' | 'tavily' | 'bocha' | 'querit' | 'searxng'
-
-export const nativeWebSearchProviderOptions: Array<{ id: NativeWebSearchProvider; label: string }> = [
-  { id: 'build-in', label: 'Chatbox AI' },
-  { id: 'bing', label: 'Bing Search' },
-  { id: 'tavily', label: 'Tavily' },
-  { id: 'bocha', label: 'BoCha' },
-  { id: 'querit', label: 'Querit' },
-  { id: 'searxng', label: 'SearXNG' },
-]
+export type NativeWebSearchProvider = WebSearchProviderId
+export const nativeWebSearchProviderOptions = webSearchProviders
+type StoredNativeWebSearchProvider = NativeWebSearchProvider | 'build-in'
 
 export interface NativeWebSearchSettings {
   enabled?: boolean
@@ -36,30 +30,27 @@ export interface NativeWebSearchSettings {
   apiHost: string
 }
 
-// Keep the legacy provider value for saved settings, but never enable paid search by default.
 export const defaultNativeWebSearchSettings: NativeWebSearchSettings = {
   enabled: false,
-  provider: 'build-in',
+  provider: defaultWebSearchProvider,
   apiKey: '',
   apiHost: '',
 }
 
 export function normalizeNativeWebSearchSettings(
-  settings: Partial<NativeWebSearchSettings> | undefined
+  settings: (Partial<Omit<NativeWebSearchSettings, 'provider'>> & { provider?: StoredNativeWebSearchProvider }) | undefined
 ): NativeWebSearchSettings {
-  const provider = nativeWebSearchProviderOptions.some((option) => option.id === settings?.provider)
-    ? (settings?.provider as NativeWebSearchProvider)
-    : defaultNativeWebSearchSettings.provider
+  const provider = nativeWebSearchProviderOptions.find((option) => option.id === settings?.provider)?.id
   return {
-    enabled: provider === 'build-in' ? false : settings?.enabled,
-    provider,
+    enabled: provider ? settings?.enabled : false,
+    provider: provider ?? defaultNativeWebSearchSettings.provider,
     apiKey: settings?.apiKey ?? '',
     apiHost: settings?.apiHost ?? '',
   }
 }
 
 export interface NativeWebSearchOptions {
-  provider?: NativeWebSearchProvider
+  provider?: StoredNativeWebSearchProvider
   apiKey?: string
   apiHost?: string
   /** Legacy compatibility field; the disabled `build-in` provider never reads it. */
@@ -85,7 +76,7 @@ interface TavilyResponseItem {
 }
 
 export function hasNativeWebSearchConfiguration(
-  settings: Pick<NativeWebSearchSettings, 'provider' | 'apiKey'> & Partial<Pick<NativeWebSearchSettings, 'apiHost'>>,
+  settings: { provider: StoredNativeWebSearchProvider; apiKey: string; apiHost?: string },
   _licenseKey?: string
 ): boolean {
   if (settings.provider === 'build-in') return false
@@ -103,7 +94,7 @@ export async function searchNativeWeb(
   const provider = options.provider ?? 'tavily'
   if (provider === 'bing') return searchNativeBing(query, options)
   if (provider === 'build-in') {
-    throw new Error('Chatbox AI built-in web search is disabled in the self-hosted edition; select another provider')
+    throw new Error('The saved web search provider is no longer available; select another provider')
   }
   if (provider === 'bocha') return searchNativeBocha(query, options)
   if (provider === 'querit') return searchNativeQuerit(query, options)

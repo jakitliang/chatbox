@@ -3,6 +3,16 @@ import { createDefaultSettings, getDefaultDocumentParser } from './settings-defa
 import { DocumentParserConfigSchema, ProviderSettingsSchema, SessionSettingsSchema, SettingsSchema } from './settings-schema'
 
 describe('self-host settings', () => {
+  it('migrates the removed search provider to Bing without enabling search', () => {
+    const defaults = createDefaultSettings()
+    const parsed = SettingsSchema.parse({
+      ...defaults,
+      extension: { ...defaults.extension, webSearch: { provider: 'build-in' } },
+    })
+    expect(parsed.extension.webSearch.provider).toBe('bing')
+    expect(parsed.webBrowsing).toBe(false)
+  })
+
   it('defaults to local services with search, telemetry and updates opt-in', () => {
     const settings = createDefaultSettings()
     expect(settings.appApiServer).toBe('http://127.0.0.1:4567')

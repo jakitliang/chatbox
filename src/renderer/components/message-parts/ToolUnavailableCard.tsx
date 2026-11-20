@@ -1,5 +1,5 @@
 import { Box, Button, Group, Paper, Stack, Text, ThemeIcon } from '@mantine/core'
-import { IconAlertCircle, IconArrowUpRight, IconWorldOff } from '@tabler/icons-react'
+import { IconAlertCircle, IconWorldOff } from '@tabler/icons-react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChatboxAIErrorMessage } from '@/components/common/ChatboxAIErrorMessage'
@@ -13,19 +13,15 @@ interface ToolUnavailableCardProps {
 
 const CHATBOX_SEARCH_LICENSE_REQUIRED = 20024
 
-async function openSettings(path?: string): Promise<void> {
+async function openWebSearchSettings(): Promise<void> {
   const { navigateToSettings } = await import('@/modals/settings-navigation')
-  if (path) {
-    navigateToSettings(path)
-  } else {
-    navigateToSettings()
-  }
+  navigateToSettings('/web-search')
 }
 
 export const ToolUnavailableCard: FC<ToolUnavailableCardProps> = ({ toolLabel, toolName, errorCode }) => {
   const { t } = useTranslation()
   const isSmallScreen = useIsSmallScreen()
-  const isChatboxSearchSignInRequired = toolName === 'web_search' && errorCode === CHATBOX_SEARCH_LICENSE_REQUIRED
+  const isLegacySearchError = toolName === 'web_search' && errorCode === CHATBOX_SEARCH_LICENSE_REQUIRED
   const ToolErrorIcon = toolName === 'web_search' || toolName === 'parse_link' ? IconWorldOff : IconAlertCircle
 
   return (
@@ -61,22 +57,16 @@ export const ToolUnavailableCard: FC<ToolUnavailableCardProps> = ({ toolLabel, t
         <Box style={{ flex: 1, minWidth: 0, width: isSmallScreen ? '100%' : undefined }}>
           <Stack gap={4}>
             <Text size="sm" fw={600} lh={1.45}>
-              {isChatboxSearchSignInRequired
-                ? t('Web Search was not run: sign in to use Chatbox AI Search')
-                : t('{{tool}} could not run', { tool: toolLabel })}
+              {t('{{tool}} could not run', { tool: toolLabel })}
             </Text>
-            <Text size="13px" c="var(--chatbox-tint-secondary)" lh={1.6} component="div">
-              {isChatboxSearchSignInRequired ? (
-                t(
-                  'Chatbox AI Search is built in and does not require an API key. Sign in to use web search and webpage reading. No web results were used in this response.'
-                )
-              ) : (
+            {!isLegacySearchError && (
+              <Text size="13px" c="var(--chatbox-tint-secondary)" lh={1.6} component="div">
                 <ChatboxAIErrorMessage errorCode={errorCode} trackingSource="msg_tool_error" />
-              )}
-            </Text>
+              </Text>
+            )}
           </Stack>
 
-          {isChatboxSearchSignInRequired && (
+          {isLegacySearchError && (
             <Group mt={10} gap={8} align="stretch" style={isSmallScreen ? { flexDirection: 'column' } : undefined}>
               <Button
                 h={isSmallScreen ? 40 : 32}
@@ -84,24 +74,8 @@ export const ToolUnavailableCard: FC<ToolUnavailableCardProps> = ({ toolLabel, t
                 radius={6}
                 size="xs"
                 fullWidth={isSmallScreen}
-                rightSection={<IconArrowUpRight size={14} stroke={2} />}
-                onClick={() => void openSettings()}
-                style={{
-                  fontWeight: 600,
-                  color: 'var(--chatbox-tint-white)',
-                  background: 'var(--chatbox-background-brand-primary)',
-                }}
-              >
-                {t('Sign in to Chatbox AI')}
-              </Button>
-              <Button
-                h={isSmallScreen ? 40 : 32}
-                px={14}
-                radius={6}
-                size="xs"
-                fullWidth={isSmallScreen}
                 variant="light"
-                onClick={() => void openSettings('/web-search')}
+                onClick={() => void openWebSearchSettings()}
               >
                 {t('Web Search settings')}
               </Button>

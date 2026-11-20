@@ -88,8 +88,7 @@ const MobileAgentModePanel = forwardRef<AgentModePanelHandle, AgentModePanelProp
     onClose,
   })
   const webSearch = useSettingsStore((s) => s.extension.webSearch)
-  const licenseKey = useSettingsStore((s) => s.licenseKey)
-  const webIssue = webBrowsingMode && getWebSearchConfigurationIssue(webSearch, licenseKey) !== null
+  const webIssue = webBrowsingMode && getWebSearchConfigurationIssue(webSearch) !== null
   const webProvider = WEB_SEARCH_PROVIDERS.find((p) => p.value === webSearch.provider)?.label ?? webSearch.provider
   const labels: Record<LocalWorkCapabilityId, string> = {
     photos: t('Photos'),

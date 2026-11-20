@@ -1,5 +1,6 @@
 import { LOCAL_WORK_CAPABILITY_IDS } from '@shared/mobile-work/capabilities'
 import { contextWindowTiers } from '@shared/providers/context-window-tier'
+import { defaultWebSearchProvider, webSearchProviderIds } from '@shared/services/web-search-providers'
 import { z } from 'zod'
 import { DEFAULT_INTERFACE_COLORS, getDefaultInterfaceColors } from '../../theme-colors'
 import { MEMORY_STATE_TOKEN_MAX_CHARS, SessionPromptContextSnapshotSchema } from '../../types/agent-persona'
@@ -353,10 +354,7 @@ const ShortcutSettingSchema = z.preprocess(
 const ExtensionSettingsSchema = z.object({
   webSearch: z.object({
     // Old paid search selections migrate to Bing. Search still requires explicit enablement.
-    provider: z.preprocess(
-      (provider) => (provider === 'build-in' ? 'bing' : provider),
-      z.enum(['build-in', 'bing', 'tavily', 'bocha', 'querit', 'searxng']).catch('bing')
-    ),
+    provider: z.enum(webSearchProviderIds).catch(defaultWebSearchProvider),
     tavilyApiKey: z.string().optional(),
     bochaApiKey: z.string().optional(),
     queritApiKey: z.string().optional(),

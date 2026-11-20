@@ -94,7 +94,7 @@ export function RouteComponent() {
               id={fieldId}
               comboboxProps={{ withinPortal: true, withArrow: true }}
               aria-label={t('Search Provider') ?? undefined}
-              data={WEB_SEARCH_PROVIDERS.filter((p) => p.value !== 'build-in').map((p) => ({ value: p.value, label: p.label }))}
+              data={WEB_SEARCH_PROVIDERS}
               value={provider}
               onChange={(value) => value && updateWebSearch({ provider: value as WebSearchProviderValue })}
             />

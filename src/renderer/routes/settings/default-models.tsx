@@ -641,7 +641,7 @@ function SlotSelector(
   }
 
   if (props.slotId === 'search') {
-    const options = WEB_SEARCH_PROVIDERS.filter((item) => item.value !== 'build-in').map((item) => ({
+    const options = WEB_SEARCH_PROVIDERS.map((item) => ({
       value: item.value,
       label: item.label,
     }))

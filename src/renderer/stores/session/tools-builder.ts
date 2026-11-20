@@ -444,7 +444,7 @@ When you create a Git commit that includes code changes, append this exact trail
   if (webBrowsing && webSupported) {
     tools.web_search = webSearchTool
     // Inject parse_link based on the selected provider's declared capability.
-    // Validation (Pro for build-in, API key for third parties) happens at execution time.
+    // Provider configuration is validated at execution time.
     if (includeParseLinkTool) {
       tools.parse_link = parseLinkTool
     }

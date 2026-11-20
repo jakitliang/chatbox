@@ -5,8 +5,7 @@ import { type FC, type ReactNode, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMCPServerStatus, useToggleMCPServer } from '@/hooks/mcp'
 import { navigateToSettings } from '@/modals/settings-navigation'
-import { BUILTIN_MCP_SERVERS } from '@/packages/mcp/builtin'
-import { useAutoValidate } from '@/stores/premiumActions'
+import { mcpController } from '@/packages/mcp/controller'
 import { useMcpSettings } from '@/stores/settingsStore'
 import { ScalableIcon } from '../common/ScalableIcon'
 import MCPStatus from './MCPStatus'
@@ -19,8 +18,9 @@ interface ServerItem {
 
 const ServerItem: FC<{
   item: ServerItem
+  unsupported: boolean
   onEnabledChange: (id: string, enabled: boolean) => void
-}> = ({ item, onEnabledChange }) => {
+}> = ({ item, unsupported, onEnabledChange }) => {
   const status = useMCPServerStatus(item.id)
   return (
     <Menu.Item
@@ -30,7 +30,7 @@ const ServerItem: FC<{
         <Switch
           checked={item.enabled}
           size="xs"
-          disabled={status?.state === 'starting' || status?.state === 'stopping'}
+          disabled={unsupported || status?.state === 'starting' || status?.state === 'stopping'}
           onChange={(e) => onEnabledChange(item.id, e.currentTarget.checked)}
         />
       }
@@ -43,9 +43,8 @@ const ServerItem: FC<{
 const MCPMenu: FC<{ children: (enabledTools: number) => ReactNode }> = ({ children }) => {
   const { t } = useTranslation()
   const mcp = useMcpSettings()
-  const isPremium = useAutoValidate()
   const onEnabledChange = useToggleMCPServer()
-  const enabledToolsCount = mcp.servers.filter((s) => s.enabled).length + mcp.enabledBuiltinServers.length
+  const enabledToolsCount = mcpController.getEnabledServers(mcp.servers).length
   const [opened, setOpened] = useState(false)
   return (
     <Menu
@@ -81,26 +80,15 @@ const MCPMenu: FC<{ children: (enabledTools: number) => ReactNode }> = ({ childr
             </ActionIcon>
           </Menu.Label>
         </Flex>
-        {isPremium && (
-          <>
-            {BUILTIN_MCP_SERVERS.map((server) => (
-              <ServerItem
-                key={server.id}
-                item={{
-                  id: server.id,
-                  name: server.name,
-                  enabled: mcp.enabledBuiltinServers.includes(server.id),
-                }}
-                onEnabledChange={onEnabledChange}
-              />
-            ))}
-            <Menu.Divider />
-          </>
-        )}
         {mcp.servers.map((server) => (
-          <ServerItem key={server.id} item={server} onEnabledChange={onEnabledChange} />
+          <ServerItem
+            key={server.id}
+            item={server}
+            unsupported={Boolean(mcpController.getTransportIssue(server.transport.type))}
+            onEnabledChange={onEnabledChange}
+          />
         ))}
-        {!mcp.servers.length && !mcp.enabledBuiltinServers.length && (
+        {!mcp.servers.length && (
           <Group justify="center">
             <Link to="/settings/mcp">
               <Button size="xs" my={12} variant="outline">

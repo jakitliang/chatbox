@@ -8,10 +8,7 @@ export function MCPConnectionSummary() {
   const { t } = useTranslation()
   const settings = useMcpSettings()
   const [, refresh] = useState(0)
-  const ids = [
-    ...settings.enabledBuiltinServers,
-    ...settings.servers.filter((server) => server.enabled).map((server) => server.id),
-  ]
+  const ids = mcpController.getEnabledServers(settings.servers).map((server) => server.id)
   const signature = JSON.stringify(ids)
   useEffect(() => {
     const serverIds = JSON.parse(signature) as string[]

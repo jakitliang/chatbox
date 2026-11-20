@@ -544,7 +544,6 @@ function SeedInputSettings() {
             },
           },
         ],
-        enabledBuiltinServers: [],
       },
     }))
     uiStore.setState((state) => ({

@@ -25,6 +25,7 @@ vi.mock('@/stores/settingActions', () => ({
 vi.mock('@/stores/settingsStore', () => ({
   settingsStore: {
     getState: () => ({
+      mcp: { servers: [] },
       getSettings: () => ({
         licenseKey: '',
         language: 'en',
@@ -46,6 +47,7 @@ vi.mock('@/stores/uiStore', () => ({
 
 vi.mock('@/packages/mcp/controller', () => ({
   mcpController: {
+    getEnabledServers: () => [],
     getAvailableTools: () => ({}),
   },
 }))

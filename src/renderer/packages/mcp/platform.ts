@@ -13,7 +13,7 @@ export function getMCPPlatformDependencies(): MCPPlatformDependencies {
   return {
     mobile: false,
     reportSchemaWarning,
-    createStdioTransport: (config) => IPCStdioTransport.create(config),
+    ...(platform.type === 'desktop' && { createStdioTransport: (config) => IPCStdioTransport.create(config) }),
     createOAuthProvider: (config, interactive) => new MCPOAuthProvider(config.id, interactive),
   }
 }

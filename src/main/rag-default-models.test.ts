@@ -33,7 +33,6 @@ function settingsWithFallbacks(overrides: Partial<Settings> = {}): Settings {
     },
     mcp: {
       servers: [],
-      enabledBuiltinServers: [],
     },
     skills: {
       enabledSkillNames: ['chatbox-product-info'],

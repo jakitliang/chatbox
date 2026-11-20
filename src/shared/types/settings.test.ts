@@ -76,7 +76,6 @@ describe('SettingsSchema MCP protocol mode', () => {
     const parsed = SettingsSchema.parse({
       ...defaultSettings(),
       mcp: {
-        enabledBuiltinServers: [],
         servers: [
           {
             id: 'custom-mcp',
@@ -96,7 +95,6 @@ describe('SettingsSchema MCP protocol mode', () => {
     const parsed = SettingsSchema.parse({
       ...defaultSettings(),
       mcp: {
-        enabledBuiltinServers: [],
         servers: [
           {
             id: 'legacy-mcp',
@@ -115,7 +113,6 @@ describe('SettingsSchema MCP protocol mode', () => {
     const parsed = SettingsSchema.parse({
       ...defaultSettings(),
       mcp: {
-        enabledBuiltinServers: [],
         servers: [
           {
             id: 'unknown-protocol-mcp',
@@ -315,7 +312,6 @@ describe('SettingsSchema mcp servers', () => {
           { name: 'Missing id', enabled: true, transport: { type: 'stdio', command: 'x', args: [] } },
           validServer,
         ],
-        enabledBuiltinServers: [],
       },
     })
     expect(parsed.mcp.servers).toEqual([validServer])
@@ -324,9 +320,8 @@ describe('SettingsSchema mcp servers', () => {
   test('falls back to an empty list when servers is not an array', () => {
     const parsed = SettingsSchema.parse({
       ...defaultSettings(),
-      mcp: { servers: 'broken', enabledBuiltinServers: 'broken' },
+      mcp: { servers: 'broken' },
     })
     expect(parsed.mcp.servers).toEqual([])
-    expect(parsed.mcp.enabledBuiltinServers).toEqual([])
   })
 })

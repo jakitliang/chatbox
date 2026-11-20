@@ -1,4 +1,4 @@
-import { createMCPController, getBuiltinServerConfig, prepareRemoteMCPTools } from '@chatbox/core/mcp'
+import { createMCPController, prepareMCPTools } from '@chatbox/core/mcp'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createMobileMcpFixture } from '../../../scripts/mobile-mcp-fixture.mjs'
 
@@ -40,11 +40,12 @@ describe('host-independent MCP', () => {
   ] as const) {
     it(`executes a tool over ${mode} ${path}`, async () => {
       const { controller, config } = await setup(path, mode)
-      const prepared = await prepareRemoteMCPTools({
+      const prepared = await prepareMCPTools({
         controller,
         enabled: true,
         model: { isSupportToolUse: () => true },
-        settings: { mcp: { servers: [config], enabledBuiltinServers: [] } },
+        servers: [config],
+        connect: true,
         signal: new AbortController().signal,
       })
       expect(prepared.unavailable).toEqual([])
@@ -56,12 +57,6 @@ describe('host-independent MCP', () => {
       expect(createMCPController({ mobile: true, fetch }).servers.size).toBe(0)
     })
   }
-  it('constructs builtin credentials only from its host input', () => {
-    expect(getBuiltinServerConfig('fetch')?.transport).toMatchObject({ headers: undefined })
-    expect(getBuiltinServerConfig('fetch', 'synthetic')?.transport).toMatchObject({
-      headers: { 'x-chatbox-license': 'synthetic' },
-    })
-  })
 })
 
 for (const [path, mode] of [
@@ -95,7 +90,17 @@ for (const [path, mode] of [
   })
 }
 
-it('isolates third-party headers from builtin license credentials', async () => {
+it('omits tools from a disabled or removed server even while its connection is running', async () => {
+  const { config, controller } = await setup('mcp', 'auto')
+  const options = { controller, enabled: true, model: { isSupportToolUse: () => true } }
+  await controller.startServer(config)
+  expect((await prepareMCPTools({ ...options, servers: [config] })).tools).toHaveProperty('mcp__remote__echo')
+  expect((await prepareMCPTools({ ...options, servers: [{ ...config, enabled: false }] })).tools).toEqual({})
+  expect((await prepareMCPTools({ ...options, servers: [] })).tools).toEqual({})
+  expect(controller.getServer(config.id)?.status.state).toBe('running')
+})
+
+it('uses only configured third-party headers', async () => {
   const { config } = await setup('mcp', 'auto')
   const headers: Headers[] = []
   const controller = createMCPController({
@@ -108,17 +113,17 @@ it('isolates third-party headers from builtin license credentials', async () => 
   disposers.push(async () => {
     await controller.stopServer(config.id)
   })
-  await prepareRemoteMCPTools({
+  const serverSettings = {
+    mcp: {
+      servers: [{ ...config, transport: { ...config.transport, headers: { Authorization: 'Bearer third-party' } } }],
+    },
+  }
+  await prepareMCPTools({
     controller,
     enabled: true,
     model: { isSupportToolUse: () => true },
-    settings: {
-      licenseKey: 'synthetic-license',
-      mcp: {
-        servers: [{ ...config, transport: { ...config.transport, headers: { Authorization: 'Bearer third-party' } } }],
-        enabledBuiltinServers: [],
-      },
-    },
+    servers: serverSettings.mcp.servers,
+    connect: true,
     signal: new AbortController().signal,
   })
   expect(headers.length).toBeGreaterThan(0)
@@ -175,10 +180,11 @@ for (const mode of ['auto', 'legacy'] as const) {
         controller,
         enabled: true,
         model: { isSupportToolUse: () => true },
-        settings: { mcp: { servers: [config], enabledBuiltinServers: [] } },
+        servers: [config],
+        connect: true,
       }
       const signals = [new AbortController(), new AbortController()]
-      const preparations = signals.map((abort) => prepareRemoteMCPTools({ ...options, signal: abort.signal }))
+      const preparations = signals.map((abort) => prepareMCPTools({ ...options, signal: abort.signal }))
       const cancelled = expect(preparations[cancelledIndex]).rejects.toMatchObject({ name: 'AbortError' })
       signals[cancelledIndex].abort()
       try {
@@ -218,18 +224,19 @@ for (const mode of ['auto', 'legacy'] as const) {
       controller,
       enabled: true,
       model: { isSupportToolUse: () => true },
-      settings: { mcp: { servers: [config], enabledBuiltinServers: [] } },
+      servers: [config],
+      connect: true,
     }
     const signals = [new AbortController(), new AbortController()]
     const results = signals.map((abort) =>
-      expect(prepareRemoteMCPTools({ ...options, signal: abort.signal })).rejects.toMatchObject({ name: 'AbortError' })
+      expect(prepareMCPTools({ ...options, signal: abort.signal })).rejects.toMatchObject({ name: 'AbortError' })
     )
     try {
       await vi.waitFor(() => expect(pendingSignal).toBeTruthy())
       signals.forEach((abort) => abort.abort())
       await Promise.all(results)
       await vi.waitFor(() => expect(pendingSignal?.aborted).toBe(true))
-      const prepared = await prepareRemoteMCPTools({ ...options, signal: new AbortController().signal })
+      const prepared = await prepareMCPTools({ ...options, signal: new AbortController().signal })
       expect(prepared.unavailable).toEqual([])
       release()
       await vi.waitFor(() => expect(controller.getServer(config.id)?.status.state).toBe('running'))

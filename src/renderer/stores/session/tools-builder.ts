@@ -13,7 +13,7 @@ import { validatedToolSchema } from '@shared/validated-tool-schema'
 import type { ModelMessage, ToolSet } from 'ai'
 import { trackAgentModeFullAccessBypass } from '@/analytics/agent-mode'
 import { languageNameMap } from '@/i18n/locales'
-import { mcpController } from '@/packages/mcp/controller'
+import { prepareSessionMCPTools } from '@/packages/mcp/prepare-tools'
 import { generateCommandExplanation } from '@/packages/model-calls/command-explanation'
 import { buildAgentMemoryTools, buildPausedAgentMemoryTools } from '@/packages/model-calls/toolsets/agent-memory'
 import { getBuiltInBrowserToolSet } from '@/packages/model-calls/toolsets/built-in-browser'
@@ -437,7 +437,13 @@ When you create a Git commit that includes code changes, append this exact trail
 
   // MCP tools: agent mode only, requires model support
   if (includeAgentTools) {
-    tools = { ...mcpController.getAvailableTools() }
+    const { tools: mcpTools } = await prepareSessionMCPTools({
+      enabled: agentMode === 'on',
+      model,
+      servers: settingsStore.getState().mcp.servers,
+      connect: platform.type === 'mobile',
+    })
+    tools = { ...mcpTools }
   }
 
   // Web search: works independently of agent mode

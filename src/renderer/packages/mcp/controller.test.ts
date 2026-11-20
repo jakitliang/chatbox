@@ -10,6 +10,11 @@ import { settingsStore } from '@/stores/settingsStore'
 import { MCPServer, mcpController } from './controller'
 import { IPCStdioTransport } from './ipc-stdio-transport'
 
+vi.mock('@/platform', async (importOriginal) => {
+  const { default: platform } = await importOriginal<typeof import('@/platform')>()
+  return { default: Object.assign(Object.create(platform), { type: 'desktop' }) }
+})
+
 interface RecordedRequest {
   url: string
   method: string

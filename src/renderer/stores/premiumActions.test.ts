@@ -10,7 +10,7 @@ type TestSettingsState = {
   licensePlanName?: string
   hasExpiredLicense?: boolean
   mcp: {
-    enabledBuiltinServers: string[]
+    servers: string[]
   }
 }
 
@@ -29,7 +29,7 @@ const { remoteMocks, mcpMocks, stateControls, authControls, authSubscribers } = 
     licensePlanName?: string
     hasExpiredLicense?: boolean
     mcp: {
-      enabledBuiltinServers: string[]
+      servers: string[]
     }
   }
   type MockAuthState = {
@@ -51,7 +51,7 @@ const { remoteMocks, mcpMocks, stateControls, authControls, authSubscribers } = 
       licenseDetail: undefined,
       licensePlanName: undefined,
       hasExpiredLicense: undefined,
-      mcp: { enabledBuiltinServers: [] },
+      mcp: { servers: [] },
     } as MockSettingsState,
   }
   const auth: { current: MockAuthState } = {
@@ -170,7 +170,7 @@ function resetSettings(overrides: Partial<TestSettingsState>) {
     licenseDetail: undefined,
     licensePlanName: undefined,
     hasExpiredLicense: undefined,
-    mcp: { enabledBuiltinServers: [] },
+    mcp: { servers: [] },
     ...overrides,
   }
 }
@@ -214,7 +214,7 @@ describe('login license state reconciliation', () => {
       licenseDetail: { name: 'Pro' },
       licensePlanName: 'Pro',
       hasExpiredLicense: true,
-      mcp: { enabledBuiltinServers: ['server-a'] },
+      mcp: { servers: ['server-a'] },
     })
 
     expect(reconcileLoginLicenseState()).toBe(true)
@@ -225,8 +225,8 @@ describe('login license state reconciliation', () => {
     expect(stateControls.current.licenseDetail).toBeUndefined()
     expect(stateControls.current.licensePlanName).toBeUndefined()
     expect(stateControls.current.hasExpiredLicense).toBe(false)
-    expect(stateControls.current.mcp.enabledBuiltinServers).toEqual([])
-    expect(mcpMocks.stopServer).toHaveBeenCalledWith('server-a')
+    expect(stateControls.current.mcp.servers).toEqual(['server-a'])
+    expect(mcpMocks.stopServer).not.toHaveBeenCalled()
     expect(remoteMocks.invalidateSessionRagConfigCache).toHaveBeenCalled()
   })
 
@@ -236,7 +236,7 @@ describe('login license state reconciliation', () => {
       licenseKey: 'login-license',
       licenseActivationMethod: 'login',
       licenseInstances: { 'login-license': 'instance-id' },
-      mcp: { enabledBuiltinServers: ['server-a'] },
+      mcp: { servers: ['server-a'] },
     })
 
     expect(reconcileLoginLicenseState()).toBe(false)
@@ -251,7 +251,7 @@ describe('login license state reconciliation', () => {
       licenseKey: 'manual-license',
       licenseActivationMethod: 'manual',
       licenseInstances: { 'manual-license': 'instance-id' },
-      mcp: { enabledBuiltinServers: [] },
+      mcp: { servers: [] },
     })
 
     expect(reconcileLoginLicenseState()).toBe(false)
@@ -266,7 +266,7 @@ describe('login license state reconciliation', () => {
       licenseKey: 'login-license',
       licenseActivationMethod: 'login',
       licenseInstances: { 'login-license': 'instance-id' },
-      mcp: { enabledBuiltinServers: [] },
+      mcp: { servers: [] },
     })
 
     const unsubscribe = initLoginLicenseStateReconciliation()

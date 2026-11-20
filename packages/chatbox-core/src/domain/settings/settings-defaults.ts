@@ -98,7 +98,6 @@ export function createDefaultSettings(): Settings {
     },
     mcp: {
       servers: [],
-      enabledBuiltinServers: [],
     },
     skills: {
       enabledSkillNames: [...DEFAULT_ENABLED_BUILTIN_SKILL_NAMES],

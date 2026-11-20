@@ -13,7 +13,6 @@ import { useMCPServerStatus, useToggleMCPServer } from '@/hooks/mcp'
 import { mcpController } from '@/packages/mcp/controller'
 import type { MCPServerConfig } from '@/packages/mcp/types'
 import { toastError } from '@/packages/toast'
-import platform from '@/platform'
 import { useMcpSettings, useSettingsStore } from '@/stores/settingsStore'
 import { trackEvent } from '@/utils/track'
 import { ConfigModal } from './ConfigModal'
@@ -29,7 +28,7 @@ const ServerRow: FC<{
   const { t } = useTranslation()
   const { config, triggerEdit, onEnabledChange } = props
   const status = useMCPServerStatus(config.id)
-  const unsupported = platform.type === 'mobile' && config.transport.type === 'stdio'
+  const unsupported = mcpController.getTransportIssue(config.transport.type)
   return (
     <SettingRow
       id={`mcp-server-${config.id}`}
@@ -65,7 +64,7 @@ const ServerRow: FC<{
             size="md"
             aria-label={config.name}
             checked={config.enabled}
-            disabled={unsupported}
+            disabled={Boolean(unsupported)}
             onChange={(e) => onEnabledChange(config.id, e.currentTarget.checked)}
           />
         </Flex>

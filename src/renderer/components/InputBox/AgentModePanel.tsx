@@ -49,12 +49,11 @@ import { AppTooltip as Tooltip } from '@/components/ui/tooltip'
 import { useKnowledgeBases } from '@/hooks/knowledge-base'
 import { useMCPServerStatus, useToggleMCPServer } from '@/hooks/mcp'
 import { navigateToSettings } from '@/modals/settings-navigation'
-import { BUILTIN_MCP_SERVERS } from '@/packages/mcp/builtin'
+import { mcpController } from '@/packages/mcp/controller'
 import { skillsController, subscribeSkillsChanged } from '@/packages/skills/controller'
 import { getWebSearchConfigurationIssue } from '@/packages/web-search/configuration-issue'
 import { WEB_SEARCH_PROVIDERS, type WebSearchProviderValue } from '@/packages/web-search/constants'
 import platform from '@/platform'
-import { useAutoValidate } from '@/stores/premiumActions'
 import { setSessionAgentMode, useSessionAgentMode } from '@/stores/session/agent-mode'
 import { useSessionPresentation } from '@/hooks/useSessionPresentation'
 import { useMcpSettings, useSettingsStore } from '@/stores/settingsStore'
@@ -244,9 +243,8 @@ const AgentModePanel = forwardRef<AgentModePanelHandle, AgentModePanelProps>(fun
 
   // MCP state
   const mcp = useMcpSettings()
-  const isPremium = useAutoValidate()
   const onMCPEnabledChange = useToggleMCPServer()
-  const enabledMCPCount = mcp.servers.filter((s) => s.enabled).length + mcp.enabledBuiltinServers.length
+  const enabledMCPCount = mcpController.getEnabledServers(mcp.servers).length
 
   // Knowledge Base state
   const { data: knowledgeBases } = useKnowledgeBases(featureFlags.knowledgeBase)
@@ -879,32 +877,17 @@ const AgentModePanel = forwardRef<AgentModePanelHandle, AgentModePanelProps>(fun
         <>
           <SubPanelHeader title="MCP" settingsPath="/mcp" disabled={workModeCapabilitiesDisabled} />
           <Divider my={4} />
-          {isPremium && (
-            <>
-              {BUILTIN_MCP_SERVERS.map((server) => (
-                <MCPServerItem
-                  key={server.id}
-                  id={server.id}
-                  name={server.name}
-                  enabled={mcp.enabledBuiltinServers.includes(server.id)}
-                  disabled={workModeCapabilitiesDisabled}
-                  onEnabledChange={onMCPEnabledChange}
-                />
-              ))}
-              {mcp.servers.length > 0 && <Divider my={4} />}
-            </>
-          )}
           {mcp.servers.map((server) => (
             <MCPServerItem
               key={server.id}
               id={server.id}
               name={server.name}
               enabled={server.enabled}
-              disabled={workModeCapabilitiesDisabled}
+              disabled={workModeCapabilitiesDisabled || Boolean(mcpController.getTransportIssue(server.transport.type))}
               onEnabledChange={onMCPEnabledChange}
             />
           ))}
-          {!mcp.servers.length && !mcp.enabledBuiltinServers.length && (
+          {!mcp.servers.length && (
             <Group justify="center" py="md">
               <Button
                 size="xs"

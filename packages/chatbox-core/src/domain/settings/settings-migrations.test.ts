@@ -64,7 +64,7 @@ describe('settings migrations', () => {
       },
     })
     expect(migrated.skills.translationEnabled).toBe(true)
-    expect(migrated.extension.documentParser).toEqual({ type: 'chatbox-ai' })
+    expect(migrated.extension.documentParser).toEqual({ type: 'local' })
   })
 
   test('moves the version 7 default compaction threshold to the current default and keeps chosen values', () => {
@@ -143,63 +143,6 @@ describe('settings migrations', () => {
     expect(migrated.extension.documentParser).toEqual({ type: 'local' })
   })
 
-  test('filters unavailable built-in state without changing custom servers', () => {
-    const defaults = createDefaultSettings()
-    const migrated = migrateSettings(
-      {
-        ...defaults,
-        mcp: {
-          enabledBuiltinServers: ['fetch', 'sequentialthinking', 'context7'],
-          servers: [
-            {
-              id: 'sequentialthinking',
-              name: 'Custom Sequential Thinking',
-              enabled: true,
-              transport: {
-                type: 'http',
-                url: 'https://example.com/sequentialthinking',
-              },
-            },
-          ],
-        },
-      },
-      5,
-      { isDesktopLike: true }
-    )
-
-    expect(migrated.mcp.enabledBuiltinServers).toEqual(['fetch', 'context7'])
-    expect(migrated.mcp.servers).toEqual([
-      expect.objectContaining({
-        id: 'sequentialthinking',
-        name: 'Custom Sequential Thinking',
-      }),
-    ])
-  })
-
-  test.each([0, 5, 6])('removes built-in EdgeOne from version %i without changing custom servers', (version) => {
-    const defaults = createDefaultSettings()
-    const customServer = {
-      id: 'edgeone-pages',
-      name: 'Custom publishing server',
-      enabled: true,
-      transport: { type: 'http' as const, url: 'https://example.com/mcp' },
-    }
-    const migrated = migrateSettings(
-      {
-        ...defaults,
-        mcp: {
-          enabledBuiltinServers: ['fetch', 'edgeone-pages', 'arxiv', 'context7'],
-          servers: [customServer],
-        },
-      },
-      version,
-      { isDesktopLike: true }
-    )
-
-    expect(migrated.mcp.enabledBuiltinServers).toEqual(['fetch', 'arxiv', 'context7'])
-    expect(migrated.mcp.servers).toEqual([expect.objectContaining(customServer)])
-  })
-
   test.each([0, 1, 2, 3, 4, 5, 6, 7])('keeps the complete version %i snapshot compatible', (version) => {
     const defaults = createDefaultSettings()
     const persisted = {
@@ -254,7 +197,7 @@ describe('settings migrations', () => {
       },
       extension: {
         ...defaults.extension,
-        documentParser: version <= 4 ? { type: 'chatbox-ai' } : { type: 'none' },
+        documentParser: version <= 4 ? { type: 'local' } : { type: 'none' },
       },
     }
 

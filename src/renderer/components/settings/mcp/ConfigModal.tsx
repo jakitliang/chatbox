@@ -22,7 +22,6 @@ import { AppTooltip as Tooltip } from '@/components/ui/tooltip'
 import { useMCPServerStatus } from '@/hooks/mcp'
 import { MCPServer, mcpController } from '@/packages/mcp/controller'
 import type { MCPServerConfig } from '@/packages/mcp/types'
-import platform from '@/platform'
 import { trackEvent } from '@/utils/track'
 import { getConfigFromFormValues, getFormValuesFromConfig, type MCPServerConfigFormValues } from './utils'
 
@@ -180,7 +179,7 @@ const ConfigForm: FC<{
               variant="outline"
               size="sm"
               value="stdio"
-              disabled={platform.type === 'mobile'}
+              disabled={Boolean(mcpController.getTransportIssue('stdio'))}
               label={t('Local (stdio)')}
             />
           </Group>
@@ -203,7 +202,7 @@ const ConfigForm: FC<{
             )}
           </Text>
         </Stack>
-        {platform.type === 'mobile' && form.values.transport.type === 'stdio' && (
+        {mcpController.getTransportIssue(form.values.transport.type) && (
           <Text size="sm" c="dimmed">
             {t('Local MCP servers are only available on desktop')}
           </Text>
@@ -257,7 +256,7 @@ const ConfigForm: FC<{
               variant="outline"
               onClick={testConnection}
               loading={testing}
-              disabled={testing || (platform.type === 'mobile' && form.values.transport.type === 'stdio')}
+              disabled={testing || Boolean(mcpController.getTransportIssue(form.values.transport.type))}
             >
               {t('Connect')}
             </Button>

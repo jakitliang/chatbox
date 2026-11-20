@@ -17,7 +17,12 @@ import Emittery from 'emittery'
 import { isEqual } from 'lodash'
 import { formatMCPError } from './error'
 import { mcpToolSchema } from './mcp-tool-schema'
-import { createMCPFetch, type MCPAuthorizationProvider, type MCPPlatformDependencies } from './platform'
+import {
+  createMCPFetch,
+  getMCPTransportIssue,
+  type MCPAuthorizationProvider,
+  type MCPPlatformDependencies,
+} from './platform'
 import type { MCPProtocolMode, MCPServerConfig, MCPServerStatus, MCPToolGroup } from './types'
 
 type TransportConfig = MCPServerConfig['transport']
@@ -392,9 +397,8 @@ function createClient(
   register: RegisterTransport,
   name = 'chatbox-mcp-client'
 ): Promise<MCPClient> {
-  if (dependencies.mobile && config.transport.type === 'stdio') {
-    return Promise.reject(new Error('Local MCP servers are only available on desktop'))
-  }
+  const issue = getMCPTransportIssue(config.transport.type, dependencies)
+  if (issue) return Promise.reject(new Error(issue))
   if (config.protocolMode === 'auto') return createAutoClient(config, name, interactive, dependencies, register)
   return createLegacyClient(config.transport, name, dependencies, register)
 }
@@ -591,17 +595,28 @@ export function createMCPController(dependencies: MCPPlatformDependencies) {
     servers: new Map<string, { instance: MCPServer; config: MCPServerConfig }>(),
     _statusSubscribers: new Map<string, Set<(status: MCPServerStatus) => void>>(),
 
+    getTransportIssue(type: TransportConfig['type']) {
+      return getMCPTransportIssue(type, dependencies)
+    },
+
+    getEnabledServers(configs: readonly MCPServerConfig[]) {
+      return configs.filter((config) => config.enabled && !this.getTransportIssue(config.transport.type))
+    },
+
+    async connectEnabledServers(configs: readonly MCPServerConfig[], signal?: AbortSignal) {
+      signal?.throwIfAborted()
+      await Promise.all(
+        this.getEnabledServers(configs).map((config) => this.startServer(config, { interactive: false, signal }))
+      )
+    },
+
     bootstrap(serverConfigs: MCPServerConfig[]) {
       if (dependencies.mobile) return
-      for (const serverConfig of serverConfigs) {
-        if (serverConfig.enabled) {
-          void this.startServer(serverConfig, { interactive: false })
-        }
-      }
+      void this.connectEnabledServers(serverConfigs)
     },
 
     async startServer(serverConfig: MCPServerConfig, options?: MCPServerStartOptions) {
-      if (!serverConfig.enabled) {
+      if (!serverConfig.enabled || this.getTransportIssue(serverConfig.transport.type)) {
         return
       }
       const existing = this.servers.get(serverConfig.id)
@@ -690,7 +705,7 @@ export function createMCPController(dependencies: MCPPlatformDependencies) {
             execute: async (args, options) => {
               try {
                 throwIfAborted(options.abortSignal)
-                if (instance.status.state !== 'running')
+                if (this.getServer(config.id) !== instance || instance.status.state !== 'running')
                   throw new Error('MCP connection is unavailable; execution result may be unknown')
                 return await rawExecute?.(args, options)
               } catch (err) {

@@ -614,7 +614,6 @@ function SeedAppBase() {
     ],
     mcp: {
       ...state.mcp,
-      enabledBuiltinServers: [],
       servers: [
         {
           id: 'story-docs-mcp',

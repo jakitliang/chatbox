@@ -9,7 +9,6 @@ import { useEffect } from 'react'
 import { trackJkClickEvent } from '@/analytics/jk'
 import { JK_EVENTS, JK_PAGE_NAMES } from '@/analytics/jk-events'
 import { getLogger } from '@/lib/utils'
-import { mcpController } from '@/packages/mcp/controller'
 import { reportError } from '@/utils/sentry'
 import * as remote from '../packages/remote'
 import platform from '../platform'
@@ -35,14 +34,7 @@ export function reconcileLoginLicenseState() {
     licenseActivationMethod: undefined,
     licenseInstances: omit(state.licenseInstances, licenseKey),
     hasExpiredLicense: false,
-    mcp: {
-      ...state.mcp,
-      enabledBuiltinServers: [],
-    },
   }))
-  settings.mcp.enabledBuiltinServers.forEach((serverId) => {
-    mcpController.stopServer(serverId).catch(console.error)
-  })
   remote.invalidateSessionRagConfigCache()
   log.info('Cleared stale login license state because auth tokens are missing')
   return true
@@ -133,17 +125,7 @@ export async function deactivate(clearLoginState = true) {
   }
 
   // 更新本地状态
-  settingsStore.setState((settings) => ({
-    ...licenseDeactivationSettings(settings),
-    mcp: {
-      ...settings.mcp,
-      enabledBuiltinServers: [],
-    },
-  }))
-  // 停止所有内置MCP服务器
-  settings.mcp.enabledBuiltinServers.forEach((serverId) => {
-    mcpController.stopServer(serverId).catch(console.error)
-  })
+  settingsStore.setState((settings) => licenseDeactivationSettings(settings))
   // 更新服务器状态（取消激活 license）
   const licenseKey = settings.licenseKey || ''
   const licenseInstances = settings.licenseInstances || {}
@@ -189,14 +171,8 @@ export async function activate(
   }
   const previous = settingsStore.getState()
   const switching = !!previous.licenseKey && previous.licenseKey !== result.licenseKey
-  settingsStore.setState((current) => ({
-    ...licenseActivationSettings(current, result, method, options?.accountEmail),
-    ...(switching ? { mcp: { ...current.mcp, enabledBuiltinServers: [] } } : {}),
-  }))
+  settingsStore.setState((current) => licenseActivationSettings(current, result, method, options?.accountEmail))
   if (switching) {
-    previous.mcp.enabledBuiltinServers.forEach((serverId) => {
-      mcpController.stopServer(serverId).catch(console.error)
-    })
     const oldKey = previous.licenseKey!
     const oldInstance = previous.licenseInstances?.[oldKey]
     if (oldInstance) {

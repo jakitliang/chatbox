@@ -36,7 +36,6 @@ MCP 支持两种传输方式，分别解决不同部署场景：
 
 ### MCP 协议版本策略
 
-- 内置 MCP 固定使用 legacy 初始化流程，保持现有云端服务行为不变。
 - 新建、推荐列表安装和 JSON 导入的自定义 MCP 默认使用 **Auto**：先通过 `server/discover` 协商 2026-07-28 协议；服务端不支持时回退到 legacy `initialize`。
 - 升级前已保存且没有 `protocolMode` 的自定义 MCP 按 **Legacy** 处理。用户可以在编辑服务器时手动切换 Auto / Legacy，切换后运行时会重连。
 - 2026-07-28 路径当前覆盖工具发现与工具调用主链路。`input_required` 交互、现代订阅以及浏览器环境下的 `x-mcp-header` 参数头镜像暂未接入。
@@ -48,19 +47,10 @@ MCP 支持两种传输方式，分别解决不同部署场景：
 
 - **生命周期管理**：根据用户配置启动/停止/更新服务器实例，配置变更时自动重连
 - **状态订阅**：通过 Emittery 事件系统暴露服务器状态（idle / starting / running / stopping），UI 可实时反映连接状况
-- **工具聚合**：`getAvailableTools()` 遍历所有运行中的服务器，将其工具合并到统一的 `ToolSet` 中；工具名通过 `mcp__<serverName>__<toolName>` 格式命名以避免冲突
+- **工具聚合**：共享会话入口 `prepareMCPTools()` 仅从当前配置中已启用、平台支持且已连接的服务器取工具；工具名通过 `mcp__<serverName>__<toolName>` 格式命名以避免冲突
 - **错误容忍**：单个 MCP 工具执行失败时返回错误信息而非抛出异常，避免中断整个对话流程
 
-### 内置 MCP 服务器
-
-Chatbox Pro 预置了一组云端 MCP 服务器（`src/renderer/packages/mcp/builtin.ts`），通过 HTTP 传输连接到 `mcp.chatboxai.app`：
-
-- **Fetch**：网页内容抓取与 HTML 转 Markdown
-- **EdgeOne Pages**：HTML 内容部署与公开 URL 获取
-- **arXiv**：学术论文检索
-- **Context7**：编程库文档与代码示例检索
-
-内置服务器需要许可证密钥认证（通过 `x-chatbox-license` 请求头传递），用户无需额外配置即可使用。
+`mcp.servers` 是唯一的持久化服务器清单。平台适配层提供传输依赖，设置页、连接测试和会话工具准备共用传输可用性判断。桌面和 Web 继续使用预连接，移动端继续按需连接；会话的工具资格规则相同。
 
 ## Web Search 系统
 

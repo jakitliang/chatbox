@@ -187,7 +187,7 @@ vi.mock('@/stores/agentPersonaStore', () => ({
 }))
 
 vi.mock('@/stores/settingsStore', () => ({
-  useMcpSettings: () => ({ servers: [], enabledBuiltinServers: [] }),
+  useMcpSettings: () => ({ servers: [] }),
   useSettingsStore: (selector: (state: typeof mocks.settingsState) => unknown) => selector(mocks.settingsState),
 }))
 
@@ -487,9 +487,7 @@ describe('AgentModePanel capability availability', () => {
     renderPanel({ webBrowsingMode: true })
 
     expect(screen.getByText('Setup required')).toBeTruthy()
-    expect(
-      screen.getByText('The selected Web Search provider needs to be configured before it can run.')
-    ).toBeTruthy()
+    expect(screen.getByText('The selected Web Search provider needs to be configured before it can run.')).toBeTruthy()
     expect(screen.getByTestId(TestId.chat.webSearchToggle)).toHaveProperty('checked', true)
 
     fireEvent.click(screen.getByRole('button', { name: /Open Web Search settings/ }))

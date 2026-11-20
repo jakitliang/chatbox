@@ -56,6 +56,7 @@ vi.hoisted(() => {
 vi.mock('@/platform', () => ({
   default: {
     type: 'web',
+    getLocale: vi.fn().mockResolvedValue('en'),
     getPlatform: vi.fn().mockResolvedValue('darwin'),
     getVersion: vi.fn().mockResolvedValue('test-version'),
   },
@@ -76,6 +77,7 @@ vi.mock('@/sandbox', () => ({
 
 vi.mock('@/packages/mcp/controller', () => ({
   mcpController: {
+    getEnabledServers: () => [],
     getAvailableTools: mcpToolsMock,
   },
 }))
@@ -95,6 +97,7 @@ vi.mock('@/packages/skills/controller', () => ({
 vi.mock('@/stores/settingsStore', () => ({
   settingsStore: {
     getState: () => ({
+      mcp: { servers: [] },
       getSettings: getSettingsMock,
     }),
     setState: vi.fn(),

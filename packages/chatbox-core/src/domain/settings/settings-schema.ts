@@ -429,7 +429,6 @@ const MCPSettingsSchema = z.object({
         return parsed.success ? [parsed.data] : []
       })
     ),
-  enabledBuiltinServers: z.array(z.string()).catch([]),
   oauth: z.record(z.string(), MCPOAuthStateSchema).optional().catch(undefined),
 })
 

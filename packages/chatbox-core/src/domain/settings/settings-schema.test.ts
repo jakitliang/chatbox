@@ -15,7 +15,7 @@ describe('self-host settings', () => {
 
   it('defaults to local services with search, telemetry and updates opt-in', () => {
     const settings = createDefaultSettings()
-    expect(settings.appApiServer).toBe('http://127.0.0.1:4567')
+    expect(settings.appApiServer).toBe('')
     expect(settings.webBrowsing).toBe(false)
     expect(settings.allowReportingAndTracking).toBe(false)
     expect(settings.autoUpdate).toBe(false)
@@ -34,7 +34,7 @@ describe('self-host settings', () => {
       defaultRerankModel: { provider: 'ollama', model: 'local-reranker' },
       extension: { ...old.extension, webSearch: { provider: 'build-in' } },
     })
-    expect(parsed.appApiServer).toBe('http://127.0.0.1:4567')
+    expect(parsed.appApiServer).toBe('')
     expect(parsed.defaultChatModel).toBeUndefined()
     expect(parsed.defaultEmbeddingModel).toBeUndefined()
     expect(parsed.defaultRerankModel).toEqual({ provider: 'ollama', model: 'local-reranker' })

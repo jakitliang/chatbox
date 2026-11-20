@@ -24,7 +24,7 @@ import { captureAgentModeException } from '@/observability/agent-mode'
 import * as appleAppStore from '@/packages/apple_app_store'
 import { wakeBackgroundTaskFollowUps } from '@/packages/chatbox-cli/background-follow-up'
 import { resolveModelCompactionBudget } from '@/packages/context-management/context-pressure'
-import { prepareMobileMCPTools } from '@/packages/mcp/mobile-tools'
+import { prepareSessionMCPTools } from '@/packages/mcp/prepare-tools'
 import { buildPausedAgentMemoryTools } from '@/packages/model-calls/toolsets/agent-memory'
 import platform from '@/platform'
 import { createSandboxProvider } from '@/sandbox'
@@ -123,7 +123,13 @@ async function buildToolsForPausedToolCall(
     const { capacitorWorkMode, buildMobileWebTools, capacitorImageTools } = await import(
       '@/packages/mobile-work-mode/runtime'
     )
-    const mcp = await prepareMobileMCPTools({ enabled: true, model, settings: settingsService.getSettings(), signal })
+    const mcp = await prepareSessionMCPTools({
+      enabled: true,
+      model,
+      servers: settingsService.getSettings().mcp.servers,
+      connect: true,
+      signal,
+    })
     const web = buildMobileWebTools(model, getSessionWebBrowsing(session.id, settings.provider))
     return (
       await capacitorWorkMode.createTools(

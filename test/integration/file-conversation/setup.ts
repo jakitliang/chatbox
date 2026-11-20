@@ -38,6 +38,7 @@ vi.mock('@/stores/settingActions', () => ({
 vi.mock('@/stores/settingsStore', () => ({
   settingsStore: {
     getState: () => ({
+      mcp: { servers: [] },
       getSettings: () => ({
         licenseKey: process.env.CHATBOX_LICENSE_KEY || '',
         language: 'en',
@@ -59,6 +60,7 @@ vi.mock('@/stores/uiStore', () => ({
 // Mock mcp controller（避免 MCP 服务器初始化）
 vi.mock('@/packages/mcp/controller', () => ({
   mcpController: {
+    getEnabledServers: () => [],
     getAvailableTools: () => ({}),
   },
 }))

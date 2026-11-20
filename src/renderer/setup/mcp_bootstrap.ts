@@ -1,4 +1,3 @@
-import { getBuiltinServerConfig } from '@/packages/mcp/builtin'
 import { mcpController } from '@/packages/mcp/controller'
 import platform from '@/platform'
 import { initSettingsStore } from '@/stores/settingsStore'
@@ -25,13 +24,7 @@ function monitorServerStatus() {
 
 initSettingsStore()
   .then((settings) => {
-    const { mcp, licenseKey } = settings
-    const servers = [
-      ...(mcp.enabledBuiltinServers || []).map((id) => getBuiltinServerConfig(id, licenseKey)).filter((s) => !!s),
-      ...(mcp.servers || []), // user defined servers
-    ]
-    console.info(`mcp bootstrap ${servers.length} servers, with license key: ${!!licenseKey}`)
-    mcpController.bootstrap(servers)
+    mcpController.bootstrap(settings.mcp.servers)
     if (NODE_ENV === 'development') {
       monitorServerStatus()
     }

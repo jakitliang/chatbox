@@ -40,7 +40,6 @@ function credentialSettings(): Settings {
       documentParser: { type: 'mineru', mineru: { apiToken: 'extension-mineru-token' } },
     },
     mcp: {
-      enabledBuiltinServers: [],
       servers: [
         {
           id: 'stdio',
@@ -85,7 +84,6 @@ describe('projectSettingsForExport', () => {
       documentParser: { type: 'mineru' },
     })
     expect(cleaned.mcp).toEqual({
-      enabledBuiltinServers: [],
       servers: [
         {
           id: 'stdio',

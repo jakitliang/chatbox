@@ -69,20 +69,6 @@ export function migrateSettings(persisted: unknown, version: number, host: Setti
     }
   }
 
-  if (shouldRunMigration(5)) {
-    const mcp = settings.mcp as { enabledBuiltinServers?: unknown } | undefined
-    if (Array.isArray(mcp?.enabledBuiltinServers)) {
-      mcp.enabledBuiltinServers = mcp.enabledBuiltinServers.filter((id) => id !== 'sequentialthinking')
-    }
-  }
-
-  if (shouldRunMigration(6)) {
-    const mcp = settings.mcp as { enabledBuiltinServers?: unknown } | undefined
-    if (Array.isArray(mcp?.enabledBuiltinServers)) {
-      mcp.enabledBuiltinServers = mcp.enabledBuiltinServers.filter((id) => id !== 'edgeone-pages')
-    }
-  }
-
   // Version 8 sizes the reply reservation from the reply limit, so a stored
   // default would trigger at a different share of small windows. Only the
   // persisted default moves; a value the user chose keeps its setting.

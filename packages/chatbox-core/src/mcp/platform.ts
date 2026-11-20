@@ -16,6 +16,12 @@ export interface MCPPlatformDependencies {
   createOAuthProvider?: (config: MCPServerConfig, interactive: boolean) => MCPAuthorizationProvider
 }
 
+export function getMCPTransportIssue(type: MCPTransportConfig['type'], dependencies: MCPPlatformDependencies) {
+  return type === 'stdio' && (dependencies.mobile || !dependencies.createStdioTransport)
+    ? 'Local MCP servers are only available on desktop'
+    : null
+}
+
 /** Restricts SSE-discovered endpoints and redirects before forwarding configured credentials. */
 export function createMCPFetch(
   serverUrl: string,

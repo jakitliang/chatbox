@@ -4514,36 +4514,6 @@ export const uiInventoryItems: UiInventoryItem[] = [
     hasTranslation: true,
   },
   {
-    path: 'src/renderer/components/settings/mcp/BuiltinServersSection.tsx',
-    title: 'components/settings/mcp/BuiltinServersSection',
-    kind: 'component',
-    area: 'settings',
-    components: ['BuiltinServersSection'],
-    states: ['checked', 'disabled', 'isPremium'],
-    variants: ['size:sm', 'size:xs'],
-    platforms: ['all'],
-    platformNotes: [],
-    previewModes: [],
-    text: ['Builtin MCP Servers', 'One-click MCP servers for Chatbox AI subscribers'],
-    stories: [],
-    storyNames: [],
-    storyTargets: [],
-    storybookIds: [],
-    dependencies: [],
-    previewLinks: [
-      {
-        label: 'Storybook: Builtin MCP server premium accessible states',
-        kind: 'storybook',
-        href: 'http://localhost:6006/?path=/story/real-components-settings-management--builtin-mcp-server-premium-accessible-states',
-        iframeHref:
-          'http://localhost:6006/iframe.html?id=real-components-settings-management--builtin-mcp-server-premium-accessible-states&viewMode=story',
-      },
-    ],
-    hasDefaultExport: false,
-    hasNiceModal: false,
-    hasTranslation: true,
-  },
-  {
     path: 'src/renderer/components/settings/mcp/ConfigModal.tsx',
     title: 'components/settings/mcp/ConfigModal',
     kind: 'component',
@@ -7798,7 +7768,6 @@ export const uiInventoryItems: UiInventoryItem[] = [
     text: [
       'A Claude Code compatible workflow discovered from the local skills folder.',
       'Actual add-provider modal with provider name validation and API compatibility mode selector.',
-      'Actual Chatbox built-in MCP server cards with enabled and disabled switch states.',
       'Actual custom MCP grid with add-server tile, existing server cards, and install-config modal state.',
       'Actual install-from-GitHub modal with detected skills, checkboxes, install status badges, cancel, and install action.',
       'Actual MCP server editor modal with name, transport type, URL/header fields, delete, test, and save actions.',
@@ -7813,8 +7782,6 @@ export const uiInventoryItems: UiInventoryItem[] = [
       'Add provider modal name and API mode states',
       'AddProviderModal',
       'Answer questions about Chatbox product features and plans.',
-      'Builtin MCP server premium accessible states',
-      'BuiltinServersSection',
       'Chatbox AI',
       'chatbox-product-info',
       'Claude',
@@ -7857,7 +7824,6 @@ export const uiInventoryItems: UiInventoryItem[] = [
     ],
     stories: [
       'AddProviderModalStates',
-      'BuiltinMcpServersStates',
       'CustomMcpServersStates',
       'DocumentParserSettingsStates',
       'GitHubInstallModalStates',
@@ -7872,7 +7838,6 @@ export const uiInventoryItems: UiInventoryItem[] = [
     ],
     storyNames: [
       'Add provider modal name and API mode states',
-      'Builtin MCP server premium accessible states',
       'Custom MCP server cards add edit and install states',
       'Document parser desktop mineru and token states',
       'GitHub install modal detected skill selection states',
@@ -7887,7 +7852,6 @@ export const uiInventoryItems: UiInventoryItem[] = [
     ],
     storyTargets: [
       ['src/renderer/components/settings/provider/AddProviderModal'],
-      ['src/renderer/components/settings/mcp/BuiltinServersSection'],
       ['src/renderer/components/settings/mcp/CustomServersSection'],
       ['src/renderer/components/settings/DocumentParserSettings'],
       ['src/renderer/components/settings/skills/GitHubInstallModal'],
@@ -7903,7 +7867,6 @@ export const uiInventoryItems: UiInventoryItem[] = [
     storybookTitle: 'Real Components/Settings Management',
     storybookIds: [
       'real-components-settings-management--add-provider-modal-name-and-api-mode-states',
-      'real-components-settings-management--builtin-mcp-server-premium-accessible-states',
       'real-components-settings-management--custom-mcp-server-cards-add-edit-and-install-states',
       'real-components-settings-management--document-parser-desktop-mineru-and-token-states',
       'real-components-settings-management--git-hub-install-modal-detected-skill-selection-states',
@@ -7918,7 +7881,6 @@ export const uiInventoryItems: UiInventoryItem[] = [
     ],
     dependencies: [
       'src/renderer/components/settings/DocumentParserSettings',
-      'src/renderer/components/settings/mcp/BuiltinServersSection',
       'src/renderer/components/settings/mcp/ConfigModal',
       'src/renderer/components/settings/mcp/CustomServersSection',
       'src/renderer/components/settings/mcp/ServerRegistrySpotlight',
@@ -7938,13 +7900,6 @@ export const uiInventoryItems: UiInventoryItem[] = [
         href: 'http://localhost:6006/?path=/story/real-components-settings-management--add-provider-modal-name-and-api-mode-states',
         iframeHref:
           'http://localhost:6006/iframe.html?id=real-components-settings-management--add-provider-modal-name-and-api-mode-states&viewMode=story',
-      },
-      {
-        label: 'Storybook: Builtin MCP server premium accessible states',
-        kind: 'storybook',
-        href: 'http://localhost:6006/?path=/story/real-components-settings-management--builtin-mcp-server-premium-accessible-states',
-        iframeHref:
-          'http://localhost:6006/iframe.html?id=real-components-settings-management--builtin-mcp-server-premium-accessible-states&viewMode=story',
       },
       {
         label: 'Storybook: Custom MCP server cards add edit and install states',
@@ -11276,7 +11231,6 @@ export const uiInventoryItems: UiInventoryItem[] = [
     storyTargets: [],
     storybookIds: [],
     dependencies: [
-      'src/renderer/components/settings/mcp/BuiltinServersSection',
       'src/renderer/components/settings/mcp/CustomServersSection',
       'src/renderer/components/settings/mcp/utils',
     ],

@@ -14,7 +14,7 @@ import type { ModelDependencies } from '@shared/types/adapters'
 import type { ToolSet } from 'ai'
 import { currentBlobStorage } from '@/adapters/CurrentBlobStorage'
 import { rendererApplication } from '@/app/renderer-application'
-import { prepareMobileMCPTools } from '@/packages/mcp/mobile-tools'
+import { prepareSessionMCPTools } from '@/packages/mcp/prepare-tools'
 import { parseLinkTool, webSearchTool } from '@/packages/model-calls/toolsets/web-search'
 import { getRendererWebSearchProvider } from '@/packages/web-search/provider'
 import platform from '@/platform'
@@ -90,10 +90,11 @@ export async function prepareCapacitorWorkMode(
     currentBlobStorage
   )
   throwIfWorkAborted(request.signal)
-  const mcp = await prepareMobileMCPTools({
+  const mcp = await prepareSessionMCPTools({
     enabled: true,
     model: request.model,
-    settings: request.globalSettings,
+    servers: request.globalSettings.mcp.servers,
+    connect: true,
     signal: request.signal,
   })
   const web = buildMobileWebTools(request.model, request.webBrowsing)

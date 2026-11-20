@@ -154,14 +154,12 @@ settings['licenseInstances'] = { 'xxx': 'instant-id-xxx' }
 ```
 
 Premium 状态影响的功能：
-- MCP 内置云端服务器（Fetch, EdgeOne Pages, arXiv, Context7）
 - 部分高级 Skills
 
-### MCP 内置服务器配置
+### MCP 服务器配置
 
 ```python
 settings['mcp'] = {
-    'enabledBuiltinServers': ['fetch', 'edgeone-pages', 'arxiv', 'context7'],
     'servers': []
 }
 ```

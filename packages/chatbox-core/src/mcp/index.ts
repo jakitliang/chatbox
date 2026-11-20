@@ -1,7 +1,6 @@
 export * from './types'
 export * from './platform'
 export * from './controller'
-export * from './builtin'
 export * from './mcp-tool-schema'
 export * from './validated-tool-schema'
 export * from './prepare-tools'

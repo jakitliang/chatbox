@@ -114,12 +114,8 @@ vi.mock('@/analytics/agent-mode', () => ({
   trackAgentModeFullAccessBypass: (...args: unknown[]) => trackAgentModeFullAccessBypassMock(...args),
 }))
 
-vi.mock('@/packages/mcp/controller', () => ({
-  mcpController: {
-    getAvailableTools: () => ({
-      mcp_tool: { execute: async () => ({}) },
-    }),
-  },
+vi.mock('@/packages/mcp/prepare-tools', () => ({
+  prepareSessionMCPTools: async () => ({ tools: { mcp_tool: { execute: async () => ({}) } } }),
 }))
 
 vi.mock('@/packages/skills/controller', () => ({
@@ -156,6 +152,7 @@ vi.mock('@/stores/settingsStore', () => ({
   settingsStore: {
     getState: () => ({
       ...settingsState,
+      mcp: { servers: [] },
       getSettings: getSettingsMock,
     }),
     setState: (patch: Record<string, unknown>) => {

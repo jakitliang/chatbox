@@ -8,6 +8,7 @@ import { identity, pickBy } from 'lodash'
 import { normalizePlausibleModel, normalizePlausibleProvider } from '@/analytics/plausible'
 import { bucketCount, toBooleanString } from '@/analytics/values'
 import { captureAgentModeException } from '@/observability/agent-mode'
+import { mcpController } from '@/packages/mcp/controller'
 import { getMessageProviderName, getModelDisplayName } from '@/packages/model-setting-utils'
 import platform from '@/platform'
 import { reportError } from '@/utils/sentry'
@@ -49,9 +50,7 @@ export function trackGenerateEvent(
       (agentModeActive ? (agentModeEntry.locked ? 'locked_session' : 'manual') : 'none')
     const sessionKnowledgeBaseMap = uiStore.getState().sessionKnowledgeBaseMap
     const knowledgeBaseEnabled = Boolean(sessionKnowledgeBaseMap[sessionId])
-    const enabledMcpCount =
-      (globalSettings.mcp?.servers?.filter((server) => server.enabled).length ?? 0) +
-      (globalSettings.mcp?.enabledBuiltinServers?.length ?? 0)
+    const enabledMcpCount = mcpController.getEnabledServers(globalSettings.mcp?.servers ?? []).length
     const enabledSkillCount = globalSettings.skills?.enabledSkillNames?.length ?? 0
     const workingDirectoryCount = settings.workingDirectories?.filter((dir) => dir.trim().length > 0).length ?? 0
 

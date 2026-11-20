@@ -3,11 +3,10 @@ import { zodValidator } from '@tanstack/zod-adapter'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
-import { BuiltinServersSection } from '@/components/settings/mcp/BuiltinServersSection'
 import CustomServersSection from '@/components/settings/mcp/CustomServersSection'
 import { parseServerFromJson } from '@/components/settings/mcp/utils'
 import { SettingsPage } from '@/components/settings/SettingsLayout'
-import { prepareMobileMCPTools } from '@/packages/mcp/mobile-tools'
+import { mcpController } from '@/packages/mcp/controller'
 import type { MCPServerConfig } from '@/packages/mcp/types'
 import platform from '@/platform'
 import { settingsStore } from '@/stores/settingsStore'
@@ -31,12 +30,9 @@ export function RouteComponent() {
   useEffect(() => {
     if (platform.type !== 'mobile') return
     const controller = new AbortController()
-    void prepareMobileMCPTools({
-      enabled: true,
-      model: { isSupportToolUse: () => true },
-      settings: settingsStore.getState(),
-      signal: controller.signal,
-    }).catch(() => undefined)
+    void mcpController.connectEnabledServers(settingsStore.getState().mcp.servers, controller.signal).catch((error) => {
+      if (!controller.signal.aborted) console.error('MCP settings connection failed:', error)
+    })
     return () => controller.abort()
   }, [])
 
@@ -67,7 +63,6 @@ export function RouteComponent() {
           : t('Tools from MCP servers are available to models that support tool use.')
       }
     >
-      <BuiltinServersSection />
       <CustomServersSection installConfig={installConfig} />
     </SettingsPage>
   )

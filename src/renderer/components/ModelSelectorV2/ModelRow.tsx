@@ -1,13 +1,14 @@
 import { ActionIcon, Flex, Text } from '@mantine/core'
 import { AutomationAdjacentAttr, TestId } from '@shared/automation/testids'
+import { getModelCapabilityIds } from '@shared/providers/model-config'
 import type { ProviderModelInfo } from '@shared/types'
-import { IconBulb, IconEye, IconInfoCircle, IconLock, IconStar, IconStarFilled } from '@tabler/icons-react'
+import { IconInfoCircle, IconLock, IconStar, IconStarFilled } from '@tabler/icons-react'
 import clsx from 'clsx'
 import type { KeyboardEvent, MouseEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ScalableIcon } from '../common/ScalableIcon'
 import { ModelIcon } from '../icons/ModelIcon'
-import { CAPABILITY_ICON_COLOR_CLASSES } from './CapabilityIconRow'
+import { modelCapabilityIcons, modelSelectorCapabilityOrder } from '../model-capability-icons'
 import { HOVER_CLASS, MOBILE_TAP_RESET_STYLE, SELECTED_CLASS } from './constants'
 import type { DetailModel } from './types'
 
@@ -43,6 +44,7 @@ export function ModelRow({
   onDisabledSelect?: () => void
 }) {
   const { t } = useTranslation()
+  const capabilityIds = getModelCapabilityIds(providerModel)
   const isDisabled = !!detail.disabledReason && !locked
   const handleRowAction = () => {
     if (isDisabled) {
@@ -106,22 +108,20 @@ export function ModelRow({
         {detail.name}
       </Text>
       <Flex align="center" gap={mobile ? 6 : 4} className="min-w-0 flex-shrink-0">
-        {providerModel.capabilities?.includes('vision') && (
-          <ScalableIcon
-            icon={IconEye}
-            size={mobile ? 16 : 14}
-            aria-label={t('Vision') as string}
-            className={CAPABILITY_ICON_COLOR_CLASSES.vision}
-          />
-        )}
-        {providerModel.capabilities?.includes('reasoning') && (
-          <ScalableIcon
-            icon={IconBulb}
-            size={mobile ? 16 : 14}
-            aria-label={t('Reasoning') as string}
-            className={CAPABILITY_ICON_COLOR_CLASSES.reasoning}
-          />
-        )}
+        {modelSelectorCapabilityOrder
+          .filter((id) => capabilityIds.includes(id))
+          .map((id) => {
+            const { label, icon, color } = modelCapabilityIcons[id]
+            return (
+              <ScalableIcon
+                key={id}
+                icon={icon}
+                size={mobile ? 16 : 14}
+                aria-label={String(t(label))}
+                className={color}
+              />
+            )
+          })}
         {mobile && (
           <ActionIcon
             aria-label={t('Model details') as string}

@@ -80,6 +80,7 @@ export function GenericProviderRows({
               modelId: model.modelId,
               name: model.nickname || model.modelId,
               capabilities: model.capabilities,
+              audio: model.audio,
               disabledReason,
             }
             const detailKey = `${provider.id}/${model.modelId}`

@@ -2,23 +2,24 @@ import { Badge, Button, Flex, Stack, Text, TextInput } from '@mantine/core'
 import { AutomationAdjacentAttr, TestId } from '@shared/automation/testids'
 import type { ProviderModelInfo } from '@shared/types'
 import { getMaxContextWindow } from '@shared/providers/context-window'
+import { getModelCapabilityIds } from '@shared/providers/model-config'
 import { formatNumber } from '@shared/utils'
 import {
-  IconBulb,
   IconCircleMinus,
   IconCirclePlus,
   IconDatabase,
-  IconEye,
   IconLogout,
   IconSearch,
   IconSettings,
-  IconTool,
 } from '@tabler/icons-react'
 import { capitalize } from 'lodash'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppTooltip as Tooltip } from '@/components/ui/tooltip'
 import { ScalableIcon } from './common/ScalableIcon'
+import { modelCapabilityIcons } from './model-capability-icons'
+
+const listOrder = ['reasoning', 'vision', 'tool_use', 'audio'] as const
 
 interface ModelListProps {
   providerId?: string
@@ -88,6 +89,7 @@ export function ModelList({
         {filteredModels.length > 0 ? (
           filteredModels.map((model) => {
             const maximum = maximumCapacity(model, providerId)
+            const capabilityIds = getModelCapabilityIds(model)
             return (
               <Flex
                 key={model.modelId}
@@ -129,34 +131,31 @@ export function ModelList({
                   </Flex>
 
                   {(model.type !== 'chat' ||
-                    model.capabilities?.length ||
+                    capabilityIds.length ||
                     model.contextWindow ||
                     maximum ||
                     model.maxOutput) && (
                     <Flex gap="xs" align="center" wrap="wrap">
                       {model.type && model.type !== 'chat' && <Badge color="blue">{t(capitalize(model.type))}</Badge>}
 
-                      {model.capabilities?.includes('reasoning') && (
-                        <Tooltip label={t('Reasoning')}>
-                          <Text span c="chatbox-warning" className="flex items-center" style={{ opacity: 0.7 }}>
-                            <ScalableIcon icon={IconBulb} size={14} />
-                          </Text>
-                        </Tooltip>
-                      )}
-                      {model.capabilities?.includes('vision') && (
-                        <Tooltip label={t('Vision')}>
-                          <Text span c="chatbox-brand" className="flex items-center" style={{ opacity: 0.7 }}>
-                            <ScalableIcon icon={IconEye} size={14} />
-                          </Text>
-                        </Tooltip>
-                      )}
-                      {model.capabilities?.includes('tool_use') && (
-                        <Tooltip label={t('Tool Use')}>
-                          <Text span c="chatbox-success" className="flex items-center" style={{ opacity: 0.7 }}>
-                            <ScalableIcon icon={IconTool} size={14} />
-                          </Text>
-                        </Tooltip>
-                      )}
+                      {listOrder
+                        .filter((id) => capabilityIds.includes(id))
+                        .map((id) => {
+                          const { label, icon, color, tone } = modelCapabilityIcons[id]
+                          const name = String(t(label))
+                          return (
+                            <Tooltip key={id} label={name}>
+                              <Text span c={tone} className="flex items-center" style={{ opacity: 0.7 }}>
+                                <ScalableIcon
+                                  icon={icon}
+                                  size={14}
+                                  className={tone ? undefined : color}
+                                  aria-label={name}
+                                />
+                              </Text>
+                            </Tooltip>
+                          )
+                        })}
 
                       {maximum ? (
                         <Tooltip label={`${t('Context Window')}: ${formatTokenCount(maximum)} ${t('tokens')}`}>

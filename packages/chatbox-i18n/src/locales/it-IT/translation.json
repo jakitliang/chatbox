@@ -1248,6 +1248,7 @@
   "View Message JSON": "Visualizza JSON del messaggio",
   "View More Plans": "Visualizza altri piani",
   "View Session JSON": "Visualizza JSON della sessione",
+  "Audio": "Audio",
   "Vision": "Vision",
   "Vision capability is not enabled for Model {{model}}. Please enable it or set a default OCR model in <OpenSettingButton>Settings</OpenSettingButton>": "La funzionalità di visione non è abilitata per il modello {{model}}. Abilitala o imposta un modello OCR predefinito in <OpenSettingButton>Impostazioni</OpenSettingButton>",
   "Vision Model (optional)": "Modello Vision (opzionale)",

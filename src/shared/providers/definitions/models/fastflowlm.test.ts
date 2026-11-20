@@ -151,6 +151,33 @@ describe('FastFlowLM independent keyless provider', () => {
     expect(apiRequest).toHaveBeenCalledTimes(2)
   })
 
+  it('refreshes audio-only metadata without treating it as speech synthesis', async () => {
+    const apiRequest = vi.fn<ModelDependencies['request']['apiRequest']>().mockImplementation(() =>
+      reply({
+        data: [
+          { id: 'audio-model', flm: { audio: true } },
+          { id: 'text-model', flm: { audio: false } },
+          { id: 'older-server-model', flm: { vlm: false } },
+        ],
+      })
+    )
+    const saved: ProviderModelInfo[] = [
+      { modelId: 'audio-model', capabilities: ['vision'] },
+      { modelId: 'text-model', audio: { input: true, speech: false } },
+      { modelId: 'older-server-model', audio: { input: true, speech: false } },
+    ]
+    const runtime = new FastFlowLM(
+      { apiHost: 'http://flm.example:52625', model: { modelId: '' } },
+      dependencies(apiRequest),
+      saved
+    )
+    expect(refreshProviderModelCapabilities(saved, await runtime.listModels())).toEqual([
+      { ...saved[0], audio: { input: true, speech: false } },
+      { ...saved[1], audio: { input: false, speech: false } },
+      { ...saved[2], capabilities: [], type: 'chat' },
+    ])
+  })
+
   it.each([
     [{ flm: { max_position_embeddings: 65536, default_context_length: 8192 } }, 65536],
     [{ flm: { default_context_length: 16384 } }, undefined],

@@ -338,7 +338,7 @@ export function DetailCard({
           <Text size="sm" fw={750} c="chatbox-secondary">
             {t('Capabilities')}
           </Text>
-          <CapabilityIconRow capabilities={model.capabilities} />
+          <CapabilityIconRow capabilities={model.capabilities} audio={model.audio} />
         </Stack>
       )}
       {model.locked && (

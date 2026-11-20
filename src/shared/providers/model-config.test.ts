@@ -1,6 +1,20 @@
 import { describe, expect, it } from 'vitest'
 import type { ProviderModelInfo } from '../types'
-import { mergeProviderModelCapabilities, refreshProviderModelCapabilities } from './model-config'
+import { getModelCapabilityIds, mergeProviderModelCapabilities, refreshProviderModelCapabilities } from './model-config'
+
+describe('getModelCapabilityIds', () => {
+  it.each([
+    [undefined, false],
+    [{ input: false, speech: false }, false],
+    [{ input: true, speech: false }, true],
+    [{ input: false, speech: true }, true],
+    [{ input: true, speech: true }, true],
+  ] as const)('projects audio metadata without changing configured capabilities (%j)', (audio, hasAudio) => {
+    const model: ProviderModelInfo = { modelId: 'fixture', capabilities: ['vision', 'tool_use'], audio }
+    expect(getModelCapabilityIds(model)).toEqual(hasAudio ? ['vision', 'tool_use', 'audio'] : ['vision', 'tool_use'])
+    expect(model.capabilities).toEqual(['vision', 'tool_use'])
+  })
+})
 
 describe('mergeProviderModelCapabilities', () => {
   const defaultModel: ProviderModelInfo = {

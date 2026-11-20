@@ -1312,6 +1312,7 @@
   "View Message JSON": "Просмотреть JSON сообщения",
   "View More Plans": "Просмотреть другие планы",
   "View Session JSON": "Просмотреть JSON сессии",
+  "Audio": "Аудио",
   "Vision": "Зрение",
   "Vision capability is not enabled for Model {{model}}. Please enable it or set a default OCR model in <OpenSettingButton>Settings</OpenSettingButton>": "Функция зрения не включена для модели {{model}}. Пожалуйста, включите ее или установите OCR-модель по умолчанию в <OpenSettingButton>Настройках</OpenSettingButton>",
   "Vision Model (optional)": "Vision-модель (необязательно)",

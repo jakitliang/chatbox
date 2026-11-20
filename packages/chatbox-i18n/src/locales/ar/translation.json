@@ -1312,6 +1312,7 @@
   "View Message JSON": "عرض رسالة JSON",
   "View More Plans": "عرض المزيد من الخطط",
   "View Session JSON": "عرض JSON للجلسة",
+  "Audio": "الصوت",
   "Vision": "الرؤية",
   "Vision capability is not enabled for Model {{model}}. Please enable it or set a default OCR model in <OpenSettingButton>Settings</OpenSettingButton>": "قدرة الرؤية غير مفعلة للنموذج {{model}}. يرجى تمكينها أو تعيين نموذج OCR افتراضي في <OpenSettingButton>الإعدادات</OpenSettingButton>",
   "Vision Model (optional)": "نموذج الرؤية (اختياري)",

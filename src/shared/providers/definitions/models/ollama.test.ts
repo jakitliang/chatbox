@@ -23,6 +23,7 @@ function dependencies(apiRequest = vi.fn<ModelDependencies['request']['apiReques
 }
 
 const response = (data: unknown, status = 200) => Promise.resolve(new Response(JSON.stringify(data), { status }))
+const noAudio = { input: false, speech: false }
 
 describe('Ollama native model discovery', () => {
   it('persists audio and speech independently along with server voice names', async () => {
@@ -44,7 +45,11 @@ describe('Ollama native model discovery', () => {
       { input: false, speech: true, voices: ['default', 'female-chinese'] },
       { input: true, speech: false },
     ])
-    expect(refreshProviderModelCapabilities(models, [{ modelId: 'voice', capabilities: [] }])[0].audio).toBeUndefined()
+    expect(
+      refreshProviderModelCapabilities(models, [
+        { modelId: 'voice', capabilities: [], audio: { input: false, speech: false } },
+      ])[0].audio
+    ).toEqual({ input: false, speech: false })
   })
 
   it.each([
@@ -70,10 +75,10 @@ describe('Ollama native model discovery', () => {
     const models = await model.listModels()
 
     expect(models).toEqual([
-      { modelId: 'gpt-oss:20b', type: 'chat', capabilities: ['tool_use', 'reasoning'] },
-      { modelId: 'my-vision-alias:latest', type: 'chat', capabilities: ['tool_use', 'vision'] },
-      { modelId: 'qwen3:plain', type: 'chat', capabilities: [] },
-      { modelId: 'nomic-embed-text:latest', type: 'embedding', capabilities: [] },
+      { modelId: 'gpt-oss:20b', type: 'chat', capabilities: ['tool_use', 'reasoning'], audio: noAudio },
+      { modelId: 'my-vision-alias:latest', type: 'chat', capabilities: ['tool_use', 'vision'], audio: noAudio },
+      { modelId: 'qwen3:plain', type: 'chat', capabilities: [], audio: noAudio },
+      { modelId: 'nomic-embed-text:latest', type: 'embedding', capabilities: [], audio: noAudio },
     ])
     expect(apiRequest).toHaveBeenNthCalledWith(1, {
       url: `${host}/api/tags`,
@@ -123,8 +128,8 @@ describe('Ollama native model discovery', () => {
       names.map((modelId) => ({
         modelId,
         type: 'chat',
-        ...(modelId === 'gpt-oss:20b' ? { capabilities: ['tool_use'] } : {}),
-        ...(modelId === 'empty' ? { capabilities: [] } : {}),
+        ...(modelId === 'gpt-oss:20b' ? { capabilities: ['tool_use'], audio: noAudio } : {}),
+        ...(modelId === 'empty' ? { capabilities: [], audio: noAudio } : {}),
       }))
     )
   })
@@ -145,10 +150,10 @@ describe('Ollama native model discovery', () => {
     const model = new Ollama({ ollamaHost: 'http://localhost:11434', model: { modelId: '' } }, dependencies(apiRequest))
 
     expect(await model.listModels()).toEqual([
-      { modelId: 'failed-show', type: 'chat', capabilities: ['tool_use', 'reasoning'] },
-      { modelId: 'missing-capabilities', type: 'chat', capabilities: ['tool_use', 'reasoning'] },
-      { modelId: 'empty-capabilities', type: 'chat', capabilities: [] },
-      { modelId: 'embedding', type: 'embedding', capabilities: [] },
+      { modelId: 'failed-show', type: 'chat', capabilities: ['tool_use', 'reasoning'], audio: noAudio },
+      { modelId: 'missing-capabilities', type: 'chat', capabilities: ['tool_use', 'reasoning'], audio: noAudio },
+      { modelId: 'empty-capabilities', type: 'chat', capabilities: [], audio: noAudio },
+      { modelId: 'embedding', type: 'embedding', capabilities: [], audio: noAudio },
     ])
   })
 

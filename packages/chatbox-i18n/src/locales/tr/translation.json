@@ -1312,6 +1312,7 @@
   "View Message JSON": "Mesaj JSON'unu Görüntüle",
   "View More Plans": "Daha Fazla Plan Görüntüle",
   "View Session JSON": "Oturum JSON'unu Görüntüle",
+  "Audio": "Ses",
   "Vision": "Görsel Yeteneği",
   "Vision capability is not enabled for Model {{model}}. Please enable it or set a default OCR model in <OpenSettingButton>Settings</OpenSettingButton>": "{{model}} Modeli için görsel yeteneği etkin değil. Lütfen etkinleştirin veya <OpenSettingButton>Ayarlar</OpenSettingButton>'da varsayılan bir OCR modeli belirleyin",
   "Vision Model (optional)": "Görsel Modeli (isteğe bağlı)",

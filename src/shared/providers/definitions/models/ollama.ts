@@ -29,8 +29,7 @@ function applyNativeCapabilities(model: ProviderModelInfo, capabilities: unknown
   model.capabilities = []
   const input = capabilities.includes('audio')
   const speech = capabilities.includes('speech')
-  if (input || speech) model.audio = { input, speech }
-  else delete model.audio
+  model.audio = { input, speech }
   if (capabilities.includes('tools')) model.capabilities.push('tool_use')
   if (capabilities.includes('vision')) model.capabilities.push('vision')
   if (capabilities.includes('thinking')) model.capabilities.push('reasoning')

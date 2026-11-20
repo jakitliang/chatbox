@@ -1248,6 +1248,7 @@
   "View Message JSON": "메시지 JSON 보기",
   "View More Plans": "더 많은 플랜 보기",
   "View Session JSON": "세션 JSON 보기",
+  "Audio": "오디오",
   "Vision": "Vision",
   "Vision capability is not enabled for Model {{model}}. Please enable it or set a default OCR model in <OpenSettingButton>Settings</OpenSettingButton>": "모델 {{model}}에 시각 능력(Vision)이 활성화되어 있지 않습니다. <OpenSettingButton>설정</OpenSettingButton>에서 활성화하거나 기본 OCR 모델을 설정하세요.",
   "Vision Model (optional)": "Vision 모델 (선택 사항)",

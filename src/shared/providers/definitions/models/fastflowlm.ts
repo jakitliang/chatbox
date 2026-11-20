@@ -96,7 +96,8 @@ export default class FastFlowLM extends OpenAICompatible {
       const saved = this.savedModels.find((model) => model.modelId === item.id)
       const model: ProviderModelInfo = { modelId: item.id, type: saved?.type ?? 'chat' }
       if (isRecord(item.flm)) {
-        const { vlm, tools, think, reasoning_effort, max_position_embeddings } = item.flm
+        const { audio, vlm, tools, think, reasoning_effort, max_position_embeddings } = item.flm
+        if (typeof audio === 'boolean') model.audio = { input: audio, speech: false }
         const maximum = validContextWindow(max_position_embeddings)
         if (maximum !== undefined) model.maxContextWindow = maximum
 

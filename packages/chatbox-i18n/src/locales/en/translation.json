@@ -1313,6 +1313,7 @@
   "View Message JSON": "View Message JSON",
   "View More Plans": "View More Plans",
   "View Session JSON": "View Session JSON",
+  "Audio": "Audio",
   "Vision": "Vision",
   "Vision capability is not enabled for Model {{model}}. Please enable it or set a default OCR model in <OpenSettingButton>Settings</OpenSettingButton>": "Vision capability is not enabled for Model {{model}}. Please enable it or set a default OCR model in <OpenSettingButton>Settings</OpenSettingButton>",
   "Vision Model (optional)": "Vision Model (optional)",

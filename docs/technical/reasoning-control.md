@@ -23,6 +23,10 @@ Vision、Tool use 等能力同样以保存的配置为准，不能在通用请�
 - 普通运行时 registry enrichment **绝不覆盖 capabilities**，也不按模型名补勾能力。
 - registry 仍可用有效数值补全／更新 `contextWindow`、`maxOutput` 等限制，不能因此恢复已取消的勾选。
 
+模型列表、选择器和详情通过 `getModelCapabilityIds()` 读取展示能力。`Audio` 由模型配置中的
+`audio.input` 或 `audio.speech` 推导，不另存到 `capabilities`；朗读资格仍只看 `audio.speech`。
+模型选择菜单与详情复用同一套图标顺序：视觉、推理、工具使用、音频。
+
 ## 3. 能力判定与协议适配分离
 
 聊天控件直接调用当前模型实例的 `getReasoningOptions()`、`readReasoningLevel()` 和

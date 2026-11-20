@@ -1248,6 +1248,7 @@
   "View Message JSON": "Se melding-JSON",
   "View More Plans": "Vis flere abonnementer",
   "View Session JSON": "Vis JSON for økt",
+  "Audio": "Lyd",
   "Vision": "Vision",
   "Vision capability is not enabled for Model {{model}}. Please enable it or set a default OCR model in <OpenSettingButton>Settings</OpenSettingButton>": "Synsevne er ikke aktivert for modell {{model}}. Vennligst aktiver det eller sett en standard OCR-modell i <OpenSettingButton>Innstillinger</OpenSettingButton>",
   "Vision Model (optional)": "Visuell modell (valgfritt)",

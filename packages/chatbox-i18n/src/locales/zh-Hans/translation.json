@@ -1313,6 +1313,7 @@
   "View Message JSON": "查看消息 JSON",
   "View More Plans": "查看更多方案",
   "View Session JSON": "查看会话 JSON",
+  "Audio": "音频",
   "Vision": "视觉",
   "Vision capability is not enabled for Model {{model}}. Please enable it or set a default OCR model in <OpenSettingButton>Settings</OpenSettingButton>": "视觉能力未在模型 {{model}} 上启用。请启用它或在<OpenSettingButton>Settings</OpenSettingButton>中设置默认的 OCR 模型。",
   "Vision Model (optional)": "视觉模型 (可选)",

@@ -4,7 +4,7 @@ import SwipeableDrawer from '@mui/material/SwipeableDrawer'
 import { TestId } from '@shared/automation/testids'
 import {
   IconCode,
-  IconHelpCircle,
+  IconCompass,
   IconLayoutSidebarLeftCollapse,
   IconMessageChatbot,
   IconPhotoPlus,
@@ -284,12 +284,12 @@ export default function Sidebar() {
               />
             </Box>
             {!versionHook.isExceeded && (
-              <Tooltip label={t('Help')} openDelay={500} withArrow>
+              <Tooltip label={t('Getting Started')} openDelay={500} withArrow>
                 <IconButton
-                  icon={IconHelpCircle}
+                  icon={IconCompass}
                   size={footerButtonSize}
                   iconSize={footerIconSize}
-                  aria-label={t('Help')}
+                  aria-label={t('Getting Started')}
                   color="chatbox-tertiary"
                   onClick={() => {
                     navigate({ to: '/guide' })
@@ -381,7 +381,6 @@ function SidebarNavRow(props: {
     />
   )
 }
-
 
 
 

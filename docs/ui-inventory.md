@@ -18,14 +18,14 @@ This inventory is code-derived from `src/renderer/routes`, `src/renderer/compone
 
 - Source: `src/renderer/routes/about.tsx`
 - Metadata: kind: `page`; area: `app`; route: `/about`
-- Components: `DesktopUpdateSection`, `List`, `ListItem`, `MobileUpdateHint`, `Route`, `RouteComponent`, `UpdateSection`, `WechatQRCode`
-- Platform signals: `desktop`
-- Platform notes: `checks platform.type === desktop`, `responsive branch via isSmallScreen/useIsSmallScreen`, `uses isDesktop state/prop`
+- Components: `RepositoryLink`, `Route`, `RouteComponent`
+- Platform signals: `all`
+- Platform notes: The close button stays in the page header on wide and narrow layouts; the keyboard hint appears on wide layouts.
 - Preview modes: `desktop-wide`, `narrow/mobile-layout`
 - Preview links: [Open route preview](/about)
-- States: `error`, `isDesktop`, `isSmallScreen`, `loading`, `opened`
-- Variants: `color:chatbox-brand`, `default`, `filled`, `light`, `size:md`, `size:sm`, `size:xs`
-- Text: `About`, `about-introduction`, `about-slogan`, `Already up to date`, `Changelog`, `Check Update`, `Checking...`, `Download from official site`, `Downloading...`, `E-mail`, `FAQs`, `Feedback`, `Github`, `New version available`, `Official Site`, `Privacy Policy`, `QR Code`, `RedNote`, `Restart & Update`, `Retry`, `Survey`, `Update failed`, `User Terms`, `WeChat`, `X(Twitter)`
+- Close behavior: `×` or `Esc` returns to the previous in-app page, or home when there is no previous page.
+- Link: Standalone GitHub repository.
+- Content: Accordion panels for `Changelog` and `Configuration Quick Reference`. The changelog is a bundled 12-commit snapshot from [the standalone About content](../src/renderer/components/about/standaloneAboutContent.ts); refresh it when changing the displayed release history. The configuration table scrolls horizontally on narrow screens.
 
 ### routes/copilots/featured
 
@@ -192,6 +192,7 @@ This inventory is code-derived from `src/renderer/routes`, `src/renderer/compone
 - Platform notes: `responsive branch via isSmallScreen/useIsSmallScreen`
 - Preview modes: `desktop-wide`, `narrow/mobile-layout`
 - Preview links: [Open route preview](/guide/)
+- Entry point: The sidebar footer's `Getting Started` button uses a compass icon.
 - States: `disabled`, `error`, `hasValidConfig`, `inputValue`, `isGuideInProgress`, `isLastMessage`, `isLoading`, `isSmallScreen`, `isStreaming`, `pendingLanguage`, `visible`
 - Variants: `color:red`, `filled`, `size:sm`, `size:xs`, `subtle`
 - Text: `Cancel`, `Chatbox Guide`, `Debug Actions`, `Getting Started`, `Guide debug actions`, `Leave`, `Leave Guide?`, `Reset Guide`, `Select Language`, `Skip to Login Success`, `Stay`, `Switch language`, `Switch Language?`, `Switching language will restart the guide and clear your current progress.`, `Trigger Round Limit`, `Type your Chatbox AI-related question here`

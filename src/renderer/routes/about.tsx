@@ -1,18 +1,9 @@
-import {
-  Anchor,
-  Box,
-  Container,
-  Divider,
-  Flex,
-  Image,
-  Stack,
-  Text,
-  Title,
-} from '@mantine/core'
-import { IconChevronRight, IconFileText, IconMessage2 } from '@tabler/icons-react'
-import { createFileRoute } from '@tanstack/react-router'
-import { Children, Fragment, type ReactElement } from 'react'
+import { Accordion, ActionIcon, Box, Container, Flex, Image, Kbd, Stack, Table, Text, Title } from '@mantine/core'
+import { IconChevronRight, IconFileText, IconListDetails, IconX } from '@tabler/icons-react'
+import { createFileRoute, useCanGoBack, useNavigate, useRouter } from '@tanstack/react-router'
+import { useCallback, useEffect, type ReactElement } from 'react'
 import { useTranslation } from 'react-i18next'
+import { getConfigurationQuickReference, recentStandaloneCommits } from '@/components/about/standaloneAboutContent'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
 import BrandGithub from '@/components/icons/BrandGithub'
 import Page from '@/components/layout/Page'
@@ -31,11 +22,55 @@ function RouteComponent() {
   const version = useVersion()
   const language = useLanguage()
   const isSmallScreen = useIsSmallScreen()
+  const router = useRouter()
+  const navigate = useNavigate()
+  const canGoBack = useCanGoBack()
+  const quickReference = getConfigurationQuickReference(language)
   const editionTitle = t('about-standalone-title')
   const displayTitle = `${editionTitle}${/\d/.test(version.version) ? ` (v${version.version})` : ''}`
+  const closeAbout = useCallback(() => {
+    if (canGoBack) {
+      router.history.back()
+    } else {
+      void navigate({ to: '/', replace: true })
+    }
+  }, [canGoBack, navigate, router])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented || event.isComposing || event.repeat) return
+      if (event.target instanceof Element && event.target.closest('[aria-modal="true"]')) return
+      event.preventDefault()
+      closeAbout()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [closeAbout])
 
   return (
-    <Page title={t('About')}>
+    <Page
+      title={t('About')}
+      right={
+        <Flex gap="xs" align="center">
+          {!isSmallScreen && (
+            <Kbd size="xs" aria-hidden="true">
+              Esc
+            </Kbd>
+          )}
+          <ActionIcon
+            variant="light"
+            color="chatbox-gray"
+            size={36}
+            radius="lg"
+            aria-label={t('Close')}
+            aria-keyshortcuts="Escape"
+            onClick={closeAbout}
+          >
+            <ScalableIcon icon={IconX} size={20} />
+          </ActionIcon>
+        </Flex>
+      }
+    >
       <Container size="md" p={0}>
         <Stack gap="xxl" px={isSmallScreen ? 'sm' : 'md'} py={isSmallScreen ? 'xl' : 'md'}>
           <Flex gap="xxl" p="md" className="rounded-lg bg-chatbox-background-secondary">
@@ -49,98 +84,82 @@ function RouteComponent() {
               <Text>{t('about-slogan')}</Text>
               <Text c="chatbox-tertiary">{t('about-introduction')}</Text>
               <Text c="chatbox-tertiary">{t('about-standalone-edition')}</Text>
-
-              <Flex gap="sm">
-                <Anchor
-                  size="sm"
-                  href="https://chatboxai.app/privacy"
-                  target="_blank"
-                  underline="hover"
-                  c="chatbox-tertiary"
-                >
-                  {t('Privacy Policy')}
-                </Anchor>
-                <Anchor
-                  size="sm"
-                  href="https://chatboxai.app/terms"
-                  target="_blank"
-                  underline="hover"
-                  c="chatbox-tertiary"
-                >
-                  {t('User Terms')}
-                </Anchor>
-              </Flex>
             </Stack>
           </Flex>
 
-          <List>
-            <ListItem
-              icon={<BrandGithub className="w-full h-full" />}
-              title={t('Github')}
-              link="https://github.com/jakitliang/chatbox"
-              value="chatbox"
-            />
-            {/* <ListItem
-              icon={<BrandX className="w-full h-full" />}
-              title={t('X(Twitter)')}
-              link="https://x.com/ChatboxAI_HQ"
-              value="@ChatboxAI_HQ"
-            /> */}
-          </List>
+          <Box className="rounded-lg bg-chatbox-background-secondary">
+            <RepositoryLink icon={<BrandGithub className="w-full h-full" />} title={t('Github')} />
+          </Box>
 
-          <List>
-            <ListItem
-              icon={<IconFileText className="w-full h-full" />}
-              title={t('Changelog')}
-              link={`https://chatboxai.app/${language.split('-')[0] || 'en'}/help-center/changelog`}
-            />
-            <ListItem
-              icon={<IconMessage2 className="w-full h-full" />}
-              title={t('FAQs')}
-              link={`https://chatboxai.app/${language.split('-')[0] || 'en'}/help-center/chatbox-ai-service-faqs`}
-            />
-          </List>
+          <Accordion variant="separated">
+            <Accordion.Item value="changelog">
+              <Accordion.Control icon={<ScalableIcon icon={IconFileText} size={20} />}>
+                {t('Changelog')}
+              </Accordion.Control>
+              <Accordion.Panel>
+                <Stack component="ol" gap="sm" m={0} ps="lg">
+                  {recentStandaloneCommits.map(([hash, date, subject]) => (
+                    <li key={hash}>
+                      <Text size="sm" style={{ overflowWrap: 'anywhere' }}>
+                        {subject}
+                      </Text>
+                      <Text size="xs" c="chatbox-tertiary">
+                        <time dateTime={date}>{date}</time> · <code>{hash}</code>
+                      </Text>
+                    </li>
+                  ))}
+                </Stack>
+              </Accordion.Panel>
+            </Accordion.Item>
+            <Accordion.Item value="quick-reference">
+              <Accordion.Control icon={<ScalableIcon icon={IconListDetails} size={20} />}>
+                {quickReference.title}
+              </Accordion.Control>
+              <Accordion.Panel>
+                <Table.ScrollContainer minWidth={600}>
+                  <Table aria-label={quickReference.title} striped highlightOnHover>
+                    <Table.Thead>
+                      <Table.Tr>
+                        {quickReference.headers.map((header) => (
+                          <Table.Th key={header} scope="col">
+                            {header}
+                          </Table.Th>
+                        ))}
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {quickReference.rows.map(([item, ...cells]) => (
+                        <Table.Tr key={item}>
+                          <Table.Th scope="row">{item}</Table.Th>
+                          {cells.map((cell, index) => (
+                            <Table.Td key={quickReference.headers[index + 1]}>{cell}</Table.Td>
+                          ))}
+                        </Table.Tr>
+                      ))}
+                    </Table.Tbody>
+                  </Table>
+                </Table.ScrollContainer>
+              </Accordion.Panel>
+            </Accordion.Item>
+          </Accordion>
         </Stack>
       </Container>
     </Page>
   )
 }
 
-function List(props: { children: ReactElement | ReactElement[] }) {
-  const children = Children.toArray(props.children)
-  return (
-    <Stack gap={0} className="rounded-lg bg-chatbox-background-secondary">
-      {children.map((child, index) => (
-        <Fragment key={`child-${index}`}>
-          {child}
-          {index !== children.length - 1 && <Divider />}
-        </Fragment>
-      ))}
-    </Stack>
-  )
-}
-
-function ListItem({
-  icon,
-  title,
-  link,
-  value,
-  right,
-}: {
-  icon: ReactElement
-  title: string
-  link?: string
-  value?: string
-  right?: ReactElement
-}) {
+function RepositoryLink({ icon, title }: { icon: ReactElement; title: string }) {
   return (
     <Flex
+      component="button"
+      type="button"
+      w="100%"
       px="md"
       py="sm"
       gap="xs"
       align="center"
-      className={link ? 'cursor-pointer' : ''}
-      onClick={() => link && platform.openLink(link)}
+      className="cursor-pointer rounded-lg border-0 bg-transparent text-start"
+      onClick={() => platform.openLink('https://github.com/jakitliang/chatbox')}
       c="chatbox-tertiary"
     >
       <Box w={20} h={20} className="flex-shrink-0 " c="chatbox-primary">
@@ -150,18 +169,10 @@ function ListItem({
         {title}
       </Text>
 
-      {right ? (
-        right
-      ) : (
-        <>
-          {value && (
-            <Text size="md" c="chatbox-tertiary">
-              {value}
-            </Text>
-          )}
-          {link && <ScalableIcon icon={IconChevronRight} size={20} className="!text-inherit" />}
-        </>
-      )}
+      <Text size="md" c="chatbox-tertiary">
+        chatbox
+      </Text>
+      <ScalableIcon icon={IconChevronRight} size={20} className="!text-inherit" />
     </Flex>
   )
 }

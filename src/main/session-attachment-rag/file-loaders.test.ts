@@ -167,7 +167,7 @@ describe('session attachment indexing worker', () => {
         Promise.resolve({
           provider: {} as never,
           modelString: EMBEDDING_MODEL,
-          source: 'chatbox-ai-license',
+          source: 'default-embedding-model',
         }),
       embedValues: (_model, values) => {
         requestedTexts.push(...values)
@@ -298,7 +298,7 @@ describe('session attachment indexing worker', () => {
       resolveEmbeddingProvider: async () => ({
         provider: {} as never,
         modelString: EMBEDDING_MODEL,
-        source: 'chatbox-ai-license',
+        source: 'default-embedding-model',
       }),
       embedValues: async (_model, values) => values.map(() => [0, 1]),
     })

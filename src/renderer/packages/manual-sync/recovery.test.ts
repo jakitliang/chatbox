@@ -55,9 +55,18 @@ it.each([
   ['onerror', 'Cannot open recovery backup storage. Local data was not replaced.'],
   ['onblocked', 'Recovery backup storage is blocked. Close other client windows.'],
 ] as const)('reports %s in English', async (event, message) => {
-  const open: Partial<IDBOpenDBRequest> = {}
+  const open: {
+    onblocked?: OmitThisParameter<NonNullable<IDBOpenDBRequest['onblocked']>>
+    onerror?: OmitThisParameter<NonNullable<IDBOpenDBRequest['onerror']>>
+  } = {}
   vi.stubGlobal('indexedDB', { open: () => {
-    queueMicrotask(() => open[event]?.call(open as IDBOpenDBRequest, {} as Event))
+    queueMicrotask(() => {
+      if (event === 'onblocked') {
+        open.onblocked?.(Object.assign(new Event('blocked'), { oldVersion: 0, newVersion: 1 }))
+      } else {
+        open.onerror?.(new Event('error'))
+      }
+    })
     return open
   } })
   await expect(readSyncRecovery()).rejects.toThrow(message)

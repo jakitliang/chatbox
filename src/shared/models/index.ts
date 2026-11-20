@@ -1,3 +1,4 @@
+import { fastFlowLMProvider } from '../providers/definitions/fastflowlm'
 import { ModelProviderEnum } from '../types'
 
 // Re-export getModel and getProviderSettings from providers for backward compatibility
@@ -19,6 +20,7 @@ export const aiProviderNameHash: Record<ModelProviderEnum, string> = {
   [ModelProviderEnum.Moonshot]: 'Moonshot AI API',
   [ModelProviderEnum.MoonshotCN]: 'Moonshot CN API',
   [ModelProviderEnum.Ollama]: 'Ollama API',
+  [ModelProviderEnum.FastFlowLM]: fastFlowLMProvider.name,
   [ModelProviderEnum.Groq]: 'Groq API',
   [ModelProviderEnum.DeepSeek]: 'DeepSeek API',
   [ModelProviderEnum.SiliconFlow]: 'SiliconFlow API',

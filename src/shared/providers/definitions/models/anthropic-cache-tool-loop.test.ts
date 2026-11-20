@@ -2,7 +2,6 @@ import type { ModelDependencies } from '@shared/types/adapters'
 import { jsonSchema, type ModelMessage, type ToolSet } from 'ai'
 import { describe, expect, it, vi } from 'vitest'
 import type AbstractAISDKModel from '../../../models/abstract-ai-sdk'
-import ChatboxAI from './chatboxai'
 import Claude from './claude'
 import CustomClaude from './custom-claude'
 import OpenRouter from './openrouter'
@@ -191,16 +190,15 @@ function expectAnthropicTailBreakpoints(bodies: JsonObject[], cacheControl: unkn
 }
 
 describe('Anthropic prompt-cache breakpoints across a tool loop', () => {
-  it.each([true, false])('advances Chatbox AI breakpoints on every round (chatStream=%s)', async (viaChatStream) => {
+  it.each([true, false])('advances Claude breakpoints on every round (chatStream=%s)', async (viaChatStream) => {
     const transport = createTransport(anthropicResponse)
-    const model = new ChatboxAI(
+    const model = new Claude(
       {
-        licenseKey: 'license',
-        model: { modelId: 'claude-test', apiStyle: 'anthropic', capabilities: ['tool_use'] },
-        language: 'en',
-        dalleStyle: 'vivid',
+        claudeApiKey: 'key',
+        claudeApiHost: 'https://api.anthropic.com/v1',
+        model: { modelId: 'claude-test', capabilities: ['tool_use'] },
+        customFetch: async (_url, init) => transport.handle(init?.body),
       },
-      { uuid: 'uuid' },
       createDependencies(transport.handle)
     )
     await runToolLoop(model, viaChatStream)
@@ -209,14 +207,13 @@ describe('Anthropic prompt-cache breakpoints across a tool loop', () => {
 
   it('re-marks the transcript after a step compacts it', async () => {
     const transport = createTransport(anthropicResponse)
-    const model = new ChatboxAI(
+    const model = new Claude(
       {
-        licenseKey: 'license',
-        model: { modelId: 'claude-test', apiStyle: 'anthropic', capabilities: ['tool_use'] },
-        language: 'en',
-        dalleStyle: 'vivid',
+        claudeApiKey: 'key',
+        claudeApiHost: 'https://api.anthropic.com/v1',
+        model: { modelId: 'claude-test', capabilities: ['tool_use'] },
+        customFetch: async (_url, init) => transport.handle(init?.body),
       },
-      { uuid: 'uuid' },
       createDependencies(transport.handle)
     )
     for await (const _chunk of model.chatStream(messages, {
@@ -334,16 +331,14 @@ describe('Anthropic prompt-cache breakpoints across a tool loop', () => {
     expect(JSON.stringify(assistant.reasoning_details)).not.toContain('cache_control')
   })
 
-  it('does not mark non-Anthropic Chatbox AI requests', async () => {
+  it('does not mark non-Anthropic OpenRouter requests', async () => {
     const transport = createTransport(openAIResponse)
-    const model = new ChatboxAI(
+    const model = new OpenRouter(
       {
-        licenseKey: 'license',
-        model: { modelId: 'gpt-test', apiStyle: 'openai', capabilities: ['tool_use'] },
-        language: 'en',
-        dalleStyle: 'vivid',
+        apiKey: 'key',
+        model: { modelId: 'openai/gpt-test', capabilities: ['tool_use'] },
+        customFetch: async (_url, init) => transport.handle(init?.body),
       },
-      { uuid: 'uuid' },
       createDependencies(transport.handle)
     )
     await runToolLoop(model, true)

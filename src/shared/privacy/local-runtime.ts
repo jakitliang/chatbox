@@ -7,7 +7,13 @@ const FORBIDDEN_DOMAINS = [
   'midway.run', 'google-analytics.com', 'googletagmanager.com',
   'sentry.io', 'sentry-cdn.com', 'plausible.io', 'vibedrop.com', 'lemonsqueezy.com',
 ]
-type RuntimeSettings = Pick<Settings, 'localRuntime' | 'providers' | 'defaultEmbeddingModel' | 'defaultRerankModel'>
+type RuntimeSettings = Pick<Settings, 'providers' | 'defaultEmbeddingModel' | 'defaultRerankModel'> & {
+  localRuntime: {
+    appApiServer?: string
+    allowedOrigins?: string[]
+    remoteConfig?: Partial<RemoteConfig>
+  }
+}
 let readSettings: () => Partial<RuntimeSettings> = () => ({})
 
 /** Defaults remain fail-closed until the host has hydrated its local settings. */

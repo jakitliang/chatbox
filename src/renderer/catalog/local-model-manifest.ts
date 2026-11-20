@@ -1,6 +1,6 @@
 import { z } from 'zod'
-import configs from '../../../server/snapshot/configs.json'
 import browserCatalog from '../../../server/snapshot/browser-catalog.json'
+import configs from '../../../server/snapshot/configs.json'
 
 const modelSchema = z.object({
   modelId: z.string(),
@@ -18,11 +18,17 @@ const manifestSchema = z.object({
   imageModels: z.array(modelSchema).nullish().transform((models) => models ?? []),
 })
 
-// configs contains the four nonempty groups; the crawl also retained eleven
-// successful empty responses. Preserve both rather than inventing model entries.
+const snapshotEntrySchema = z.object({ provider: z.string(), status: z.number(), data: z.unknown() })
+const snapshotManifestSchema = z.object({ data: manifestSchema })
+const snapshotEntries = z.array(snapshotEntrySchema).parse(browserCatalog.models)
+
+// If both snapshots include a provider, its explicit config takes precedence.
 const manifests: Record<string, unknown> = {
-  ...Object.fromEntries(browserCatalog.models.filter((entry) => entry.status === 200)
-    .map((entry) => [entry.provider, entry.data.data])),
+  ...Object.fromEntries(
+    snapshotEntries
+      .filter((entry) => entry.status === 200)
+      .map((entry) => [entry.provider, snapshotManifestSchema.parse(entry.data).data])
+  ),
   ...configs.models,
 }
 
